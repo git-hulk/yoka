@@ -31,10 +31,10 @@ impl IntoResponse for AppError {
     fn into_response(self) -> Response {
         // Log the full error server-side; show the user a stable error code only.
         let (status, code) = match &self {
-            AppError::NotFound          => (StatusCode::NOT_FOUND,             "not_found"),
-            AppError::BadRequest(code)  => (StatusCode::BAD_REQUEST,           *code),
-            AppError::Database(_)       => (StatusCode::INTERNAL_SERVER_ERROR, "database_error"),
-            AppError::Internal(_)       => (StatusCode::INTERNAL_SERVER_ERROR, "internal_error"),
+            AppError::NotFound => (StatusCode::NOT_FOUND, "not_found"),
+            AppError::BadRequest(code) => (StatusCode::BAD_REQUEST, *code),
+            AppError::Database(_) => (StatusCode::INTERNAL_SERVER_ERROR, "database_error"),
+            AppError::Internal(_) => (StatusCode::INTERNAL_SERVER_ERROR, "internal_error"),
         };
 
         if status.is_server_error() {

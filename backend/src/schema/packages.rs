@@ -7,55 +7,59 @@
 use chrono::{DateTime, NaiveDate, Utc};
 use serde::{Deserialize, Serialize};
 
-use crate::domain::lifecycle::Status;
+use crate::domain::lifecycle::{Status, TrackingMode};
 
 /// Wire shape for create and update. Update reuses the same fields — the
 /// form is small enough that PUT-style "send everything" is simpler than
 /// per-field PATCH semantics with `Option<Option<T>>` for nullables.
+///
+/// `quantity` is `None` iff `tracking_mode == "duration"`; the handler
+/// enforces that invariant.
 #[derive(Debug, Deserialize)]
 pub struct PackageInput {
-    pub name:        String,
-    pub quantity:    f64,
-    pub time_known:  bool,
-    pub start_date:  NaiveDate,
-    pub expires_at:  NaiveDate,
-    pub notes:       Option<String>,
-    pub category:    Option<String>,
+    pub name: String,
+    pub quantity: Option<f64>,
+    pub tracking_mode: TrackingMode,
+    pub start_date: NaiveDate,
+    pub expires_at: NaiveDate,
+    pub notes: Option<String>,
+    #[serde(default)]
+    pub categories: Vec<String>,
     pub price_cents: Option<i64>,
-    pub currency:    String,        // ISO-4217: USD | SGD | CNY | JPY
+    pub currency: String, // ISO-4217: USD | SGD | CNY | JPY
 }
 
 #[derive(Debug, Serialize)]
 pub struct PackageResponse {
-    pub id:          String,
-    pub name:        String,
-    pub quantity:    f64,
-    pub time_known:  bool,
-    pub start_date:  NaiveDate,
-    pub expires_at:  NaiveDate,
-    pub notes:       Option<String>,
-    pub category:    Option<String>,
+    pub id: String,
+    pub name: String,
+    pub quantity: Option<f64>,
+    pub tracking_mode: TrackingMode,
+    pub start_date: NaiveDate,
+    pub expires_at: NaiveDate,
+    pub notes: Option<String>,
+    pub categories: Vec<String>,
     pub price_cents: Option<i64>,
-    pub currency:    String,
+    pub currency: String,
     pub archived_at: Option<DateTime<Utc>>,
-    pub created_at:  DateTime<Utc>,
-    pub updated_at:  DateTime<Utc>,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
 
     // Derived — never persisted.
-    pub consumed:              f64,
-    pub remaining:             f64,
-    pub days_until_expiry:     i64,
+    pub consumed: f64,
+    pub remaining: f64,
+    pub days_until_expiry: i64,
     pub required_pace_per_day: Option<f64>,
-    pub status:                Status,
+    pub status: Status,
 }
 
 #[derive(Debug, Serialize)]
 pub struct UsageResponse {
-    pub id:         String,
+    pub id: String,
     pub package_id: String,
-    pub amount:     f64,
+    pub amount: f64,
     pub debited_by: Option<String>,
-    pub notes:      Option<String>,
+    pub notes: Option<String>,
     pub created_at: DateTime<Utc>,
 }
 
@@ -63,5 +67,5 @@ pub struct UsageResponse {
 #[derive(Debug, Deserialize)]
 pub struct UsageInputBody {
     pub amount: f64,
-    pub notes:  Option<String>,
+    pub notes: Option<String>,
 }

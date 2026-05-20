@@ -15,33 +15,29 @@ use crate::error::AppError;
 
 #[derive(Debug, sqlx::FromRow)]
 pub struct UsageRow {
-    pub id:         String,
+    pub id: String,
     pub package_id: String,
-    pub amount:     f64,
+    pub amount: f64,
     pub debited_by: Option<String>,
-    pub notes:      Option<String>,
+    pub notes: Option<String>,
     pub created_at: DateTime<Utc>,
 }
 
 /// True iff at least one usage exists for the package. Cheap existence
-/// check — used by the update handler to lock `time_known` once amounts
+/// check — used by the update handler to lock `tracking_mode` once amounts
 /// have been recorded.
-pub async fn any_for_package(
-    pool:       &SqlitePool,
-    package_id: &str,
-) -> Result<bool, AppError> {
-    let row: Option<(i64,)> = sqlx::query_as(
-        r#"SELECT 1 FROM usages WHERE package_id = ?1 LIMIT 1"#,
-    )
-    .bind(package_id)
-    .fetch_optional(pool)
-    .await?;
+pub async fn any_for_package(pool: &SqlitePool, package_id: &str) -> Result<bool, AppError> {
+    let row: Option<(i64,)> =
+        sqlx::query_as(r#"SELECT 1 FROM usages WHERE package_id = ?1 LIMIT 1"#)
+            .bind(package_id)
+            .fetch_optional(pool)
+            .await?;
     Ok(row.is_some())
 }
 
 /// Just the columns `lifecycle::derive` needs.
 pub async fn amounts_for_pace(
-    pool:       &SqlitePool,
+    pool: &SqlitePool,
     package_id: &str,
 ) -> Result<Vec<UsageInput>, AppError> {
     let rows: Vec<(f64, DateTime<Utc>)> = sqlx::query_as(
@@ -67,7 +63,7 @@ pub async fn amounts_for_pace(
 /// vec if a package has no usages). Avoids N+1 when rendering the home
 /// list — single query, regardless of package count.
 pub async fn amounts_for_pace_many(
-    pool:        &SqlitePool,
+    pool: &SqlitePool,
     package_ids: &[String],
 ) -> Result<HashMap<String, Vec<UsageInput>>, AppError> {
     let mut out: HashMap<String, Vec<UsageInput>> = HashMap::with_capacity(package_ids.len());
@@ -101,10 +97,7 @@ pub async fn amounts_for_pace_many(
 }
 
 /// Full usage rows for a package, newest first.
-pub async fn list(
-    pool:       &SqlitePool,
-    package_id: &str,
-) -> Result<Vec<UsageRow>, AppError> {
+pub async fn list(pool: &SqlitePool, package_id: &str) -> Result<Vec<UsageRow>, AppError> {
     let rows = sqlx::query_as::<_, UsageRow>(
         r#"
         SELECT id, package_id, amount, debited_by, notes, created_at
@@ -123,11 +116,11 @@ pub async fn list(
 /// Insert a usage. Caller supplies the id; FK constraint enforces that
 /// `package_id` references an existing row.
 pub async fn insert(
-    pool:       &SqlitePool,
-    id:         &str,
+    pool: &SqlitePool,
+    id: &str,
     package_id: &str,
-    amount:     f64,
-    notes:      Option<&str>,
+    amount: f64,
+    notes: Option<&str>,
 ) -> Result<UsageRow, AppError> {
     sqlx::query(
         r#"
@@ -160,11 +153,11 @@ pub async fn insert(
 /// path can't touch somebody else's row. Returns `NotFound` if no row
 /// matched.
 pub async fn update(
-    pool:       &SqlitePool,
+    pool: &SqlitePool,
     package_id: &str,
-    usage_id:   &str,
-    amount:     f64,
-    notes:      Option<&str>,
+    usage_id: &str,
+    amount: f64,
+    notes: Option<&str>,
 ) -> Result<UsageRow, AppError> {
     let result = sqlx::query(
         r#"
@@ -200,18 +193,12 @@ pub async fn update(
 
 /// Delete a usage by id, scoped to a package so a wrong path can't delete
 /// somebody else's row. Returns `NotFound` if no row matched.
-pub async fn delete(
-    pool:       &SqlitePool,
-    package_id: &str,
-    usage_id:   &str,
-) -> Result<(), AppError> {
-    let result = sqlx::query(
-        r#"DELETE FROM usages WHERE id = ?1 AND package_id = ?2"#,
-    )
-    .bind(usage_id)
-    .bind(package_id)
-    .execute(pool)
-    .await?;
+pub async fn delete(pool: &SqlitePool, package_id: &str, usage_id: &str) -> Result<(), AppError> {
+    let result = sqlx::query(r#"DELETE FROM usages WHERE id = ?1 AND package_id = ?2"#)
+        .bind(usage_id)
+        .bind(package_id)
+        .execute(pool)
+        .await?;
 
     if result.rows_affected() == 0 {
         return Err(AppError::NotFound);

@@ -1,4 +1,5 @@
-import { Link, useParams } from "react-router-dom";
+import { useState } from "react";
+import { Link, useNavigate, useParams } from "react-router-dom";
 
 import { api } from "../lib/api";
 import {
@@ -21,6 +22,7 @@ import TrackBand from "../components/TrackBand";
 
 export default function PackageDetail() {
   const { id = "" } = useParams<{ id: string }>();
+  const navigate    = useNavigate();
   const pkgState    = useFetch(() => api.getPackage(id), [id]);
   const usagesState = useFetch(() => api.listUsages(id), [id]);
 
@@ -34,34 +36,50 @@ export default function PackageDetail() {
   const pkg    = pkgState.data;
   const usages = usagesState.status === "ok" ? usagesState.data : [];
 
+  const isDuration = pkg.tracking_mode === "duration";
+
   return (
     <div className="space-y-12">
-      <Hero pkg={pkg} />
-
-      <UsageHistory
-        loading={usagesState.status === "loading"}
-        error={usagesState.status === "error" ? usagesState.error : null}
-        usages={usages}
-        timeKnown={pkg.time_known}
+      <Hero
+        pkg={pkg}
+        usageCount={usagesState.status === "ok" ? usagesState.data.length : 0}
+        usagesLoading={usagesState.status === "loading"}
+        onRemoved={() => navigate("/")}
       />
+
+      {!isDuration && (
+        <UsageHistory
+          loading={usagesState.status === "loading"}
+          error={usagesState.status === "error" ? usagesState.error : null}
+          usages={usages}
+          timeKnown={pkg.tracking_mode === "hours"}
+        />
+      )}
     </div>
   );
 }
 
-function Hero({ pkg }: { pkg: Package }) {
+function Hero({
+  pkg, usageCount, usagesLoading, onRemoved,
+}: {
+  pkg:           Package;
+  usageCount:    number;
+  usagesLoading: boolean;
+  onRemoved:     () => void;
+}) {
   const color = paceColor(pkg);
   const price = formatPrice(pkg.price_cents, pkg.currency);
 
   return (
     <section>
       <div className="flex items-baseline justify-between gap-3 border-b border-hairline pb-3">
-        <span className="text-[10px] uppercase tracking-micro text-ink-faint">
-          {pkg.category ?? "package"}
+        <span className="text-[11px] uppercase tracking-micro text-ink-faint">
+          {pkg.categories.length > 0 ? pkg.categories.join(" · ") : "package"}
         </span>
-        <StatusPill color={color} label={statusLabel(pkg.status)} />
+        <StatusPill status={pkg.status} color={color} label={statusLabel(pkg.status)} />
       </div>
 
-      <h1 className="serif mt-6 text-5xl leading-none text-ink">
+      <h1 className="serif mt-6 text-base font-bold leading-none text-ink">
         {pkg.name}
       </h1>
 
@@ -70,16 +88,28 @@ function Hero({ pkg }: { pkg: Package }) {
       </p>
 
       <div className="mt-10 flex flex-wrap items-baseline gap-x-4">
-        <span className="serif num text-6xl leading-none text-ink sm:text-7xl">
+        <span className="serif num text-base font-bold leading-none text-ink">
           {remainingLabel(pkg)}
         </span>
-        <span className="serif text-xl italic leading-tight text-ink-dim sm:text-2xl">
-          of <span className="num not-italic">{formatAmount(pkg.quantity)}</span>{" "}
-          {pkg.time_known ? "hours " : ""}remain,
+        <span className="serif text-base italic leading-tight text-ink-dim">
+          {pkg.tracking_mode === "duration" ? (
+            <>
+              of{" "}
+              <span className="num not-italic">
+                {formatAmount(pkg.consumed + pkg.remaining)}
+              </span>{" "}
+              days remain,
+            </>
+          ) : (
+            <>
+              of <span className="num not-italic">{formatAmount(pkg.quantity ?? 0)}</span>{" "}
+              {pkg.tracking_mode === "hours" ? "hours " : ""}remain,
+            </>
+          )}
         </span>
       </div>
 
-      <p className="serif mt-1 text-xl italic leading-tight text-ink-dim sm:text-2xl">
+      <p className="serif mt-1 text-base italic leading-tight text-ink-dim">
         {timeToExpiryVerbose(pkg)}.
       </p>
 
@@ -94,24 +124,188 @@ function Hero({ pkg }: { pkg: Package }) {
         />
       </div>
 
-      <div className="mt-8 flex items-center justify-end">
-        <Link
-          to={`/packages/${pkg.id}/edit`}
-          className="border-b border-ink/40 pb-0.5 text-[11px] uppercase tracking-micro text-ink-dim transition hover:border-accent hover:text-accent"
-        >
-          edit pack
-        </Link>
-      </div>
+      <HeroActions
+        id={pkg.id}
+        usageCount={usageCount}
+        usagesLoading={usagesLoading}
+        onRemoved={onRemoved}
+      />
     </section>
   );
 }
 
-function paceTickLabel(pkg: Package): string {
+// ---------------------------------------------------------------------------
+// Terminal actions live next to the entry action ("edit pack") at the bottom
+// of the hero, on the page users actually land on. Three peers in the same
+// tracking-micro register: archive (ink-dim), delete (pace-red), edit pack
+// (underlined entry). Click archive/delete and the row collapses into a
+// confirm panel rendered in the same slot — no modal.
+
+type Pending = "archive" | "delete" | null;
+
+function HeroActions({
+  id, usageCount, usagesLoading, onRemoved,
+}: {
+  id:            string;
+  usageCount:    number;
+  usagesLoading: boolean;
+  onRemoved:     () => void;
+}) {
+  const [pending,    setPending]    = useState<Pending>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [error,      setError]      = useState<string | null>(null);
+
+  async function commit(action: "archive" | "delete") {
+    setSubmitting(true);
+    setError(null);
+    try {
+      if (action === "archive") await api.archivePackage(id);
+      else                      await api.deletePackage(id);
+      onRemoved();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Couldn't remove.");
+      setSubmitting(false);
+    }
+  }
+
+  function cancel() {
+    setPending(null);
+    setError(null);
+  }
+
+  const usageNoun = usageCount === 1 ? "usage" : "usages";
+
+  if (pending === "archive") {
+    return (
+      <ConfirmPanel
+        title="Archive this pack?"
+        body="Hides from the active list. Nothing is deleted."
+        confirmLabel="Archive"
+        loadingLabel="Archiving…"
+        confirmTone="bg-ink"
+        onCancel={cancel}
+        onConfirm={() => commit("archive")}
+        submitting={submitting}
+        error={error}
+      />
+    );
+  }
+
+  if (pending === "delete") {
+    return (
+      <ConfirmPanel
+        title="Delete this pack?"
+        body={
+          usagesLoading
+            ? "Counting usages…"
+            : usageCount > 0
+              ? `Removes the pack and its ${usageCount} ${usageNoun}. This can't be undone.`
+              : "This can't be undone."
+        }
+        confirmLabel="Delete forever"
+        loadingLabel="Deleting…"
+        confirmTone="bg-pace-red"
+        onCancel={cancel}
+        onConfirm={() => commit("delete")}
+        submitting={submitting}
+        error={error}
+        disabled={usagesLoading}
+      />
+    );
+  }
+
+  return (
+    <div className="mt-8 flex items-center justify-between gap-6 text-[11px] uppercase tracking-micro">
+      <div className="flex items-center gap-6">
+        <button
+          type="button"
+          onClick={() => setPending("archive")}
+          className="text-ink-dim transition hover:text-ink"
+        >
+          archive
+        </button>
+        <button
+          type="button"
+          onClick={() => setPending("delete")}
+          className="text-pace-red transition hover:text-ink"
+        >
+          delete
+        </button>
+      </div>
+      <Link
+        to={`/packages/${id}/edit`}
+        className="border-b border-ink/40 pb-0.5 text-ink-dim transition hover:border-accent hover:text-accent"
+      >
+        edit pack
+      </Link>
+    </div>
+  );
+}
+
+function ConfirmPanel({
+  title, body, confirmLabel, loadingLabel, confirmTone,
+  onCancel, onConfirm, submitting, error, disabled = false,
+}: {
+  title:        string;
+  body:         string | null;
+  confirmLabel: string;
+  loadingLabel: string;
+  confirmTone:  string;
+  onCancel:     () => void;
+  onConfirm:    () => void;
+  submitting:   boolean;
+  error:        string | null;
+  disabled?:    boolean;
+}) {
+  return (
+    <div className="mt-8">
+      <p className="serif text-base italic text-ink">{title}</p>
+      {body && (
+        <p className="mt-2 text-sm text-ink-dim">{body}</p>
+      )}
+
+      {error && (
+        <p className="mt-3 text-sm font-semibold text-pace-red">{error}</p>
+      )}
+
+      <div className="mt-6 flex items-center gap-6">
+        <button
+          type="button"
+          onClick={onCancel}
+          disabled={submitting}
+          className="text-[11px] uppercase tracking-micro text-ink-dim transition hover:text-ink disabled:opacity-50"
+        >
+          Cancel
+        </button>
+        <button
+          type="button"
+          onClick={onConfirm}
+          disabled={submitting || disabled}
+          className={
+            `inline-flex items-baseline px-5 py-2.5 text-sm font-medium text-canvas ` +
+            `transition hover:bg-ink disabled:cursor-not-allowed disabled:bg-ink-faint ` +
+            confirmTone
+          }
+        >
+          {submitting ? loadingLabel : confirmLabel}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function paceTickLabel(pkg: Package): string | undefined {
   // The tick marker on the bar reflects "where you should be" if you finish
   // exactly at expiry. Surface the matching label on the right.
+  //
+  // Duration mode has no separate pace (fill IS pace), so the right side
+  // stays empty for active and done; not-started still gets a hint.
+  if (pkg.tracking_mode === "duration") {
+    return pkg.status === "not_start" ? "inactive" : undefined;
+  }
   if (pkg.days_until_expiry < 0) return "past due";
   if (pkg.status === "done")     return "all used";
-  if (pkg.status === "not_start") return "not started";
+  if (pkg.status === "not_start") return "inactive";
   return "pace";
 }
 
@@ -128,7 +322,7 @@ function UsageHistory({
   return (
     <section>
       <div className="flex items-baseline justify-between border-b border-hairline pb-3">
-        <h2 className="serif text-2xl italic text-ink">History</h2>
+        <h2 className="serif text-base italic font-semibold text-ink">History</h2>
         {usages.length > 0 && (
           <span className="num text-[11px] uppercase tracking-micro text-ink-faint">
             {usages.length} {usages.length === 1 ? "entry" : "entries"}
@@ -222,7 +416,7 @@ function Skeleton() {
 function NotFound({ id }: { id: string }) {
   return (
     <div className="border-y border-hairline py-12 text-center">
-      <p className="serif text-3xl italic text-ink">No such package.</p>
+      <p className="serif text-base italic font-semibold text-ink">No such package.</p>
       <p className="mt-3 text-sm text-ink-dim">
         <span className="num">{id}</span> may have been archived or deleted.
       </p>

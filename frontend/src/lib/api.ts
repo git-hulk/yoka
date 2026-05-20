@@ -4,7 +4,7 @@
 // server. In production set `VITE_API_BASE` at build time (defaults to ""
 // → same-origin under /api).
 
-import type { Currency, Package, Usage } from "./types";
+import type { Currency, Package, TrackingMode, Usage } from "./types";
 
 const BASE = (import.meta.env.VITE_API_BASE as string | undefined) ?? "";
 
@@ -48,17 +48,19 @@ async function request<T>(path: string, opts: RequestOpts = {}): Promise<T> {
   return (await res.json()) as T;
 }
 
-/** Fields the user can set when creating or editing a package. */
+/** Fields the user can set when creating or editing a package.
+ *  `quantity` is `null` iff `tracking_mode === "duration"`. */
 export interface PackageInput {
-  name:        string;
-  quantity:    number;
-  time_known:  boolean;
-  start_date:  string;            // "YYYY-MM-DD"
-  expires_at:  string;            // "YYYY-MM-DD"
-  notes:       string | null;
-  category:    string | null;
-  price_cents: number | null;
-  currency:    Currency;
+  name:          string;
+  quantity:      number | null;
+  tracking_mode: TrackingMode;
+  start_date:    string;            // "YYYY-MM-DD"
+  expires_at:    string;            // "YYYY-MM-DD"
+  notes:         string | null;
+  categories:    string[];          // max 3 entries
+
+  price_cents:   number | null;
+  currency:      Currency;
 }
 
 /** Fields when adding a usage entry. */
@@ -70,6 +72,9 @@ export interface UsageInput {
 export const api = {
   listPackages:  () =>
     request<Package[]>("/packages"),
+
+  listCategories: () =>
+    request<string[]>("/categories"),
 
   getPackage:    (id: string) =>
     request<Package>(`/packages/${encodeURIComponent(id)}`),
@@ -85,6 +90,15 @@ export const api = {
       method: "PATCH",
       body:   input,
     }),
+
+  /** Hard-delete: removes the package and cascades through its usages. */
+  deletePackage: (id: string) =>
+    request<void>(`/packages/${encodeURIComponent(id)}`, { method: "DELETE" }),
+
+  /** Soft-delete: stamps `archived_at`. Row + usages survive but drop out
+   *  of the active list. */
+  archivePackage: (id: string) =>
+    request<void>(`/packages/${encodeURIComponent(id)}/archive`, { method: "POST" }),
 
   createUsage: (packageId: string, input: UsageInput) =>
     request<Usage>(

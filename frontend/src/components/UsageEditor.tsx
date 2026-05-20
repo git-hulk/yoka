@@ -52,7 +52,7 @@ export default function UsageEditor({ packageId, timeKnown, onChange }: Props) {
   return (
     <section>
       <div className="flex items-baseline justify-between border-b border-hairline pb-3">
-        <h2 className="serif text-2xl italic text-ink">Usage</h2>
+        <h2 className="serif text-base italic font-semibold text-ink">Usage</h2>
         {items && items.length > 0 && (
           <span className="num text-[11px] uppercase tracking-micro text-ink-faint">
             {items.length} {items.length === 1 ? "entry" : "entries"}
@@ -161,7 +161,7 @@ function Row({
         onClick={() => { setEditing(true); setError(null); }}
         aria-label="edit usage entry"
         className="
-          text-[10px] uppercase tracking-micro text-ink-faint opacity-0 transition
+          text-[11px] uppercase tracking-micro text-ink-faint opacity-0 transition
           group-hover:opacity-100 hover:text-accent focus-visible:opacity-100
         "
       >
@@ -173,7 +173,7 @@ function Row({
         disabled={deleting}
         aria-label="delete usage entry"
         className="
-          text-lg leading-none text-ink-faint opacity-0 transition
+          text-base leading-none text-ink-faint opacity-0 transition
           group-hover:opacity-100 hover:text-pace-red focus-visible:opacity-100
           disabled:opacity-50
         "
@@ -252,7 +252,7 @@ function EditRow({
         type="button"
         onClick={onCancel}
         disabled={saving}
-        className="text-[10px] uppercase tracking-micro text-ink-faint transition hover:text-ink disabled:opacity-50"
+        className="text-[11px] uppercase tracking-micro text-ink-faint transition hover:text-ink disabled:opacity-50"
       >
         cancel
       </button>
@@ -260,7 +260,7 @@ function EditRow({
         type="submit"
         disabled={!canSave}
         className="
-          text-[10px] uppercase tracking-micro text-accent transition hover:text-ink
+          text-[11px] uppercase tracking-micro text-accent transition hover:text-ink
           disabled:cursor-not-allowed disabled:text-ink-faint
         "
       >
@@ -313,7 +313,7 @@ function AddForm({
       onSubmit={handleSubmit}
       className="mt-6 border-t border-hairline pt-5"
     >
-      <p className="text-[10px] uppercase tracking-micro text-ink-faint">
+      <p className="text-[11px] uppercase tracking-micro text-ink-faint">
         + add usage
       </p>
       <div className="mt-3 grid grid-cols-[6rem_1fr_auto] items-baseline gap-4">

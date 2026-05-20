@@ -29,18 +29,26 @@ export function paceColor(pkg: Package): PaceColor {
 export function statusLabel(status: Status): string {
   switch (status) {
     case "active":    return "active";
-    case "not_start": return "not started";
+    case "not_start": return "inactive";
     case "done":      return "done";
     case "expired":   return "expired";
   }
 }
 
 /**
- * Fraction of `quantity` already consumed, in 0..1.
- * Clamped — over-consumption (which shouldn't happen) reads as full.
+ * Fraction of `quantity` already consumed, in 0..1. Over-consumption (which
+ * shouldn't happen) reads as full.
+ *
+ * Duration mode has no quantity: `consumed` and `remaining` are days, and
+ * fill is just `consumed / (consumed + remaining)`.
  */
 export function filledFraction(pkg: Package): number {
-  if (pkg.quantity <= 0) return 0;
+  if (pkg.tracking_mode === "duration") {
+    const total = pkg.consumed + pkg.remaining;
+    if (total <= 0) return 0;
+    return clamp01(pkg.consumed / total);
+  }
+  if (pkg.quantity == null || pkg.quantity <= 0) return 0;
   return clamp01(pkg.consumed / pkg.quantity);
 }
 
@@ -50,10 +58,13 @@ export function filledFraction(pkg: Package): number {
  * "Where the filled edge should be right now if you finish exactly at
  * expiry" = elapsed_days / total_days.
  *
- * Returns `null` when the tick is meaningless: zero-length packages, or
- * before the start (now < start_date — the package hasn't begun).
+ * Returns `null` when the tick is meaningless: zero-length packages, before
+ * the start, or duration packages (where fill IS pace by definition, so a
+ * separate marker would just sit on the fill edge).
  */
 export function tickFraction(pkg: Package, now: Date = new Date()): number | null {
+  if (pkg.tracking_mode === "duration") return null;
+
   const start  = parseDateStartOfDayUtc(pkg.start_date).getTime();
   const expiry = parseExpiryEndOfDayUtc(pkg.expires_at).getTime();
   const t      = now.getTime();
@@ -121,9 +132,23 @@ export function formatPrice(
   }).format(major);
 }
 
-/** "4 used" vs "4.5 used" — show decimal only when fractional. */
+/** "4 used" vs "4.5 used" — show decimal only when fractional.
+ *  Duration mode reads in days: "30 days in". */
 export function usedLabel(pkg: Package): string {
+  if (pkg.tracking_mode === "duration") {
+    return `${formatAmount(pkg.consumed)} days in`;
+  }
   return `${formatAmount(pkg.consumed)} used`;
+}
+
+/** "3/10" — consumed over quantity, decimals only when fractional.
+ *  For duration packs we render days elapsed / total. */
+export function usageRatioLabel(pkg: Package): string {
+  if (pkg.tracking_mode === "duration") {
+    const total = pkg.consumed + pkg.remaining;
+    return `${formatAmount(pkg.consumed)}/${formatAmount(total)}d`;
+  }
+  return `${formatAmount(pkg.consumed)}/${formatAmount(pkg.quantity ?? 0)}`;
 }
 
 export function remainingLabel(pkg: Package): string {

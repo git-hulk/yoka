@@ -3,25 +3,27 @@
 
 export type Status = "active" | "not_start" | "done" | "expired";
 
+export type TrackingMode = "units" | "hours" | "duration";
+
 export type Currency = "USD" | "SGD" | "CNY" | "JPY";
 export const CURRENCIES: readonly Currency[] = ["USD", "SGD", "CNY", "JPY"];
 
 export interface Package {
   id: string;
   name: string;
-  quantity: number;
-  time_known: boolean;
+  quantity: number | null;       // null iff tracking_mode === "duration"
+  tracking_mode: TrackingMode;
   start_date: string;            // "YYYY-MM-DD"
   expires_at: string;            // "YYYY-MM-DD"
   notes: string | null;
-  category: string | null;
+  categories: string[];          // 0–3 entries, normalized server-side
   price_cents: number | null;
   currency: Currency;
   archived_at: string | null;    // ISO-8601 UTC, null when active
   created_at: string;            // ISO-8601 UTC
   updated_at: string;            // ISO-8601 UTC
 
-  // Derived
+  // Derived. For duration mode, `consumed`/`remaining` are days.
   consumed: number;
   remaining: number;
   days_until_expiry: number;

@@ -1,54 +1,59 @@
 import { useState } from "react";
 
-import { ApiError } from "../lib/api";
+import { api, ApiError } from "../lib/api";
 import type { PackageInput } from "../lib/api";
 import { minorPerMajor } from "../lib/pace";
 import { CURRENCIES } from "../lib/types";
-import type { Currency } from "../lib/types";
+import type { Currency, TrackingMode } from "../lib/types";
+import { useFetch } from "../lib/useFetch";
+import CategoriesPicker from "./CategoriesPicker";
 
 interface Props {
   initial?:    PackageInput;
-  /** When true, the units/hours toggle is disabled. Edit mode locks this
-   *  field once any usage exists — flipping it would silently re-interpret
-   *  historical amounts. */
-  lockTimeKnown?: boolean;
+  /** When true, the tracking-mode segmented is disabled. Edit mode locks
+   *  this field once any usage exists — flipping it would silently
+   *  re-interpret historical amounts (or strand them on a duration pack). */
+  lockTrackingMode?: boolean;
   submitLabel: string;
   onSubmit:    (input: PackageInput) => Promise<void>;
   onCancel:    () => void;
 }
 
 const BLANK: PackageInput = {
-  name:        "",
-  quantity:    1,
-  time_known:  false,
-  start_date:  today(),
-  expires_at:  defaultExpiry(),
-  notes:       null,
-  category:    null,
-  price_cents: null,
-  currency:    "USD",
+  name:          "",
+  quantity:      1,
+  tracking_mode: "units",
+  start_date:    today(),
+  expires_at:    defaultExpiry(),
+  notes:         null,
+  categories:    [],
+  price_cents:   null,
+  currency:      "USD",
 };
 
 export default function PackageForm({
   initial,
-  lockTimeKnown = false,
+  lockTrackingMode = false,
   submitLabel,
   onSubmit,
   onCancel,
 }: Props) {
-  const [name,       setName]      = useState(initial?.name      ?? BLANK.name);
-  const [quantity,   setQuantity]  = useState<string>(
-    initial ? String(initial.quantity) : String(BLANK.quantity),
+  const initialQuantity = initial?.quantity ?? BLANK.quantity;
+  const [name,         setName]         = useState(initial?.name ?? BLANK.name);
+  const [quantity,     setQuantity]     = useState<string>(
+    initialQuantity != null ? String(initialQuantity) : String(BLANK.quantity),
   );
-  const [timeKnown,  setTimeKnown] = useState(initial?.time_known ?? BLANK.time_known);
-  const [startDate,  setStartDate] = useState(initial?.start_date ?? BLANK.start_date);
-  const [expiresAt,  setExpiresAt] = useState(initial?.expires_at ?? BLANK.expires_at);
-  const [notes,      setNotes]     = useState(initial?.notes      ?? "");
-  const [category,   setCategory]  = useState(initial?.category   ?? "");
-  const [currency,   setCurrency]  = useState<Currency>(
+  const [trackingMode, setTrackingMode] = useState<TrackingMode>(
+    initial?.tracking_mode ?? BLANK.tracking_mode,
+  );
+  const [startDate,    setStartDate]    = useState(initial?.start_date ?? BLANK.start_date);
+  const [expiresAt,    setExpiresAt]    = useState(initial?.expires_at ?? BLANK.expires_at);
+  const [notes,        setNotes]        = useState(initial?.notes      ?? "");
+  const [categories,   setCategories]   = useState<string[]>(initial?.categories ?? []);
+  const [currency,     setCurrency]     = useState<Currency>(
     initial?.currency ?? BLANK.currency,
   );
-  const [priceStr,   setPriceStr]  = useState<string>(
+  const [priceStr,     setPriceStr]     = useState<string>(
     initial?.price_cents != null
       ? (initial.price_cents / minorPerMajor(initial.currency ?? "USD")).toString()
       : "",
@@ -57,17 +62,23 @@ export default function PackageForm({
   const [submitting, setSubmitting] = useState(false);
   const [error,      setError]      = useState<string | null>(null);
 
-  const qNum = Number(quantity);
+  // Existing categories, surfaced as suggestions on the category combobox.
+  // Failure is silent — the input still accepts free text without them.
+  const categoriesState = useFetch(() => api.listCategories(), []);
+  const categorySuggestions =
+    categoriesState.status === "ok" ? categoriesState.data : [];
+
+  const isDuration   = trackingMode === "duration";
+  const qNum         = Number(quantity);
+  const quantityOk   = isDuration || (Number.isFinite(qNum) && qNum > 0);
   const priceTrimmed = priceStr.trim();
-  const pNum  = priceTrimmed === "" ? null : Number(priceTrimmed);
-  const priceValid =
-    pNum === null || (Number.isFinite(pNum) && pNum >= 0);
-  const datesValid = startDate !== "" && expiresAt !== "" && startDate <= expiresAt;
-  const canSubmit =
+  const pNum         = priceTrimmed === "" ? null : Number(priceTrimmed);
+  const priceValid   = pNum !== null && Number.isFinite(pNum) && pNum >= 0;
+  const datesValid   = startDate !== "" && expiresAt !== "" && startDate <= expiresAt;
+  const canSubmit    =
     !submitting &&
     name.trim() !== "" &&
-    Number.isFinite(qNum) &&
-    qNum > 0 &&
+    quantityOk &&
     datesValid &&
     priceValid;
 
@@ -80,17 +91,14 @@ export default function PackageForm({
     setError(null);
     try {
       await onSubmit({
-        name:        name.trim(),
-        quantity:    qNum,
-        time_known:  timeKnown,
-        start_date:  startDate,
-        expires_at:  expiresAt,
-        notes:       notes.trim() === "" ? null : notes.trim(),
-        category:    category.trim() === "" ? null : category.trim(),
-        price_cents:
-          pNum === null
-            ? null
-            : Math.round(pNum * minorPerMajor(currency)),
+        name:          name.trim(),
+        quantity:      isDuration ? null : qNum,
+        tracking_mode: trackingMode,
+        start_date:    startDate,
+        expires_at:    expiresAt,
+        notes:         notes.trim() === "" ? null : notes.trim(),
+        categories:    categories,
+        price_cents:   Math.round((pNum as number) * minorPerMajor(currency)),
         currency,
       });
     } catch (err) {
@@ -111,42 +119,49 @@ export default function PackageForm({
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="Anthropic credits"
-            className={`${inputClass} serif text-2xl italic placeholder:not-italic placeholder:text-ink-faint`}
+            className={`${inputClass} serif text-base italic placeholder:not-italic placeholder:text-ink-faint`}
           />
         </Field>
 
-        <Field
-          label="Tracks"
-          hint={
-            lockTimeKnown
-              ? "locked — usages already recorded"
-              : "what the quantity counts"
-          }
-        >
-          <Segmented
-            value={timeKnown ? "hours" : "units"}
-            disabled={lockTimeKnown}
-            options={[
-              { value: "units", label: "units" },
-              { value: "hours", label: "hours" },
-            ]}
-            onChange={(v) => setTimeKnown(v === "hours")}
-          />
-        </Field>
-
-        <div className="grid grid-cols-2 gap-x-8 gap-y-8">
-          <Field label="Quantity" htmlFor="quantity">
-            <input
-              id="quantity"
-              type="number"
-              required
-              min={0}
-              step="0.01"
-              value={quantity}
-              onChange={(e) => setQuantity(e.target.value)}
-              className={`${inputClass} num tabular-nums`}
+        <div className="grid grid-cols-1 gap-x-8 gap-y-8 sm:grid-cols-[1fr_8rem] sm:items-end">
+          <Field
+            label="Tracks"
+            hint={
+              lockTrackingMode
+                ? "fixed once a usage is logged"
+                : isDuration
+                  ? "tallied by the day"
+                  : "tallied by usage"
+            }
+          >
+            <Segmented
+              value={trackingMode}
+              disabled={lockTrackingMode}
+              options={[
+                { value: "units",    label: "units" },
+                { value: "hours",    label: "hours" },
+                { value: "duration", label: "duration" },
+              ]}
+              onChange={(v) => setTrackingMode(v as TrackingMode)}
             />
           </Field>
+          {!isDuration && (
+            <Field label="Quantity" htmlFor="quantity">
+              <input
+                id="quantity"
+                type="number"
+                required
+                min={0}
+                step="0.01"
+                value={quantity}
+                onChange={(e) => setQuantity(e.target.value)}
+                className={`${inputClass} num tabular-nums`}
+              />
+            </Field>
+          )}
+        </div>
+
+        <div className="grid grid-cols-2 gap-x-8 gap-y-8">
           <Field label="Starts" htmlFor="start_date">
             <input
               id="start_date"
@@ -168,22 +183,24 @@ export default function PackageForm({
             />
           </Field>
 
-          <Field label="Category" htmlFor="category" hint="optional">
-            <input
+          <Field label="Categories" htmlFor="category" hint="up to 3">
+            <CategoriesPicker
               id="category"
-              type="text"
-              value={category}
-              onChange={(e) => setCategory(e.target.value)}
-              placeholder="Yoga"
-              className={inputClass}
+              values={categories}
+              onChange={setCategories}
+              options={categorySuggestions}
+              placeholder={
+                categorySuggestions.length > 0 ? "pick or create" : "Yoga"
+              }
             />
           </Field>
 
-          <Field label={`Price (${currency})`} htmlFor="price" hint="optional">
+          <Field label={`Price (${currency})`} htmlFor="price">
             <div className="flex items-baseline gap-2">
               <input
                 id="price"
                 type="number"
+                required
                 min={0}
                 step={priceStep}
                 inputMode={currency === "JPY" ? "numeric" : "decimal"}
@@ -287,7 +304,7 @@ function Field({
   return (
     <label htmlFor={htmlFor} className="block">
       <div className="mb-2 flex items-baseline justify-between gap-3">
-        <span className="text-[10px] uppercase tracking-micro text-ink-faint">
+        <span className="text-[11px] uppercase tracking-micro text-ink-faint">
           {label}
         </span>
         {hint && (
@@ -361,11 +378,21 @@ function errorMessage(err: unknown): string {
     switch (err.code) {
       case "name_required":             return "Name is required.";
       case "quantity_must_be_positive": return "Quantity must be greater than 0.";
+      case "quantity_forbidden_for_duration":
+        return "Duration packages don't take a quantity.";
       case "currency_unsupported":      return "That currency isn't supported.";
       case "start_date_after_expires_at":
         return "Start date must be on or before the expiry date.";
-      case "time_known_locked":
-        return "Can't change units once usages are recorded.";
+      case "tracking_mode_locked":
+        return "Can't change tracking mode once usages are recorded.";
+      case "usages_forbidden_for_duration":
+        return "Duration packages don't track usages.";
+      case "categories_too_many":
+        return "Up to 3 categories.";
+      case "price_required":
+        return "Price is required.";
+      case "price_cents_must_be_nonnegative":
+        return "Price can't be negative.";
       case "not_found":                 return "Package not found.";
       default:                          return `Couldn't save (${err.code}).`;
     }

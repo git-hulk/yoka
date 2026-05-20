@@ -53,7 +53,7 @@ export default function Sidebar({ open, onClose }: Props) {
         <div className="flex items-baseline justify-between gap-3 px-5 pt-7 pb-8">
           <Link
             to="/"
-            className="serif text-3xl italic leading-none text-accent transition hover:text-ink"
+            className="serif text-base italic leading-none text-accent transition hover:text-ink"
           >
             yoka
           </Link>
@@ -61,7 +61,7 @@ export default function Sidebar({ open, onClose }: Props) {
             type="button"
             onClick={onClose}
             aria-label="hide sidebar"
-            className="text-[10px] uppercase tracking-micro text-ink-faint transition hover:text-ink"
+            className="text-[11px] uppercase tracking-micro text-ink-faint transition hover:text-ink"
           >
             ← hide
           </button>

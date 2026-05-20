@@ -36,6 +36,14 @@ const MIGRATIONS: &[(&str, &str)] = &[
         "20260520_000001_start_date",
         include_str!("../migrations/20260520_000001_start_date.sql"),
     ),
+    (
+        "20260520_000002_tracking_mode",
+        include_str!("../migrations/20260520_000002_tracking_mode.sql"),
+    ),
+    (
+        "20260520_000003_categories",
+        include_str!("../migrations/20260520_000003_categories.sql"),
+    ),
 ];
 
 pub async fn migrate(pool: &SqlitePool) -> anyhow::Result<()> {

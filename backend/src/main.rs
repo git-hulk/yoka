@@ -14,8 +14,8 @@ use yoka::http::{router, AppState};
 async fn main() -> anyhow::Result<()> {
     init_tracing();
 
-    let db_url = env::var("DATABASE_URL")
-        .unwrap_or_else(|_| "sqlite://tracker.db?mode=rwc".to_string());
+    let db_url =
+        env::var("DATABASE_URL").unwrap_or_else(|_| "sqlite://tracker.db?mode=rwc".to_string());
     let addr: SocketAddr = env::var("BIND_ADDR")
         .unwrap_or_else(|_| "127.0.0.1:3000".to_string())
         .parse()?;

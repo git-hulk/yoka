@@ -32,7 +32,7 @@ export default function App() {
       <main className="flex min-h-dvh flex-1 flex-col">
         {!open && (
           <div className="border-b border-hairline">
-            <div className="mx-auto flex max-w-3xl items-baseline justify-between gap-6 px-6 pt-7 pb-5 sm:px-8">
+            <div className="mx-auto flex max-w-5xl items-baseline justify-between gap-6 px-6 pt-7 pb-5 sm:px-8">
               <button
                 type="button"
                 onClick={() => setOpen(true)}
@@ -41,14 +41,14 @@ export default function App() {
                 <span aria-hidden="true">→</span>
                 packages
               </button>
-              <span className="serif text-2xl italic leading-none text-accent">
+              <span className="serif text-base italic leading-none text-accent">
                 yoka
               </span>
             </div>
           </div>
         )}
 
-        <div className="mx-auto w-full max-w-3xl flex-1 px-6 pt-10 pb-20 sm:px-10">
+        <div className="mx-auto w-full max-w-5xl flex-1 px-6 pt-10 pb-20 sm:px-10">
           <Suspense fallback={<RouteFallback />}>
             <Routes>
               <Route path="/"                   element={<Home />} />

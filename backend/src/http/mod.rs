@@ -4,7 +4,7 @@
 //! response. Anything more interesting belongs in `domain::`.
 
 use axum::{
-    routing::{get, patch},
+    routing::{get, patch, post},
     Router,
 };
 use sqlx::SqlitePool;
@@ -28,8 +28,15 @@ pub fn router(state: AppState) -> Router {
         .allow_headers(Any);
 
     Router::new()
-        .route("/packages",            get(packages::list).post(packages::create))
-        .route("/packages/:id",        get(packages::get_one).patch(packages::update))
+        .route("/categories", get(packages::list_categories))
+        .route("/packages", get(packages::list).post(packages::create))
+        .route(
+            "/packages/:id",
+            get(packages::get_one)
+                .patch(packages::update)
+                .delete(packages::delete),
+        )
+        .route("/packages/:id/archive", post(packages::archive))
         .route(
             "/packages/:id/usages",
             get(packages::list_usages).post(packages::create_usage),

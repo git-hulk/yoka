@@ -63,6 +63,17 @@ export default {
       letterSpacing: {
         micro: "0.14em",
       },
+      keyframes: {
+        // Slow heart-pulse for the active status mark. Halo expands and
+        // brightens, then settles — calm, not alarming.
+        breathe: {
+          "0%, 100%": { opacity: "0.2", transform: "scale(1)" },
+          "50%":      { opacity: "0.5", transform: "scale(1.5)" },
+        },
+      },
+      animation: {
+        breathe: "breathe 2.6s cubic-bezier(0.4, 0, 0.2, 1) infinite",
+      },
     },
   },
   plugins: [],

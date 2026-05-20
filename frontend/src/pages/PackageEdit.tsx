@@ -27,15 +27,15 @@ export default function PackageEdit() {
     usagesState.status === "ok" && usagesState.data.length > 0;
 
   const initial: PackageInput = {
-    name:        pkg.name,
-    quantity:    pkg.quantity,
-    time_known:  pkg.time_known,
-    start_date:  pkg.start_date,
-    expires_at:  pkg.expires_at,
-    notes:       pkg.notes,
-    category:    pkg.category,
-    price_cents: pkg.price_cents,
-    currency:    pkg.currency,
+    name:          pkg.name,
+    quantity:      pkg.quantity,
+    tracking_mode: pkg.tracking_mode,
+    start_date:    pkg.start_date,
+    expires_at:    pkg.expires_at,
+    notes:         pkg.notes,
+    categories:    pkg.categories,
+    price_cents:   pkg.price_cents,
+    currency:      pkg.currency,
   };
 
   async function handleSubmit(input: PackageInput) {
@@ -43,30 +43,34 @@ export default function PackageEdit() {
     navigate(`/packages/${updated.id}`);
   }
 
+  const isDuration = pkg.tracking_mode === "duration";
+
   return (
     <div className="space-y-12">
       <div className="border-b border-hairline pb-4">
-        <span className="text-[10px] uppercase tracking-micro text-ink-faint">
+        <span className="text-[11px] uppercase tracking-micro text-ink-faint">
           revising
         </span>
-        <h1 className="serif mt-2 text-5xl leading-none text-ink">
+        <h1 className="serif mt-2 text-base font-bold leading-none text-ink">
           {pkg.name}
         </h1>
       </div>
 
       <PackageForm
         initial={initial}
-        lockTimeKnown={hasUsages}
+        lockTrackingMode={hasUsages}
         submitLabel="Save changes"
         onSubmit={handleSubmit}
         onCancel={() => navigate(`/packages/${id}`)}
       />
 
-      <UsageEditor
-        packageId={pkg.id}
-        timeKnown={pkg.time_known}
-        onChange={() => setRefreshKey((k) => k + 1)}
-      />
+      {!isDuration && (
+        <UsageEditor
+          packageId={pkg.id}
+          timeKnown={pkg.tracking_mode === "hours"}
+          onChange={() => setRefreshKey((k) => k + 1)}
+        />
+      )}
     </div>
   );
 }
@@ -92,7 +96,7 @@ function Skeleton() {
 function NotFound({ id }: { id: string }) {
   return (
     <div className="border-y border-hairline py-12 text-center">
-      <p className="serif text-3xl italic text-ink">No such package.</p>
+      <p className="serif text-base italic font-semibold text-ink">No such package.</p>
       <p className="mt-3 text-sm text-ink-dim">
         <span className="num">{id}</span> may have been archived or deleted.
       </p>

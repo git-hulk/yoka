@@ -15,10 +15,10 @@ export default function PackageNew() {
   return (
     <div className="space-y-10">
       <div className="border-b border-hairline pb-4">
-        <span className="text-[10px] uppercase tracking-micro text-ink-faint">
+        <span className="text-[11px] uppercase tracking-micro text-ink-faint">
           new entry
         </span>
-        <h1 className="serif mt-2 text-5xl leading-none text-ink">
+        <h1 className="serif mt-2 text-base font-bold leading-none text-ink">
           A new pack.
         </h1>
       </div>
