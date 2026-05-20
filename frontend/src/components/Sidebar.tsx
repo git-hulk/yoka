@@ -50,7 +50,7 @@ export default function Sidebar({ open, onClose }: Props) {
           md:static md:z-auto md:shrink-0
         "
       >
-        <div className="flex items-baseline justify-between gap-3 px-5 pt-7 pb-8">
+        <div className="flex items-center justify-between gap-3 px-5 pt-7 pb-8">
           <Link
             to="/"
             className="serif text-base italic leading-none text-accent transition hover:text-ink"
@@ -60,10 +60,25 @@ export default function Sidebar({ open, onClose }: Props) {
           <button
             type="button"
             onClick={onClose}
-            aria-label="hide sidebar"
-            className="text-[11px] uppercase tracking-micro text-ink-faint transition hover:text-ink"
+            aria-label="Hide sidebar"
+            title="Hide sidebar"
+            className="-mr-1 p-1 text-ink-faint transition hover:text-ink"
           >
-            ← hide
+            {/* Panel-left-close: sidebar pane + chevron pointing left. */}
+            <svg
+              viewBox="0 0 16 16"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="size-4"
+              aria-hidden="true"
+            >
+              <rect x="2" y="3.5" width="12" height="9" rx="1.25" />
+              <line x1="6" y1="3.5" x2="6" y2="12.5" />
+              <path d="M11 6 L8.5 8 L11 10" />
+            </svg>
           </button>
         </div>
 

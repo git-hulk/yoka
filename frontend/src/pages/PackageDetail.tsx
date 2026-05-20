@@ -220,14 +220,14 @@ function HeroActions({
         <button
           type="button"
           onClick={() => setPending("archive")}
-          className="text-ink-dim transition hover:text-ink"
+          className="border-b border-ink/40 pb-0.5 text-ink-dim transition hover:border-ink hover:text-ink"
         >
           archive
         </button>
         <button
           type="button"
           onClick={() => setPending("delete")}
-          className="text-pace-red transition hover:text-ink"
+          className="border-b border-pace-red/40 pb-0.5 text-pace-red transition hover:border-pace-red hover:text-pace-red"
         >
           delete
         </button>

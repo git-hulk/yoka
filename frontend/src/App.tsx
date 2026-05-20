@@ -36,9 +36,24 @@ export default function App() {
               <button
                 type="button"
                 onClick={() => setOpen(true)}
-                className="inline-flex items-baseline gap-1.5 text-[11px] uppercase tracking-micro text-ink-dim transition hover:text-accent"
+                aria-label="Show sidebar"
+                className="group inline-flex items-center gap-2 text-[11px] uppercase tracking-micro text-ink-dim transition hover:text-accent"
               >
-                <span aria-hidden="true">→</span>
+                {/* Panel-left-open: sidebar pane + chevron pointing right. */}
+                <svg
+                  viewBox="0 0 16 16"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="size-4 text-ink-faint transition group-hover:text-accent"
+                  aria-hidden="true"
+                >
+                  <rect x="2" y="3.5" width="12" height="9" rx="1.25" />
+                  <line x1="6" y1="3.5" x2="6" y2="12.5" />
+                  <path d="M8.5 6 L11 8 L8.5 10" />
+                </svg>
                 packages
               </button>
               <span className="serif text-base italic leading-none text-accent">
