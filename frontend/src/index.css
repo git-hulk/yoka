@@ -1,0 +1,60 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Fallback faces with adjusted metrics — keep the page from reflowing when
+ * the real fonts swap in. Values are approximated against Georgia / Arial.
+ * The serif headlines are the largest text on screen, so getting the swap
+ * smooth here matters most.
+ */
+@font-face {
+  font-family: "Source Serif Fallback";
+  src: local("Georgia"), local("Times New Roman");
+  size-adjust: 100%;
+  ascent-override: 92%;
+  descent-override: 24%;
+  line-gap-override: 0%;
+}
+@font-face {
+  font-family: "Inter Fallback";
+  src: local("Helvetica Neue"), local("Arial");
+  size-adjust: 107%;
+  ascent-override: 90%;
+  descent-override: 22%;
+  line-gap-override: 0%;
+}
+
+@layer base {
+  html {
+    font-feature-settings: "cv11", "ss01", "ss03";
+    -webkit-text-size-adjust: 100%;
+  }
+  body {
+    @apply bg-canvas text-ink font-sans antialiased;
+  }
+  .num {
+    font-variant-numeric: tabular-nums;
+  }
+  .serif {
+    @apply font-serif;
+    font-feature-settings: "liga", "dlig";
+  }
+  :focus-visible {
+    outline: 1px solid theme("colors.accent.DEFAULT");
+    outline-offset: 3px;
+    border-radius: 1px;
+  }
+  /* Inputs already render a focus state via border-color; skip the global ring. */
+  input:focus-visible,
+  textarea:focus-visible {
+    outline: none;
+  }
+  /* Native date control uses its own picker icon — tint it to ink. */
+  input[type="date"]::-webkit-calendar-picker-indicator {
+    opacity: 0.5;
+    cursor: pointer;
+  }
+  input[type="date"]::-webkit-calendar-picker-indicator:hover {
+    opacity: 1;
+  }
+}
