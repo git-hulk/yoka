@@ -5,16 +5,19 @@ interface Props {
   heightPx?: number;
   /** Aria label override for screen readers. */
   label?: string;
+  /** Optional accent color. When provided, bars take this color (today at
+   *  full opacity, prior days at 65%). Used to tie the chart to a specific
+   *  subscription's identity. Falls back to accent + ink/60 when omitted. */
+  color?: string;
 }
 
 // Editorial daily ledger. Bars sit on a hairline baseline so empty days still
-// register (a missing day is information). Today's bar carries the brand accent;
-// prior days are ink at 60%. No grid, no axes, no legend; the sentence below
-// the chart names the numbers.
+// register (a missing day is information). No grid, no axes, no legend; the
+// sentence below the chart names the numbers.
 //
 // Stretches to the container width with `preserveAspectRatio="none"` so the
 // rhythm reads at any column width.
-export default function Sparkline({ bins, heightPx = 24, label }: Props) {
+export default function Sparkline({ bins, heightPx = 24, label, color }: Props) {
   const VB_H    = 24;
   const VB_W    = 100;
   const days    = Math.max(1, bins.length);
@@ -56,6 +59,20 @@ export default function Sparkline({ bins, heightPx = 24, label }: Props) {
           );
         }
         const h = Math.max(1.2, (v / max) * (VB_H - 2));
+        const isToday = i === lastIdx;
+        if (color) {
+          return (
+            <rect
+              key={i}
+              x={x}
+              y={VB_H - h}
+              width={barW}
+              height={h}
+              fill={color}
+              fillOpacity={isToday ? 1 : 0.65}
+            />
+          );
+        }
         return (
           <rect
             key={i}
@@ -63,7 +80,7 @@ export default function Sparkline({ bins, heightPx = 24, label }: Props) {
             y={VB_H - h}
             width={barW}
             height={h}
-            className={i === lastIdx ? "fill-accent" : "fill-ink/60"}
+            className={isToday ? "fill-accent" : "fill-ink/60"}
           />
         );
       })}

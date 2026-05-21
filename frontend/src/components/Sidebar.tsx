@@ -186,10 +186,10 @@ function NavItem({
     <Link
       to={entry.to}
       className={
-        "flex items-center gap-2.5 py-1.5 text-base transition " +
+        "-mx-2 flex items-center gap-2.5 rounded-md px-2 py-1.5 text-base transition " +
         (active
-          ? "serif text-accent"
-          : "text-ink-dim hover:text-ink")
+          ? "serif bg-accent-soft text-accent"
+          : "text-ink-dim hover:bg-accent-soft hover:text-ink")
       }
     >
       <span aria-hidden="true" className="inline-flex shrink-0">

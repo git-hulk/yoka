@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 
 import { api } from "../lib/api";
+import { subscriptionColor } from "../lib/colors";
 import {
   activeWindowLabel,
   computeCadence,
@@ -94,10 +95,17 @@ function Hero({
 
   return (
     <section>
-      <div className="flex items-baseline justify-between gap-3 border-b border-hairline pb-3">
-        <span className="text-[11px] uppercase tracking-micro text-ink-faint">
-          {sub.categories.length > 0 ? sub.categories.join(" · ") : "subscription"}
-        </span>
+      <div className="flex items-center justify-between gap-3 border-b border-hairline pb-3">
+        <div className="flex items-center gap-2.5">
+          <span
+            aria-hidden="true"
+            className="size-2 shrink-0 rounded-full"
+            style={{ backgroundColor: subscriptionColor(sub.id) }}
+          />
+          <span className="text-[11px] uppercase tracking-micro text-ink-faint">
+            {sub.categories.length > 0 ? sub.categories.join(" · ") : "subscription"}
+          </span>
+        </div>
         <StatusPill status={sub.status} color={color} label={statusLabel(sub.status)} />
       </div>
 
@@ -381,6 +389,7 @@ function Cadence({ sub, usages }: { sub: Subscription; usages: Usage[] }) {
       <div className="mt-6">
         <Sparkline
           bins={bins}
+          color={subscriptionColor(sub.id)}
           label={`${formatAmount(totalInWin)}${unit} across the last ${CADENCE_DAYS} days`}
         />
         <div className="num mt-2 flex justify-between text-[11px] uppercase tracking-micro text-ink-faint">

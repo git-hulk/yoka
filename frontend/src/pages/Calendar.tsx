@@ -19,6 +19,7 @@ import { useSearchParams } from "react-router-dom";
 import { Link } from "react-router-dom";
 
 import { ApiError, api } from "../lib/api";
+import { subscriptionColor } from "../lib/colors";
 import { useFetch } from "../lib/useFetch";
 import type {
   CalendarEvent,
@@ -1546,25 +1547,6 @@ function formatEventWhen(e: CalendarEvent): string {
     return `${dateLabel} · ${startLabel} – ${endLabel}`;
   }
   return `${dateLabel} · ${startLabel}`;
-}
-
-/** Deterministic chip color from a small editorial palette. Cool/warm balance:
- *  navy + sage + slate read cool-ish, gold + oxblood + forest warm. */
-const SUBSCRIPTION_COLORS = [
-  "#1E3A5F", // accent (deep ink)
-  "#2E6F4F", // pace-green (forest)
-  "#9C6B16", // pace-amber (gold)
-  "#9E3527", // pace-red (oxblood)
-  "#5C544A", // ink-dim (slate)
-  "#5C7A52", // sage — fits the editorial family
-];
-
-function subscriptionColor(id: string): string {
-  let h = 0;
-  for (let i = 0; i < id.length; i++) {
-    h = (h * 31 + id.charCodeAt(i)) | 0;
-  }
-  return SUBSCRIPTION_COLORS[Math.abs(h) % SUBSCRIPTION_COLORS.length];
 }
 
 function saveErrorMessage(err: unknown): string {
