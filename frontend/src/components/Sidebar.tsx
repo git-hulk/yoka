@@ -161,12 +161,15 @@ function NavItem({
     <Link
       to={entry.to}
       className={
-        "block py-1.5 text-base transition " +
+        "flex items-center gap-2.5 py-1.5 text-base transition " +
         (active
           ? "serif italic text-accent"
           : "text-ink-dim hover:text-ink")
       }
     >
+      <span aria-hidden="true" className="inline-flex shrink-0">
+        {entry.icon}
+      </span>
       {entry.label}
     </Link>
   );
