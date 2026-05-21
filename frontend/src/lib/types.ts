@@ -37,8 +37,23 @@ export interface Subscription {
 
 export type EventStatus = "pending" | "accepted" | "declined";
 
+export type Freq = "daily" | "weekly" | "monthly";
+
+export type Weekday = "MO" | "TU" | "WE" | "TH" | "FR" | "SA" | "SU";
+
+/** Mirror of the Rust `RecurrenceRule`. Exactly zero or one of `until`/`count`
+ *  may be present. `byweekday` is meaningful for `freq === "weekly"` only. */
+export interface RecurrenceRule {
+  freq: Freq;
+  byweekday?: Weekday[];
+  until?: string;        // "YYYY-MM-DD"
+  count?: number;
+}
+
 /** A calendar entry. May stand alone (no subscription link) or burn down a
- *  subscription when status === "accepted". */
+ *  subscription when status === "accepted". A row with `recurrence_rule` set
+ *  is a "series root" whose virtual instances surface in calendar listings
+ *  with composite ids of the form `<parent_id>:YYYY-MM-DD`. */
 export interface CalendarEvent {
   id: string;
   title: string | null;
@@ -48,13 +63,14 @@ export interface CalendarEvent {
   subscription_id: string | null;
   amount: number | null;                  // present iff subscription_id is set
   notes: string | null;
+  recurrence_rule?: RecurrenceRule | null;
   created_at: string;
   updated_at: string;
 }
 
 /** Calendar range payload — event enriched with the linked subscription's
  *  label + tracking mode (when linked) so chips can render without a second
- *  lookup. */
+ *  lookup. Virtual recurring instances appear here as separate rows. */
 export interface EventInRange {
   id: string;
   title: string | null;
@@ -66,8 +82,16 @@ export interface EventInRange {
   tracking_mode: TrackingMode | null;
   amount: number | null;
   notes: string | null;
+  recurrence_rule?: RecurrenceRule | null;
   created_at: string;
   updated_at: string;
+}
+
+/** True when the id refers to a virtual instance of a recurring series.
+ *  Composite ids are `<parent_id>:YYYY-MM-DD`. Subscription/event ids are
+ *  UUIDs and never contain a colon, so a colon is a safe sentinel. */
+export function isRecurringInstance(id: string): boolean {
+  return id.includes(":");
 }
 
 // ---------------------------------------------------------------------------

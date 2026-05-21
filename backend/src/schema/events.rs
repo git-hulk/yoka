@@ -10,6 +10,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::db::repo::EventStatus;
 use crate::domain::lifecycle::TrackingMode;
+use crate::domain::recurrence::RecurrenceRule;
 
 /// Wire input for create and update. Update reuses the same fields —
 /// PUT-style — so the frontend can hand the whole form back without
@@ -32,6 +33,11 @@ pub struct EventInput {
     pub subscription_id: Option<String>,
     pub amount: Option<f64>,
     pub notes: Option<String>,
+    /// When set, the event is a recurring series. Subsequent occurrences are
+    /// computed at read time. Per-instance status overrides live in a
+    /// separate exceptions table; this field defines the template only.
+    #[serde(default)]
+    pub recurrence_rule: Option<RecurrenceRule>,
 }
 
 #[derive(Debug, Serialize)]
@@ -44,6 +50,8 @@ pub struct EventResponse {
     pub subscription_id: Option<String>,
     pub amount: Option<f64>,
     pub notes: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub recurrence_rule: Option<RecurrenceRule>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
@@ -69,6 +77,10 @@ pub struct EventInRangeResponse {
     pub tracking_mode: Option<TrackingMode>,
     pub amount: Option<f64>,
     pub notes: Option<String>,
+    /// Present only on the series root row; virtual instances have this set
+    /// to `None` and identify themselves via a composite id (`<parent>:date`).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub recurrence_rule: Option<RecurrenceRule>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }

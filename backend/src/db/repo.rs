@@ -16,6 +16,7 @@ use serde::{Deserialize, Serialize};
 use sqlx::types::Json;
 
 use crate::domain::lifecycle::{TrackingMode, UsageInput};
+use crate::domain::recurrence::RecurrenceRule;
 use crate::error::AppError;
 
 /// Row as stored. Returned by repo reads; handlers convert to the wire type
@@ -82,6 +83,10 @@ pub struct EventRow {
     pub subscription_id: Option<String>,
     pub amount: Option<f64>,
     pub notes: Option<String>,
+    /// JSON-encoded `RecurrenceRule`. NULL when the event is a single
+    /// occurrence. When set, the row is a "series root" and represents the
+    /// template for the recurring instances.
+    pub recurrence_rule: Option<Json<RecurrenceRule>>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
@@ -89,7 +94,7 @@ pub struct EventRow {
 /// `EventRow` plus the linked subscription's name + tracking_mode (when
 /// linked). Returned from the calendar's range query so the frontend can
 /// render chips without an N+1 lookup.
-#[derive(Debug, sqlx::FromRow)]
+#[derive(Debug, Clone, sqlx::FromRow)]
 pub struct EventWithSubscriptionRow {
     pub id: String,
     pub title: Option<String>,
@@ -101,6 +106,7 @@ pub struct EventWithSubscriptionRow {
     pub tracking_mode: Option<TrackingMode>,
     pub amount: Option<f64>,
     pub notes: Option<String>,
+    pub recurrence_rule: Option<Json<RecurrenceRule>>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
@@ -118,6 +124,20 @@ pub struct EventWrite<'a> {
     pub subscription_id: Option<&'a str>,
     pub amount: Option<f64>,
     pub notes: Option<&'a str>,
+    pub recurrence_rule: Option<RecurrenceRule>,
+}
+
+/// Per-instance override for one occurrence of a recurring series. The
+/// presence of a row in `event_exceptions` overrides the series root's status
+/// for that specific UTC date.
+#[derive(Debug, sqlx::FromRow)]
+pub struct EventExceptionRow {
+    pub id: String,
+    pub parent_id: String,
+    pub instance_date: NaiveDate,
+    pub status: EventStatus,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
 }
 
 // ---------------------------------------------------------------------------
@@ -192,4 +212,30 @@ pub trait EventRepo: Send + Sync + 'static {
     async fn set_status(&self, id: &str, status: EventStatus) -> Result<EventRow, AppError>;
 
     async fn delete(&self, id: &str) -> Result<(), AppError>;
+
+    // -- Recurrence -----------------------------------------------------------
+
+    /// Upsert a per-instance status override. The pair `(parent_id,
+    /// instance_date)` uniquely identifies one virtual instance.
+    async fn upsert_exception(
+        &self,
+        parent_id: &str,
+        instance_date: NaiveDate,
+        status: EventStatus,
+    ) -> Result<EventExceptionRow, AppError>;
+
+    /// Look up a single exception by parent + date. Returns `None` if no
+    /// override exists (the instance inherits the series root's status).
+    async fn fetch_exception(
+        &self,
+        parent_id: &str,
+        instance_date: NaiveDate,
+    ) -> Result<Option<EventExceptionRow>, AppError>;
+
+    /// All exceptions for a set of series roots. Used by the calendar's range
+    /// query to overlay status onto virtual instances without N+1 lookups.
+    async fn list_exceptions_for_parents(
+        &self,
+        parent_ids: &[String],
+    ) -> Result<Vec<EventExceptionRow>, AppError>;
 }

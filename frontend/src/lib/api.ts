@@ -83,6 +83,7 @@ export interface EventInput {
   subscription_id: string | null;
   amount:          number | null;
   notes:           string | null;
+  recurrence_rule?: import("./types").RecurrenceRule | null;
 }
 
 export const api = {

@@ -60,6 +60,10 @@ const MIGRATIONS: &[(&str, &str)] = &[
         "20260521_000002_events",
         include_str!("../../../migrations/sqlite/20260521_000002_events.sql"),
     ),
+    (
+        "20260521_000003_recurring_events",
+        include_str!("../../../migrations/sqlite/20260521_000003_recurring_events.sql"),
+    ),
 ];
 
 /// SQLite backend handle: the connected pool plus accessors that produce

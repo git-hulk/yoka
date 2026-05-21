@@ -19,14 +19,17 @@ import { useSearchParams } from "react-router-dom";
 import { Link } from "react-router-dom";
 
 import { ApiError, api } from "../lib/api";
-import { subscriptionColor } from "../lib/colors";
 import { useFetch } from "../lib/useFetch";
 import type {
   CalendarEvent,
   EventInRange,
   EventStatus,
+  Freq,
+  RecurrenceRule,
   Subscription,
+  Weekday,
 } from "../lib/types";
+import { isRecurringInstance } from "../lib/types";
 
 type View = "month" | "week" | "day";
 
@@ -757,11 +760,10 @@ function EventChip({
   isNew?:   boolean;
   onClick: (e: React.MouseEvent) => void;
 }) {
-  const color = chipColor(event);
   const unit  = event.tracking_mode === "hours" ? "h" : "";
   const label = chipPrimaryLabel(event);
   const amountStr = event.amount !== null ? `${formatAmount(event.amount)}${unit}` : null;
-  const decorated = chipDecoration(event.status);
+  const s = chipStyle(event);
 
   return (
     <button
@@ -771,14 +773,14 @@ function EventChip({
       className={
         "flex min-w-0 items-baseline gap-1.5 rounded-md px-1.5 py-0.5 text-[11px] leading-tight " +
         "transition-colors duration-200 ease-out hover:bg-[var(--chip-bg-hover)] " +
-        decorated.text + " " +
+        s.textClass + " " +
         (isNew ? "animate-chipIn" : "")
       }
       style={{
-        backgroundColor: decorated.bg(color),
-        color:           color,
-        ["--chip-bg-hover" as string]: color + "33",
-        ...(decorated.border ? { boxShadow: `inset 0 0 0 1px ${color}80` } : {}),
+        backgroundColor: s.bg,
+        color:           s.fg,
+        ["--chip-bg-hover" as string]: s.hoverBg,
+        ...(s.border ? { boxShadow: `inset 0 0 0 1px ${s.border}` } : {}),
       }}
     >
       <span className="min-w-0 truncate font-medium">{label}</span>
@@ -799,14 +801,13 @@ function TimedEventChip({
   style:   React.CSSProperties;
   onClick: (e: React.MouseEvent) => void;
 }) {
-  const color = chipColor(event);
   const unit  = event.tracking_mode === "hours" ? "h" : "";
   const when  = new Date(event.start_at).toLocaleTimeString(undefined, {
     hour: "numeric", minute: "2-digit",
   });
   const label = chipPrimaryLabel(event);
   const amountStr = event.amount !== null ? `${formatAmount(event.amount)}${unit}` : null;
-  const decorated = chipDecoration(event.status);
+  const s = chipStyle(event);
 
   return (
     <button
@@ -817,14 +818,14 @@ function TimedEventChip({
         "absolute z-[1] flex min-w-0 flex-col gap-0.5 overflow-hidden rounded-md px-1.5 py-1 " +
         "text-left text-[11px] leading-tight transition-shadow duration-200 ease-out " +
         "hover:z-[2] hover:shadow-page hover:brightness-95 " +
-        decorated.text + " " +
+        s.textClass + " " +
         (isNew ? "animate-chipIn " : "")
       }
       style={{
         ...style,
-        backgroundColor: decorated.bg(color),
-        color:           color,
-        ...(decorated.border ? { boxShadow: `inset 0 0 0 1px ${color}80` } : {}),
+        backgroundColor: s.bg,
+        color:           s.fg,
+        ...(s.border ? { boxShadow: `inset 0 0 0 1px ${s.border}` } : {}),
       }}
     >
       {density === "dense" ? (
@@ -852,22 +853,47 @@ function TimedEventChip({
   );
 }
 
-// Visual treatments per status:
-//   pending  → outlined, no fill, "tentative" feel
-//   accepted → filled, full color
-//   declined → muted with strikethrough
-function chipDecoration(status: EventStatus): {
-  bg:     (color: string) => string;
-  text:   string;
-  border: boolean;
-} {
-  switch (status) {
+// Resolved colors for a chip in its current status. The identity color
+// (`id`) is the per-subscription color; accepted events override it with a
+// pure green + ink text so confirmation reads at a glance.
+interface ChipStyle {
+  bg:        string;
+  fg:        string;
+  hoverBg:   string;
+  border:    string | null;
+  textClass: string;
+}
+
+const ACCEPTED_GREEN       = "#22C55E"; // pure green for confirmed/committed
+const ACCEPTED_GREEN_HOVER = "#16A34A"; // ~one step darker on hover
+const INK                  = "#1A1814"; // warm near-black, the codebase's "ink"
+
+function chipStyle(event: EventInRange): ChipStyle {
+  switch (event.status) {
     case "accepted":
-      return { bg: (c) => c + "26", text: "", border: false };
+      return {
+        bg:        ACCEPTED_GREEN,
+        fg:        INK,
+        hoverBg:   ACCEPTED_GREEN_HOVER,
+        border:    null,
+        textClass: "",
+      };
     case "pending":
-      return { bg: () => "transparent", text: "", border: true };
+      return {
+        bg:        "#FFFFFF",
+        fg:        ACCEPTED_GREEN,
+        hoverBg:   ACCEPTED_GREEN + "14", // very light green wash on hover
+        border:    ACCEPTED_GREEN,
+        textClass: "",
+      };
     case "declined":
-      return { bg: (c) => c + "12", text: "line-through opacity-60", border: false };
+      return {
+        bg:        "#FFFFFF",
+        fg:        ACCEPTED_GREEN,
+        hoverBg:   ACCEPTED_GREEN + "14",
+        border:    ACCEPTED_GREEN,
+        textClass: "line-through",
+      };
   }
 }
 
@@ -887,12 +913,6 @@ function chipTitle(e: EventInRange): string {
   }
   parts.push(e.status);
   return parts.join(" · ");
-}
-
-function chipColor(e: EventInRange): string {
-  return e.subscription_id
-    ? subscriptionColor(e.subscription_id)
-    : "#5C544A"; // ink-dim for standalone events
 }
 
 // ---------------------------------------------------------------------------
@@ -916,14 +936,40 @@ function NewEventModal({
     [subscriptions],
   );
 
+  const initialStart = presetTime ?? defaultTime(date);
   const [title,     setTitle]     = useState("");
   const [subId,     setSubId]     = useState<string>("");
   const [amountStr, setAmountStr] = useState("");
   const [notes,     setNotes]     = useState("");
-  const [timeStr,   setTimeStr]   = useState(presetTime ?? defaultTime(date));
-  const [endTimeStr, setEndTimeStr] = useState("");
+  const [timeStr,   setTimeStr]   = useState(initialStart);
+  const [endTimeStr, setEndTimeStr] = useState(() => addMinutesHHMM(initialStart, 60));
   const [submitting, setSubmitting] = useState(false);
   const [error,      setError]      = useState<string | null>(null);
+
+  // When the user moves the start, keep the existing duration: shift the end
+  // by the same delta. If they later edit end manually, that's preserved
+  // because shifting an already-edited end still preserves duration.
+  function changeStart(next: string) {
+    const delta = diffMinutesHHMM(timeStr, next);
+    setTimeStr(next);
+    setEndTimeStr((prev) => addMinutesHHMM(prev, delta));
+  }
+
+  // Recurrence form. `freq === ""` means single occurrence.
+  const [freq,       setFreq]       = useState<"" | Freq>("");
+  const [weekdays,   setWeekdays]   = useState<Set<Weekday>>(() => new Set([defaultWeekdayOf(date)]));
+  const [endKind,    setEndKind]    = useState<"never" | "until" | "count">("never");
+  const [endDate,    setEndDate]    = useState<string>(defaultEndDate(date));
+  const [endCount,   setEndCount]   = useState<string>("10");
+
+  function toggleWeekday(d: Weekday) {
+    setWeekdays((prev) => {
+      const next = new Set(prev);
+      if (next.has(d)) next.delete(d);
+      else next.add(d);
+      return next;
+    });
+  }
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -940,8 +986,10 @@ function NewEventModal({
     ? amountStr.trim() !== "" && Number.isFinite(amount) && amount > 0
     : true;
   const titleValid = hasSub || title.trim() !== "";
+  // End is required and must sit strictly after start.
+  const endValid = endTimeStr.trim() !== "" && diffMinutesHHMM(timeStr, endTimeStr) > 0;
 
-  const canSubmit = !submitting && titleValid && amountValid;
+  const canSubmit = !submitting && titleValid && amountValid && endValid;
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -950,17 +998,19 @@ function NewEventModal({
     setError(null);
     try {
       const startAt = combineDateAndTime(date, timeStr);
-      const endAt   = endTimeStr.trim() !== "" ? combineDateAndTime(date, endTimeStr) : null;
+      const endAt   = combineDateAndTime(date, endTimeStr);
+      const rule = buildRecurrence(freq, weekdays, endKind, endDate, endCount);
       const created = await api.createEvent({
         title:           title.trim() === "" ? null : title.trim(),
         start_at:        startAt.toISOString(),
-        end_at:          endAt ? endAt.toISOString() : null,
+        end_at:          endAt.toISOString(),
         // New events default to pending — user must explicitly accept before
         // they burn the subscription.
         status:          "pending",
         subscription_id: hasSub ? subId : null,
         amount:          hasSub ? amount : null,
         notes:           notes.trim() === "" ? null : notes.trim(),
+        recurrence_rule: rule,
       });
       onCreated(eventToInRange(created, sub));
     } catch (err) {
@@ -1043,20 +1093,27 @@ function NewEventModal({
             <Field label="Start">
               <input
                 type="time"
+                required
                 value={timeStr}
-                onChange={(e) => setTimeStr(e.target.value)}
+                onChange={(e) => changeStart(e.target.value)}
                 className={inputClass + " num tabular-nums"}
               />
             </Field>
-            <Field label="End (optional)">
+            <Field label="End">
               <input
                 type="time"
+                required
                 value={endTimeStr}
                 onChange={(e) => setEndTimeStr(e.target.value)}
                 className={inputClass + " num tabular-nums"}
               />
             </Field>
           </div>
+          {!endValid && (
+            <p className="text-[11px] text-pace-red">
+              End time must be after start time.
+            </p>
+          )}
 
           <Field label="Notes">
             <input
@@ -1067,6 +1124,99 @@ function NewEventModal({
               className={inputClass}
             />
           </Field>
+
+          <Field label="Repeats">
+            <select
+              value={freq}
+              onChange={(e) => setFreq(e.target.value as "" | Freq)}
+              className={inputClass}
+            >
+              <option value="">Doesn't repeat</option>
+              <option value="daily">Daily</option>
+              <option value="weekly">Weekly</option>
+              <option value="monthly">Monthly</option>
+            </select>
+          </Field>
+
+          {freq === "weekly" && (
+            <Field label="On">
+              <div className="flex flex-wrap gap-1.5">
+                {WEEKDAY_OPTS.map(({ code, label }) => {
+                  const active = weekdays.has(code);
+                  return (
+                    <button
+                      key={code}
+                      type="button"
+                      onClick={() => toggleWeekday(code)}
+                      aria-pressed={active}
+                      className={
+                        "size-8 rounded-full text-[11px] font-medium uppercase tracking-micro transition-colors duration-200 " +
+                        (active
+                          ? "bg-accent text-surface"
+                          : "border border-hairline text-ink-dim hover:border-ink-dim hover:text-ink")
+                      }
+                    >
+                      {label}
+                    </button>
+                  );
+                })}
+              </div>
+            </Field>
+          )}
+
+          {freq !== "" && (
+            <Field label="Ends">
+              <div className="space-y-2 pt-1">
+                <label className="flex items-center gap-3 text-sm text-ink">
+                  <input
+                    type="radio"
+                    name="end-kind"
+                    checked={endKind === "never"}
+                    onChange={() => setEndKind("never")}
+                    className="accent-accent"
+                  />
+                  <span>Never</span>
+                </label>
+                <label className="flex items-center gap-3 text-sm text-ink">
+                  <input
+                    type="radio"
+                    name="end-kind"
+                    checked={endKind === "until"}
+                    onChange={() => setEndKind("until")}
+                    className="accent-accent"
+                  />
+                  <span>On</span>
+                  <input
+                    type="date"
+                    value={endDate}
+                    onChange={(e) => setEndDate(e.target.value)}
+                    onFocus={() => setEndKind("until")}
+                    className="num flex-1 border-b border-hairline bg-transparent py-1 text-sm tabular-nums text-ink outline-none transition hover:border-ink-faint focus:border-accent"
+                  />
+                </label>
+                <label className="flex items-center gap-3 text-sm text-ink">
+                  <input
+                    type="radio"
+                    name="end-kind"
+                    checked={endKind === "count"}
+                    onChange={() => setEndKind("count")}
+                    className="accent-accent"
+                  />
+                  <span>After</span>
+                  <input
+                    type="number"
+                    min={1}
+                    max={1000}
+                    value={endCount}
+                    onChange={(e) => setEndCount(e.target.value)}
+                    onFocus={() => setEndKind("count")}
+                    className="num w-16 border-b border-hairline bg-transparent py-1 text-sm tabular-nums text-ink outline-none transition hover:border-ink-faint focus:border-accent"
+                  />
+                  <span className="text-ink-dim">occurrences</span>
+                </label>
+              </div>
+            </Field>
+          )}
         </div>
 
         {hasSub && (
@@ -1163,13 +1313,29 @@ function EventDetailModal({
     }
   }
 
+  // A composite id (`<parent_id>:date`) marks this view as a single
+  // occurrence of a recurring series. The detail response carries the
+  // parent's recurrence_rule for describing the cadence; deleting from
+  // here removes the whole series.
+  const isInstance = isRecurringInstance(eventId);
+  const parentId = isInstance ? eventId.split(":")[0] : eventId;
+  const recurrence = event?.recurrence_rule ?? null;
+
   async function handleDelete() {
     if (busy) return;
-    if (!confirm("Delete this event?")) return;
+    const prompt = recurrence
+      ? "Delete the entire series? All future occurrences will be removed."
+      : "Delete this event?";
+    if (!confirm(prompt)) return;
     setBusy(true);
     setActionError(null);
     try {
-      await api.deleteEvent(eventId);
+      // Per-instance delete is intentionally unsupported by the backend; for
+      // a recurring entry we always delete the parent series.
+      await api.deleteEvent(parentId);
+      // Tell the parent to drop this id from its rendered list. For a series
+      // root, dropping the root id is correct — virtual instances will stop
+      // being generated on the next refetch.
       onDeleted(eventId);
     } catch (err) {
       setActionError(saveErrorMessage(err));
@@ -1242,9 +1408,14 @@ function EventDetailModal({
                   <span className="text-ink-dim">{event.notes}</span>
                 </Row>
               )}
+              {recurrence && (
+                <Row label="Repeats">
+                  <span className="text-ink-dim">{describeRecurrence(recurrence)}</span>
+                </Row>
+              )}
               {!sub && (
                 <p className="text-xs text-ink-faint">
-                  Standalone calendar entry — no subscription linked.
+                  Standalone calendar entry, no subscription linked.
                 </p>
               )}
             </dl>
@@ -1260,7 +1431,7 @@ function EventDetailModal({
                 disabled={busy}
                 className="text-[11px] uppercase tracking-micro text-ink-faint transition-colors duration-200 hover:text-pace-red disabled:opacity-50"
               >
-                delete
+                {recurrence ? "delete series" : "delete"}
               </button>
               <div className="flex items-center gap-2">
                 {sub && event.status !== "declined" && (
@@ -1483,6 +1654,22 @@ function combineDateAndTime(day: Date, hhmm: string): Date {
                   0, 0);
 }
 
+/** Shift an `HH:MM` string by `minutes`, clamping to `[00:00, 23:59]`. */
+function addMinutesHHMM(hhmm: string, minutes: number): string {
+  const [h, m] = hhmm.split(":").map((n) => parseInt(n, 10));
+  if (!Number.isFinite(h) || !Number.isFinite(m)) return hhmm;
+  const total = Math.max(0, Math.min(23 * 60 + 59, h * 60 + m + minutes));
+  return `${pad(Math.floor(total / 60))}:${pad(total % 60)}`;
+}
+
+/** Minutes between two `HH:MM` strings — `b - a`. Returns 0 if either is malformed. */
+function diffMinutesHHMM(a: string, b: string): number {
+  const [ah, am] = a.split(":").map((n) => parseInt(n, 10));
+  const [bh, bm] = b.split(":").map((n) => parseInt(n, 10));
+  if (![ah, am, bh, bm].every((n) => Number.isFinite(n))) return 0;
+  return (bh * 60 + bm) - (ah * 60 + am);
+}
+
 function primaryLabel(anchor: Date, view: View): string {
   if (view === "month") {
     return anchor.toLocaleDateString(undefined, { month: "long" });
@@ -1529,6 +1716,78 @@ function snapSlot(y: number): { hour: number; minute: number } {
 
 function formatAmount(n: number): string {
   return Number.isInteger(n) ? String(n) : String(Math.round(n * 100) / 100);
+}
+
+// ---------------------------------------------------------------------------
+// Recurrence form helpers
+// ---------------------------------------------------------------------------
+
+const WEEKDAY_OPTS: { code: Weekday; label: string }[] = [
+  { code: "MO", label: "M" },
+  { code: "TU", label: "T" },
+  { code: "WE", label: "W" },
+  { code: "TH", label: "T" },
+  { code: "FR", label: "F" },
+  { code: "SA", label: "S" },
+  { code: "SU", label: "S" },
+];
+
+const WEEKDAY_FROM_INDEX: Weekday[] = ["SU", "MO", "TU", "WE", "TH", "FR", "SA"];
+
+function defaultWeekdayOf(d: Date): Weekday {
+  return WEEKDAY_FROM_INDEX[d.getDay()];
+}
+
+/** Default the "Ends on" date to ~3 months from the start. */
+function defaultEndDate(start: Date): string {
+  const d = new Date(start);
+  d.setMonth(d.getMonth() + 3);
+  return d.toISOString().slice(0, 10);
+}
+
+function buildRecurrence(
+  freq: "" | Freq,
+  weekdays: Set<Weekday>,
+  endKind: "never" | "until" | "count",
+  endDate: string,
+  endCount: string,
+): RecurrenceRule | null {
+  if (freq === "") return null;
+  const rule: RecurrenceRule = { freq };
+  if (freq === "weekly" && weekdays.size > 0) {
+    rule.byweekday = WEEKDAY_FROM_INDEX
+      .filter((d) => weekdays.has(d))
+      // Sort by ISO weekday order (Mon → Sun) for stable JSON.
+      .sort((a, b) => WEEKDAY_ORDER.indexOf(a) - WEEKDAY_ORDER.indexOf(b));
+  }
+  if (endKind === "until") {
+    rule.until = endDate;
+  } else if (endKind === "count") {
+    const n = parseInt(endCount, 10);
+    if (Number.isFinite(n) && n > 0) rule.count = n;
+  }
+  return rule;
+}
+
+const WEEKDAY_ORDER: Weekday[] = ["MO", "TU", "WE", "TH", "FR", "SA", "SU"];
+
+/** Human label for a rule on the detail modal. */
+function describeRecurrence(rule: RecurrenceRule): string {
+  const dayNames: Record<Weekday, string> = {
+    MO: "Mon", TU: "Tue", WE: "Wed", TH: "Thu", FR: "Fri", SA: "Sat", SU: "Sun",
+  };
+  let core: string;
+  if (rule.freq === "daily") core = "Repeats daily";
+  else if (rule.freq === "monthly") core = "Repeats monthly";
+  else {
+    const days = rule.byweekday?.length
+      ? rule.byweekday.map((d) => dayNames[d]).join(", ")
+      : null;
+    core = days ? `Repeats weekly on ${days}` : "Repeats weekly";
+  }
+  if (rule.until) core += `, until ${rule.until}`;
+  else if (rule.count) core += `, ${rule.count} occurrences`;
+  return core;
 }
 
 /** Format the event's time range for the detail header. */

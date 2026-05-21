@@ -4,3 +4,4 @@
 //! transport without dragging in tokio or sqlx.
 
 pub mod lifecycle;
+pub mod recurrence;

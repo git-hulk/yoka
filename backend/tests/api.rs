@@ -737,3 +737,175 @@ async fn patch_locks_tracking_mode_once_events_exist() {
     let body = body_json(resp).await;
     assert_eq!(body["error"], "tracking_mode_locked");
 }
+
+// ---------------------------------------------------------------------------
+// Recurring events
+// ---------------------------------------------------------------------------
+
+#[tokio::test]
+async fn recurring_event_expands_in_range_with_composite_ids() {
+    let (state, pool) = setup().await;
+    insert_subscription(&pool, "s1", 50.0, 60).await;
+    let app = router(state);
+
+    // Series: 5 daily instances starting 2 days ago at noon UTC.
+    let start = Utc::now() - Duration::days(2);
+    // The `+` in ISO 8601 timezone offset becomes space when URL-decoded; pin
+    // to `Z` form by formatting via `format!` against `%Y-%m-%dT%H:%M:%SZ`.
+    let from = (Utc::now() - Duration::days(7))
+        .format("%Y-%m-%dT%H:%M:%SZ")
+        .to_string();
+    let to = (Utc::now() + Duration::days(7))
+        .format("%Y-%m-%dT%H:%M:%SZ")
+        .to_string();
+    let resp = post_json(
+        app.clone(),
+        "/events",
+        serde_json::json!({
+            "start_at":        start.to_rfc3339(),
+            "subscription_id": "s1",
+            "amount":          1.0,
+            "recurrence_rule": { "freq": "daily", "count": 5 },
+        }),
+    )
+    .await;
+    assert_eq!(resp.status(), StatusCode::CREATED);
+    let root_id = body_json(resp).await["id"].as_str().unwrap().to_string();
+
+    let resp = app
+        .oneshot(
+            Request::builder()
+                .uri(format!("/events?from={from}&to={to}"))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(resp.status(), StatusCode::OK);
+    let body = body_json(resp).await;
+    let arr = body.as_array().unwrap();
+    assert_eq!(arr.len(), 5, "expected 5 expanded instances");
+    // Every returned id should be composite (parent:date) except none should
+    // match the bare root id (the root row itself isn't returned separately).
+    for instance in arr {
+        let id = instance["id"].as_str().unwrap();
+        assert!(id.starts_with(&format!("{root_id}:")), "id was {id}");
+        assert!(instance["recurrence_rule"].is_null());
+    }
+}
+
+#[tokio::test]
+async fn decline_instance_creates_exception_and_subtracts_from_pace() {
+    let (state, pool) = setup().await;
+    insert_subscription(&pool, "s1", 50.0, 60).await;
+    let app = router(state);
+
+    // 3 daily accepted instances starting 2 days ago. All burn at 2.0 each.
+    let start = Utc::now() - Duration::days(2);
+    let resp = post_json(
+        app.clone(),
+        "/events",
+        serde_json::json!({
+            "start_at":        start.to_rfc3339(),
+            "status":          "accepted",
+            "subscription_id": "s1",
+            "amount":          2.0,
+            "recurrence_rule": { "freq": "daily", "count": 3 },
+        }),
+    )
+    .await;
+    assert_eq!(resp.status(), StatusCode::CREATED);
+    let root_id = body_json(resp).await["id"].as_str().unwrap().to_string();
+
+    // All 3 instances accepted by default -> consumed = 6.
+    let resp = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/subscriptions/s1")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    let body = body_json(resp).await;
+    assert_eq!(body["consumed"], 6.0);
+
+    // Decline the first instance (the parent's own day).
+    let first_date = start.date_naive();
+    let composite = format!("{root_id}:{first_date}");
+    let resp = post_json(
+        app.clone(),
+        &format!("/events/{composite}/decline"),
+        serde_json::json!({}),
+    )
+    .await;
+    assert_eq!(resp.status(), StatusCode::OK);
+    let body = body_json(resp).await;
+    assert_eq!(body["status"], "declined");
+
+    // Consumed drops by 2.
+    let resp = app
+        .oneshot(
+            Request::builder()
+                .uri("/subscriptions/s1")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    let body = body_json(resp).await;
+    assert_eq!(body["consumed"], 4.0);
+}
+
+#[tokio::test]
+async fn per_instance_edit_and_delete_rejected() {
+    let (state, pool) = setup().await;
+    insert_subscription(&pool, "s1", 10.0, 30).await;
+    let app = router(state);
+
+    let start = Utc::now() - Duration::days(1);
+    let resp = post_json(
+        app.clone(),
+        "/events",
+        serde_json::json!({
+            "start_at":        start.to_rfc3339(),
+            "subscription_id": "s1",
+            "amount":          1.0,
+            "recurrence_rule": { "freq": "daily", "count": 3 },
+        }),
+    )
+    .await;
+    let root_id = body_json(resp).await["id"].as_str().unwrap().to_string();
+    let composite = format!("{root_id}:{}", start.date_naive());
+
+    // PATCH on a composite id is rejected.
+    let req = Request::builder()
+        .method("PATCH")
+        .uri(format!("/events/{composite}"))
+        .header("content-type", "application/json")
+        .body(Body::from(
+            serde_json::json!({
+                "start_at":        start.to_rfc3339(),
+                "subscription_id": "s1",
+                "amount":          5.0,
+            })
+            .to_string(),
+        ))
+        .unwrap();
+    let resp = app.clone().oneshot(req).await.unwrap();
+    assert_eq!(resp.status(), StatusCode::BAD_REQUEST);
+    let body = body_json(resp).await;
+    assert_eq!(body["error"], "per_instance_edit_not_supported");
+
+    // DELETE on a composite id is rejected.
+    let req = Request::builder()
+        .method("DELETE")
+        .uri(format!("/events/{composite}"))
+        .body(Body::empty())
+        .unwrap();
+    let resp = app.oneshot(req).await.unwrap();
+    assert_eq!(resp.status(), StatusCode::BAD_REQUEST);
+    let body = body_json(resp).await;
+    assert_eq!(body["error"], "per_instance_delete_not_supported");
+}
