@@ -10,36 +10,41 @@ const PackageNew    = lazy(() => import("./pages/PackageNew"));
 
 const STORAGE_KEY = "yoka:sidebar";
 
-function initialOpen(): boolean {
-  if (typeof window === "undefined") return true;
+function initialCollapsed(): boolean {
+  if (typeof window === "undefined") return false;
   const stored = window.localStorage.getItem(STORAGE_KEY);
-  if (stored === "0") return false;
   if (stored === "1") return true;
-  return window.innerWidth >= 768;
+  if (stored === "0") return false;
+  return window.innerWidth < 768;
 }
 
 export default function App() {
-  const [open, setOpen] = useState<boolean>(initialOpen);
+  const [collapsed, setCollapsed] = useState<boolean>(initialCollapsed);
 
   useEffect(() => {
-    window.localStorage.setItem(STORAGE_KEY, open ? "1" : "0");
-  }, [open]);
+    window.localStorage.setItem(STORAGE_KEY, collapsed ? "1" : "0");
+  }, [collapsed]);
 
   return (
     <div className="flex min-h-dvh">
-      <Sidebar open={open} onClose={() => setOpen(false)} />
+      <Sidebar
+        collapsed={collapsed}
+        onToggle={() => setCollapsed((c) => !c)}
+      />
 
       <main className="flex min-h-dvh flex-1 flex-col">
-        {!open && (
-          <div className="border-b border-hairline">
-            <div className="mx-auto flex max-w-5xl items-baseline justify-between gap-6 px-6 pt-7 pb-5 sm:px-8">
+        {/* Mobile-only top bar: the sidebar is fully hidden when collapsed
+            on mobile, so we surface a menu button to reopen it. On desktop
+            the icon rail is always visible and carries its own toggle. */}
+        {collapsed && (
+          <div className="border-b border-hairline md:hidden">
+            <div className="mx-auto flex max-w-5xl items-center justify-between gap-6 px-6 pt-7 pb-5 sm:px-8">
               <button
                 type="button"
-                onClick={() => setOpen(true)}
+                onClick={() => setCollapsed(false)}
                 aria-label="Show sidebar"
                 className="group inline-flex items-center gap-2 text-[11px] uppercase tracking-micro text-ink-dim transition hover:text-accent"
               >
-                {/* Panel-left-open: sidebar pane + chevron pointing right. */}
                 <svg
                   viewBox="0 0 16 16"
                   fill="none"
@@ -50,11 +55,11 @@ export default function App() {
                   className="size-4 text-ink-faint transition group-hover:text-accent"
                   aria-hidden="true"
                 >
-                  <rect x="2" y="3.5" width="12" height="9" rx="1.25" />
-                  <line x1="6" y1="3.5" x2="6" y2="12.5" />
-                  <path d="M8.5 6 L11 8 L8.5 10" />
+                  <line x1="3"  y1="5"  x2="13" y2="5" />
+                  <line x1="3"  y1="8"  x2="13" y2="8" />
+                  <line x1="3"  y1="11" x2="13" y2="11" />
                 </svg>
-                packages
+                menu
               </button>
               <span className="serif text-base italic leading-none text-accent">
                 yoka
