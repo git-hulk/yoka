@@ -159,7 +159,7 @@ export default function CategoriesPicker({
         )}
 
         {atMax && (
-          <span className="serif py-2 text-xs italic text-ink-faint">
+          <span className="serif py-2 text-xs text-ink-faint">
             max {max} reached
           </span>
         )}
@@ -231,7 +231,7 @@ export default function CategoriesPicker({
                   : "text-ink-dim hover:bg-accent-soft hover:text-ink")
               }
             >
-              <span className="serif italic">create</span>
+              <span className="serif">create</span>
               <span className="ml-1.5 text-ink">"{trimmed}"</span>
             </li>
           )}

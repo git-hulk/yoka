@@ -220,25 +220,33 @@ function Header({
   onNext:  () => void;
 }) {
   return (
-    <div className="flex flex-wrap items-center justify-between gap-4 border-b border-hairline pb-4">
-      <div className="flex flex-wrap items-center gap-4">
-        <button
-          type="button"
-          onClick={onToday}
-          className="rounded-full border border-hairline px-3 py-1.5 text-[11px] uppercase tracking-micro text-ink-dim transition-colors duration-200 ease-out hover:border-ink-dim hover:text-ink"
-        >
-          today
-        </button>
-        <div className="flex items-center gap-1">
-          <NavBtn direction="prev" onClick={onPrev} />
-          <NavBtn direction="next" onClick={onNext} />
-        </div>
-        <h1 className="serif text-2xl italic leading-tight text-ink">
-          {headingLabel(anchor, view)}
+    <header className="space-y-5 border-b border-hairline pb-6">
+      <div>
+        <p className="text-[11px] uppercase tracking-micro text-ink-faint">
+          Calendar · <span className="num tabular-nums">{yearLabel(anchor, view)}</span>
+        </p>
+        <h1 className="serif mt-3 text-4xl leading-none text-ink">
+          {primaryLabel(anchor, view)}
         </h1>
       </div>
-      <ViewSwitcher view={view} onChange={onView} />
-    </div>
+
+      <div className="flex flex-wrap items-center justify-between gap-5">
+        <div className="flex items-center gap-5">
+          <button
+            type="button"
+            onClick={onToday}
+            className="border-b border-ink-dim/40 pb-0.5 text-[11px] uppercase tracking-micro text-ink-dim transition-colors duration-200 ease-out hover:border-accent hover:text-accent"
+          >
+            today
+          </button>
+          <div className="flex items-center gap-1">
+            <NavBtn direction="prev" onClick={onPrev} />
+            <NavBtn direction="next" onClick={onNext} />
+          </div>
+        </div>
+        <ViewSwitcher view={view} onChange={onView} />
+      </div>
+    </header>
   );
 }
 
@@ -272,18 +280,12 @@ function NavBtn({
 
 function ViewSwitcher({ view, onChange }: { view: View; onChange: (v: View) => void }) {
   const opts: View[] = ["month", "week", "day"];
-  const activeIndex = Math.max(0, opts.indexOf(view));
   return (
     <div
       role="tablist"
       aria-label="calendar view"
-      className="relative inline-grid grid-cols-3 rounded-full border border-hairline bg-white/60 text-[11px] uppercase tracking-micro"
+      className="inline-flex items-baseline gap-5 text-[11px] uppercase tracking-micro"
     >
-      <span
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-y-0 left-0 w-1/3 rounded-full bg-accent/[0.08] ring-1 ring-accent/15 transition-transform duration-[280ms] ease-[cubic-bezier(0.22,1,0.36,1)]"
-        style={{ transform: `translateX(${activeIndex * 100}%)` }}
-      />
       {opts.map((v) => {
         const active = v === view;
         return (
@@ -294,8 +296,10 @@ function ViewSwitcher({ view, onChange }: { view: View; onChange: (v: View) => v
             aria-selected={active}
             onClick={() => onChange(v)}
             className={
-              "relative z-10 px-4 py-1.5 transition-colors duration-200 ease-out " +
-              (active ? "text-accent" : "text-ink-faint hover:text-ink-dim")
+              "border-b pb-0.5 transition-colors duration-200 ease-out " +
+              (active
+                ? "border-accent text-accent"
+                : "border-transparent text-ink-faint hover:text-ink-dim")
             }
           >
             {v}
@@ -326,18 +330,18 @@ function MonthGrid({
   const anchorMonth = anchor.getMonth();
 
   return (
-    <div className="animate-gridIn overflow-hidden rounded-lg border border-hairline bg-white/40">
-      <div className="grid grid-cols-7 border-b border-hairline bg-white/40">
+    <div className="animate-gridIn">
+      <div className="grid grid-cols-7 border-b border-hairline pb-2.5">
         {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((d) => (
           <div
             key={d}
-            className="px-2 py-2 text-center text-[11px] uppercase tracking-micro text-ink-faint"
+            className="px-2 text-center text-[11px] uppercase tracking-micro text-ink-faint"
           >
             {d}
           </div>
         ))}
       </div>
-      <div className="grid grid-cols-7 gap-px bg-hairline/60">
+      <div className="grid grid-cols-7 gap-px bg-hairline">
         {cells.map((d, i) => {
           const key       = ymd(d);
           const inMonth   = d.getMonth() === anchorMonth;
@@ -350,24 +354,33 @@ function MonthGrid({
               onClick={() => onPickDay(d)}
               aria-label={`add event on ${key}`}
               className={
-                "group relative flex min-h-[6.75rem] flex-col items-stretch gap-1 px-2 py-2 text-left " +
+                "group relative flex min-h-[7rem] flex-col items-stretch gap-1.5 px-2.5 py-2.5 text-left " +
                 "transition-colors duration-200 ease-out hover:bg-white " +
-                (inMonth ? "bg-white" : "bg-white/50") +
-                (isToday ? " ring-1 ring-inset ring-accent/30 bg-accent/[0.05]" : "")
+                (isToday
+                  ? "bg-accent/[0.04]"
+                  : inMonth ? "bg-white" : "bg-white/50")
               }
             >
               <div className="flex items-center justify-between">
-                <span
-                  className={
-                    "num inline-flex h-5 min-w-[1.25rem] items-center justify-center text-[11px] tabular-nums transition-colors duration-200 " +
-                    (isToday
-                      ? "rounded-full bg-accent px-1.5 text-surface shadow-page"
-                      : inMonth
-                        ? "text-ink-dim"
-                        : "text-ink-faint")
-                  }
-                >
-                  {d.getDate()}
+                <span className="inline-flex flex-col items-start leading-none">
+                  <span
+                    className={
+                      "num text-[12px] tabular-nums transition-colors duration-200 " +
+                      (isToday
+                        ? "font-semibold text-accent"
+                        : inMonth
+                          ? "text-ink-dim"
+                          : "text-ink-faint")
+                    }
+                  >
+                    {d.getDate()}
+                  </span>
+                  {isToday && (
+                    <span
+                      aria-hidden="true"
+                      className="mt-1 block h-px w-3 bg-accent"
+                    />
+                  )}
                 </span>
                 <span
                   aria-hidden="true"
@@ -457,7 +470,7 @@ function WeekView({
   const nowTop   = (now.getHours() + now.getMinutes() / 60) * HOUR_PX;
 
   return (
-    <div className="animate-gridIn overflow-hidden rounded-lg border border-hairline bg-white">
+    <div className="animate-gridIn border-b border-hairline">
       <DayHeaderRow days={days} todayKey={todayKey} />
 
       <div
@@ -522,7 +535,7 @@ function DayView({
   }, []);
 
   return (
-    <div className="animate-gridIn overflow-hidden rounded-lg border border-hairline bg-white">
+    <div className="animate-gridIn border-b border-hairline">
       <DayHeaderRow days={[anchor]} todayKey={ymd(now)} />
 
       <div
@@ -561,7 +574,7 @@ function DayView({
 function DayHeaderRow({ days, todayKey }: { days: Date[]; todayKey: string }) {
   return (
     <div
-      className="grid border-b border-hairline bg-white/30"
+      className="grid border-b border-hairline"
       style={{
         gridTemplateColumns: `${GUTTER_REM}rem repeat(${days.length}, minmax(0, 1fr))`,
       }}
@@ -574,24 +587,32 @@ function DayHeaderRow({ days, todayKey }: { days: Date[]; todayKey: string }) {
           <div
             key={ymd(d)}
             className={
-              "flex flex-col items-center justify-center gap-1 px-2 py-3 " +
+              "flex flex-col items-center justify-center gap-1.5 px-2 py-3.5 " +
               (last ? "" : "border-r border-hairline ") +
               (isToday ? "bg-accent/[0.05]" : "")
             }
           >
-            <p className="text-[11px] uppercase tracking-micro text-ink-faint">
-              {d.toLocaleDateString(undefined, { weekday: "short" })}
-            </p>
             <p
               className={
-                "num text-lg tabular-nums leading-none " +
-                (isToday
-                  ? "inline-flex size-8 items-center justify-center rounded-full bg-accent text-surface shadow-page"
-                  : "text-ink-dim")
+                "text-[11px] uppercase tracking-micro " +
+                (isToday ? "text-accent" : "text-ink-faint")
               }
             >
-              {d.getDate()}
+              {d.toLocaleDateString(undefined, { weekday: "short" })}
             </p>
+            <div className="flex flex-col items-center gap-1 leading-none">
+              <p
+                className={
+                  "num text-xl tabular-nums leading-none " +
+                  (isToday ? "font-semibold text-accent" : "text-ink-dim")
+                }
+              >
+                {d.getDate()}
+              </p>
+              {isToday && (
+                <span aria-hidden="true" className="block h-px w-4 bg-accent" />
+              )}
+            </div>
           </div>
         );
       })}
@@ -647,7 +668,7 @@ function DayColumn({
       className={
         "relative cursor-pointer border-r border-hairline last:border-r-0 " +
         "transition-colors duration-200 ease-out " +
-        (isToday ? "bg-accent/[0.04]" : "hover:bg-white/30")
+        (isToday ? "bg-accent/[0.04]" : "hover:bg-ink/[0.015]")
       }
       style={{
         // Hairline gridline at the bottom of each hour row.
@@ -696,21 +717,25 @@ function NowLine({
       aria-hidden="true"
     >
       <div
-        className="grid"
+        className="grid items-center"
         style={{ gridTemplateColumns: `${GUTTER_REM}rem repeat(${columns}, minmax(0, 1fr))` }}
       >
-        <div /> {/* gutter spacer */}
+        <div className="flex justify-end pr-2">
+          <span className="num bg-canvas px-1 text-[10px] uppercase tracking-micro text-accent">
+            now
+          </span>
+        </div>
         {Array.from({ length: columns }, (_, i) => {
           const isToday = i === todayIdx;
           return (
             <div key={i} className="relative">
               {isToday && (
                 <span
-                  className="absolute -left-1 top-0 size-2 -translate-y-1/2 rounded-full bg-pace-red"
+                  className="absolute -left-[3px] top-1/2 size-1.5 -translate-y-1/2 rounded-full bg-accent"
                   aria-hidden="true"
                 />
               )}
-              <div className="h-px w-full bg-pace-red/80" />
+              <div className={"h-px w-full " + (isToday ? "bg-accent" : "bg-accent/25")} />
             </div>
           );
         })}
@@ -755,10 +780,10 @@ function EventChip({
         ...(decorated.border ? { boxShadow: `inset 0 0 0 1px ${color}80` } : {}),
       }}
     >
+      <span className="min-w-0 truncate font-medium">{label}</span>
       {amountStr && (
-        <span className="num shrink-0 tabular-nums font-medium">{amountStr}</span>
+        <span className="num shrink-0 tabular-nums text-[10px] opacity-65">{amountStr}</span>
       )}
-      <span className="min-w-0 truncate">{label}</span>
     </button>
   );
 }
@@ -802,11 +827,11 @@ function TimedEventChip({
       }}
     >
       {density === "dense" ? (
-        <span className="flex min-w-0 items-baseline gap-1">
+        <span className="flex min-w-0 items-baseline gap-1.5">
+          <span className="min-w-0 truncate font-medium">{label}</span>
           {amountStr && (
-            <span className="num shrink-0 tabular-nums font-semibold">{amountStr}</span>
+            <span className="num shrink-0 tabular-nums text-[10px] opacity-65">{amountStr}</span>
           )}
-          <span className="min-w-0 truncate">{label}</span>
         </span>
       ) : (
         <>
@@ -957,7 +982,7 @@ function NewEventModal({
         className="animate-modalIn w-full max-w-md rounded-2xl border border-hairline bg-white px-6 py-6 shadow-[0_24px_48px_-24px_rgba(26,24,20,0.25)]"
       >
         <div className="flex items-baseline justify-between border-b border-hairline pb-3">
-          <h2 className="serif text-base italic font-semibold text-ink">
+          <h2 className="serif text-base font-semibold text-ink">
             New event
           </h2>
           <p className="num text-[11px] uppercase tracking-micro text-ink-faint">
@@ -1168,7 +1193,7 @@ function EventDetailModal({
         className="animate-modalIn w-full max-w-md rounded-2xl border border-hairline bg-white px-6 py-6 shadow-[0_24px_48px_-24px_rgba(26,24,20,0.25)]"
       >
         {event === null && !loadError && (
-          <p className="serif py-6 text-center text-base italic text-ink-faint">
+          <p className="serif py-6 text-center text-base text-ink-faint">
             loading…
           </p>
         )}
@@ -1181,7 +1206,7 @@ function EventDetailModal({
           <>
             <div className="flex items-start justify-between gap-3 border-b border-hairline pb-3">
               <div className="min-w-0">
-                <h2 className="serif text-base italic font-semibold text-ink">
+                <h2 className="serif text-base font-semibold text-ink">
                   {event.title?.trim() || sub?.name || "(no title)"}
                 </h2>
                 <p className="mt-1 text-[11px] uppercase tracking-micro text-ink-faint">
@@ -1217,7 +1242,7 @@ function EventDetailModal({
                 </Row>
               )}
               {!sub && (
-                <p className="text-xs italic text-ink-faint">
+                <p className="text-xs text-ink-faint">
                   Standalone calendar entry — no subscription linked.
                 </p>
               )}
@@ -1457,23 +1482,34 @@ function combineDateAndTime(day: Date, hhmm: string): Date {
                   0, 0);
 }
 
-function headingLabel(anchor: Date, view: View): string {
+function primaryLabel(anchor: Date, view: View): string {
   if (view === "month") {
-    return anchor.toLocaleDateString(undefined, { month: "long", year: "numeric" });
+    return anchor.toLocaleDateString(undefined, { month: "long" });
   }
   if (view === "week") {
     const days = weekDays(anchor);
     const a = days[0];
     const b = days[6];
     const sameMonth = a.getMonth() === b.getMonth();
+    if (sameMonth) {
+      return `${a.toLocaleDateString(undefined, { month: "long" })} ${a.getDate()} – ${b.getDate()}`;
+    }
     const fmt = (d: Date) => d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
-    return sameMonth
-      ? `${a.toLocaleDateString(undefined, { month: "long" })} ${a.getDate()} – ${b.getDate()}, ${a.getFullYear()}`
-      : `${fmt(a)} – ${fmt(b)}, ${b.getFullYear()}`;
+    return `${fmt(a)} – ${fmt(b)}`;
   }
   return anchor.toLocaleDateString(undefined, {
-    weekday: "long", month: "long", day: "numeric", year: "numeric",
+    weekday: "long", month: "long", day: "numeric",
   });
+}
+
+function yearLabel(anchor: Date, view: View): string {
+  if (view === "week") {
+    const days = weekDays(anchor);
+    const a = days[0].getFullYear();
+    const b = days[6].getFullYear();
+    return a === b ? String(a) : `${a} – ${b}`;
+  }
+  return String(anchor.getFullYear());
 }
 
 function hourLabel(h: number): string {
@@ -1512,14 +1548,15 @@ function formatEventWhen(e: CalendarEvent): string {
   return `${dateLabel} · ${startLabel}`;
 }
 
-/** Deterministic chip color from a small editorial palette. */
+/** Deterministic chip color from a small editorial palette. Cool/warm balance:
+ *  navy + sage + slate read cool-ish, gold + oxblood + forest warm. */
 const SUBSCRIPTION_COLORS = [
   "#1E3A5F", // accent (deep ink)
-  "#2E6F4F", // pace-green
-  "#9C6B16", // pace-amber
-  "#9E3527", // pace-red
-  "#5C544A", // ink-dim
-  "#6B4E91", // muted plum
+  "#2E6F4F", // pace-green (forest)
+  "#9C6B16", // pace-amber (gold)
+  "#9E3527", // pace-red (oxblood)
+  "#5C544A", // ink-dim (slate)
+  "#5C7A52", // sage — fits the editorial family
 ];
 
 function subscriptionColor(id: string): string {

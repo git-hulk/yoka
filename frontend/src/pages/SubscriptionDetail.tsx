@@ -112,7 +112,7 @@ function Hero({
       )}
 
       {notes && (
-        <p className="serif mt-3 max-w-[60ch] text-sm italic leading-snug text-ink-dim">
+        <p className="serif mt-3 max-w-[60ch] text-sm leading-snug text-ink-dim">
           &ldquo;{notes}&rdquo;
         </p>
       )}
@@ -121,25 +121,25 @@ function Hero({
         <span className="serif num text-base font-bold leading-none text-ink">
           {remainingLabel(sub)}
         </span>
-        <span className="serif text-base italic leading-tight text-ink-dim">
+        <span className="serif text-base leading-tight text-ink-dim">
           {sub.tracking_mode === "duration" ? (
             <>
               of{" "}
-              <span className="num not-italic">
+              <span className="num">
                 {formatAmount(sub.consumed + sub.remaining)}
               </span>{" "}
               days remain,
             </>
           ) : (
             <>
-              of <span className="num not-italic">{formatAmount(sub.quantity ?? 0)}</span>{" "}
+              of <span className="num">{formatAmount(sub.quantity ?? 0)}</span>{" "}
               {sub.tracking_mode === "hours" ? "hours " : ""}remain,
             </>
           )}
         </span>
       </div>
 
-      <p className="serif mt-1 text-base italic leading-tight text-ink-dim">
+      <p className="serif mt-1 text-base leading-tight text-ink-dim">
         {timeToExpiryVerbose(sub)}.
       </p>
 
@@ -155,7 +155,7 @@ function Hero({
       </div>
 
       {narrative && (
-        <p className="serif mt-5 text-base italic leading-snug text-ink-dim">
+        <p className="serif mt-5 text-base leading-snug text-ink-dim">
           {narrative}
         </p>
       )}
@@ -304,7 +304,7 @@ function ConfirmPanel({
 }) {
   return (
     <div className="mt-8">
-      <p className="serif text-base italic text-ink">{title}</p>
+      <p className="serif text-base text-ink">{title}</p>
       {body && (
         <p className="mt-2 text-sm text-ink-dim">{body}</p>
       )}
@@ -372,7 +372,7 @@ function Cadence({ sub, usages }: { sub: Subscription; usages: Usage[] }) {
   return (
     <section>
       <div className="flex items-baseline justify-between border-b border-hairline pb-3">
-        <h2 className="serif text-base italic font-semibold text-ink">Cadence</h2>
+        <h2 className="serif text-base font-semibold text-ink">Cadence</h2>
         <span className="num text-[11px] uppercase tracking-micro text-ink-faint">
           last {CADENCE_DAYS} days
         </span>
@@ -389,7 +389,7 @@ function Cadence({ sub, usages }: { sub: Subscription; usages: Usage[] }) {
         </div>
       </div>
 
-      <p className="serif mt-6 max-w-[65ch] text-base italic leading-snug text-ink-dim">
+      <p className="serif mt-6 max-w-[65ch] text-base leading-snug text-ink-dim">
         {sentence}
       </p>
     </section>
@@ -426,7 +426,7 @@ function UsageHistory({
   return (
     <section>
       <div className="flex items-baseline justify-between border-b border-hairline pb-3">
-        <h2 className="serif text-base italic font-semibold text-ink">History</h2>
+        <h2 className="serif text-base font-semibold text-ink">History</h2>
         {usages.length > 0 && (
           <span className="num text-[11px] uppercase tracking-micro text-ink-faint">
             {usages.length} {usages.length === 1 ? "entry" : "entries"}
@@ -475,7 +475,7 @@ function LedgerRow({
 }) {
   return (
     <div className="grid grid-cols-[auto_1fr_auto] items-baseline gap-4 py-4">
-      <span className="serif text-sm italic text-ink-dim">{date}</span>
+      <span className="serif text-sm text-ink-dim">{date}</span>
       <span className="truncate text-sm text-ink-dim">{detail ?? ""}</span>
       <span className="num text-base font-medium tabular-nums text-ink">
         {amount}
@@ -486,7 +486,7 @@ function LedgerRow({
 
 function EmptyRow({ text }: { text: string }) {
   return (
-    <p className="serif py-6 text-center text-base italic text-ink-faint">
+    <p className="serif py-6 text-center text-base text-ink-faint">
       {text}
     </p>
   );
@@ -520,7 +520,7 @@ function Skeleton() {
 function NotFound({ id }: { id: string }) {
   return (
     <div className="border-y border-hairline py-12 text-center">
-      <p className="serif text-base italic font-semibold text-ink">No such subscription.</p>
+      <p className="serif text-base font-semibold text-ink">No such subscription.</p>
       <p className="mt-3 text-sm text-ink-dim">
         <span className="num">{id}</span> may have been archived or deleted.
       </p>

@@ -133,7 +133,7 @@ export default function Sidebar({ collapsed, onToggle }: Props) {
               aria-label="yoka — home"
               className="group inline-flex items-center leading-none text-accent transition hover:text-ink"
             >
-              <span className="serif text-base italic">yoka</span>
+              <span className="serif text-base">YOKA</span>
             </Link>
           )}
         </div>
@@ -188,7 +188,7 @@ function NavItem({
       className={
         "flex items-center gap-2.5 py-1.5 text-base transition " +
         (active
-          ? "serif italic text-accent"
+          ? "serif text-accent"
           : "text-ink-dim hover:text-ink")
       }
     >

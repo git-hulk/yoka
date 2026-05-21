@@ -119,7 +119,7 @@ export default function SubscriptionForm({
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="Anthropic credits"
-            className={`${inputClass} serif text-base italic placeholder:not-italic placeholder:text-ink-faint`}
+            className={`${inputClass} serif text-base placeholder:text-ink-faint`}
           />
         </Field>
 
@@ -308,7 +308,7 @@ function Field({
           {label}
         </span>
         {hint && (
-          <span className="serif text-xs italic text-ink-faint">{hint}</span>
+          <span className="serif text-xs text-ink-faint">{hint}</span>
         )}
       </div>
       {children}
@@ -347,7 +347,7 @@ function Segmented({
             className={
               "pb-2 text-sm border-b transition " +
               (active
-                ? "serif italic text-ink border-ink"
+                ? "serif text-ink border-ink"
                 : "text-ink-faint border-hairline hover:text-ink-dim hover:border-ink-faint") +
               (disabled ? " cursor-not-allowed" : "")
             }

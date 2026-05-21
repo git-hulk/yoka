@@ -86,7 +86,7 @@ export default function UsageEditor({ subscriptionId, timeKnown, onChange }: Pro
   return (
     <section>
       <div className="flex items-baseline justify-between border-b border-hairline pb-3">
-        <h2 className="serif text-base italic font-semibold text-ink">Usage</h2>
+        <h2 className="serif text-base font-semibold text-ink">Usage</h2>
         {items && items.length > 0 && (
           <span className="num text-[11px] uppercase tracking-micro text-ink-faint">
             {items.length} {items.length === 1 ? "entry" : "entries"}
@@ -95,7 +95,7 @@ export default function UsageEditor({ subscriptionId, timeKnown, onChange }: Pro
       </div>
 
       {items === null && !loadError && (
-        <p className="serif py-6 text-center text-base italic text-ink-faint">
+        <p className="serif py-6 text-center text-base text-ink-faint">
           loading…
         </p>
       )}
@@ -125,7 +125,7 @@ export default function UsageEditor({ subscriptionId, timeKnown, onChange }: Pro
       )}
 
       {items && items.length === 0 && (
-        <p className="serif py-6 text-center text-base italic text-ink-faint">
+        <p className="serif py-6 text-center text-base text-ink-faint">
           no usages yet.
         </p>
       )}
@@ -181,7 +181,7 @@ function Row({
 
   return (
     <div className="group grid grid-cols-[auto_1fr_auto_auto_1.5rem] items-baseline gap-4 py-4">
-      <span className="serif text-sm italic text-ink-dim">
+      <span className="serif text-sm text-ink-dim">
         {formatUsageDay(usage.created_at)}
       </span>
       <span className="truncate text-sm text-ink-dim">
@@ -260,7 +260,7 @@ function EditRow({
       onSubmit={handleSubmit}
       className="grid grid-cols-[auto_1fr_6rem_auto_auto] items-baseline gap-4 py-4"
     >
-      <span className="serif text-sm italic text-ink-dim">
+      <span className="serif text-sm text-ink-dim">
         {formatUsageDay(usage.created_at)}
       </span>
       <input

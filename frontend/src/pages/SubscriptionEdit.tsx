@@ -98,7 +98,7 @@ function Skeleton() {
 function NotFound({ id }: { id: string }) {
   return (
     <div className="border-y border-hairline py-12 text-center">
-      <p className="serif text-base italic font-semibold text-ink">No such subscription.</p>
+      <p className="serif text-base font-semibold text-ink">No such subscription.</p>
       <p className="mt-3 text-sm text-ink-dim">
         <span className="num">{id}</span> may have been archived or deleted.
       </p>

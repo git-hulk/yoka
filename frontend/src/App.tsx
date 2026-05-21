@@ -62,8 +62,8 @@ export default function App() {
                 </svg>
                 menu
               </button>
-              <span className="serif text-base italic leading-none text-accent">
-                yoka
+              <span className="serif text-base leading-none text-accent">
+                YOKA
               </span>
             </div>
           </div>

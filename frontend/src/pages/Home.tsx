@@ -103,7 +103,7 @@ function Skeleton() {
 function Empty() {
   return (
     <div className="pt-6 text-center">
-      <p className="serif text-base italic font-semibold text-ink">No subscriptions yet.</p>
+      <p className="serif text-base font-semibold text-ink">No subscriptions yet.</p>
       <p className="mt-3 text-sm text-ink-dim">
         Add a prepaid subscription and it'll show up here,<br className="hidden sm:inline" />
         with its pace as it burns down.
