@@ -2,10 +2,10 @@ import { Link } from "react-router-dom";
 
 import { api } from "../lib/api";
 import { useFetch } from "../lib/useFetch";
-import PackageCard from "../components/PackageCard";
+import SubscriptionCard from "../components/SubscriptionCard";
 
 export default function Home() {
-  const state = useFetch(() => api.listPackages(), []);
+  const state = useFetch(() => api.listSubscriptions(), []);
 
   return (
     <div className="space-y-10">
@@ -16,7 +16,7 @@ export default function Home() {
       {state.status === "loading" && <Skeleton />}
 
       {state.status === "error" && (
-        <ErrorBox title="Couldn't load packages" detail={state.error.message} />
+        <ErrorBox title="Couldn't load subscriptions" detail={state.error.message} />
       )}
 
       {state.status === "ok" && (
@@ -26,9 +26,9 @@ export default function Home() {
           <div>
             <ColumnHeader />
             <ul className="border-y border-hairline divide-y divide-hairline">
-              {state.data.map((p) => (
-                <li key={p.id}>
-                  <PackageCard pkg={p} />
+              {state.data.map((s) => (
+                <li key={s.id}>
+                  <SubscriptionCard sub={s} />
                 </li>
               ))}
             </ul>
@@ -44,20 +44,20 @@ function PageHeading({ count }: { count: number | null }) {
     <div className="flex items-end justify-between gap-4 border-b border-hairline pb-4">
       <div>
         <h1 className="serif text-base font-bold leading-none text-ink">
-          Packages
+          Subscriptions
         </h1>
         {count !== null && (
           <p className="num mt-3 text-[11px] uppercase tracking-micro text-ink-faint">
-            {count} {count === 1 ? "pack" : "packs"}
+            {count} {count === 1 ? "subscription" : "subscriptions"}
           </p>
         )}
       </div>
       <Link
-        to="/packages/new"
+        to="/subscriptions/new"
         className="inline-flex items-baseline gap-1.5 border-b border-ink pb-0.5 text-sm font-medium text-ink transition hover:border-accent hover:text-accent"
       >
         <span aria-hidden="true" className="text-base leading-none">＋</span>
-        new pack
+        new subscription
       </Link>
     </div>
   );
@@ -103,13 +103,13 @@ function Skeleton() {
 function Empty() {
   return (
     <div className="pt-6 text-center">
-      <p className="serif text-base italic font-semibold text-ink">No packages yet.</p>
+      <p className="serif text-base italic font-semibold text-ink">No subscriptions yet.</p>
       <p className="mt-3 text-sm text-ink-dim">
-        Add a prepaid pack and it'll show up here,<br className="hidden sm:inline" />
+        Add a prepaid subscription and it'll show up here,<br className="hidden sm:inline" />
         with its pace as it burns down.
       </p>
       <Link
-        to="/packages/new"
+        to="/subscriptions/new"
         className="mt-7 inline-flex items-baseline gap-1.5 border-b border-ink pb-0.5 text-sm font-medium text-ink transition hover:border-accent hover:text-accent"
       >
         <span aria-hidden="true">＋</span>

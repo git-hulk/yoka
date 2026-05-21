@@ -3,56 +3,68 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 
 import { api } from "../lib/api";
 import {
-  expiryShortLabel,
+  activeWindowLabel,
+  computeCadence,
+  dailyUsageBins,
   filledFraction,
   formatPrice,
+  formatPricePerUse,
   formatUsageDay,
   formatUsageTime,
   paceColor,
+  paceNarrative,
   remainingLabel,
   statusLabel,
   tickFraction,
   timeToExpiryVerbose,
   usedLabel,
+  type Cadence,
 } from "../lib/pace";
-import type { Package, Usage } from "../lib/types";
+import type { Subscription, Usage } from "../lib/types";
 import { isNotFound, useFetch } from "../lib/useFetch";
+import Sparkline from "../components/Sparkline";
 import StatusPill from "../components/StatusPill";
 import TrackBand from "../components/TrackBand";
 
-export default function PackageDetail() {
+const CADENCE_DAYS = 30;
+
+export default function SubscriptionDetail() {
   const { id = "" } = useParams<{ id: string }>();
   const navigate    = useNavigate();
-  const pkgState    = useFetch(() => api.getPackage(id), [id]);
+  const subState    = useFetch(() => api.getSubscription(id), [id]);
   const usagesState = useFetch(() => api.listUsages(id), [id]);
 
-  if (pkgState.status === "loading") return <Skeleton />;
-  if (pkgState.status === "error") {
-    return isNotFound(pkgState.error)
+  if (subState.status === "loading") return <Skeleton />;
+  if (subState.status === "error") {
+    return isNotFound(subState.error)
       ? <NotFound id={id} />
-      : <ErrorBox title="Couldn't load package" detail={pkgState.error.message} />;
+      : <ErrorBox title="Couldn't load subscription" detail={subState.error.message} />;
   }
 
-  const pkg    = pkgState.data;
+  const sub    = subState.data;
   const usages = usagesState.status === "ok" ? usagesState.data : [];
 
-  const isDuration = pkg.tracking_mode === "duration";
+  const isDuration = sub.tracking_mode === "duration";
 
   return (
     <div className="space-y-12">
       <Hero
-        pkg={pkg}
-        usageCount={usagesState.status === "ok" ? usagesState.data.length : 0}
+        sub={sub}
+        usages={usages}
         usagesLoading={usagesState.status === "loading"}
         onRemoved={() => navigate("/")}
       />
+
+      {!isDuration && usages.length > 0 && (
+        <Cadence sub={sub} usages={usages} />
+      )}
 
       {!isDuration && (
         <UsageHistory
           loading={usagesState.status === "loading"}
           error={usagesState.status === "error" ? usagesState.error : null}
           usages={usages}
-          timeKnown={pkg.tracking_mode === "hours"}
+          timeKnown={sub.tracking_mode === "hours"}
         />
       )}
     </div>
@@ -60,73 +72,89 @@ export default function PackageDetail() {
 }
 
 function Hero({
-  pkg, usageCount, usagesLoading, onRemoved,
+  sub, usages, usagesLoading, onRemoved,
 }: {
-  pkg:           Package;
-  usageCount:    number;
+  sub:           Subscription;
+  usages:        Usage[];
   usagesLoading: boolean;
   onRemoved:     () => void;
 }) {
-  const color = paceColor(pkg);
-  const price = formatPrice(pkg.price_cents, pkg.currency);
+  const color     = paceColor(sub);
+  const subtitle  = buildSubtitle(sub);
+  const narrative = paceNarrative(sub, usages);
+  const notes     = sub.notes?.trim();
 
   return (
     <section>
       <div className="flex items-baseline justify-between gap-3 border-b border-hairline pb-3">
         <span className="text-[11px] uppercase tracking-micro text-ink-faint">
-          {pkg.categories.length > 0 ? pkg.categories.join(" · ") : "package"}
+          {sub.categories.length > 0 ? sub.categories.join(" · ") : "subscription"}
         </span>
-        <StatusPill status={pkg.status} color={color} label={statusLabel(pkg.status)} />
+        <StatusPill status={sub.status} color={color} label={statusLabel(sub.status)} />
       </div>
 
       <h1 className="serif mt-6 text-base font-bold leading-none text-ink">
-        {pkg.name}
+        {sub.name}
       </h1>
 
-      <p className="mt-3 text-sm text-ink-dim">
-        {[price, expiryShortLabel(pkg)].filter(Boolean).join(" · ")}
-      </p>
+      {subtitle && (
+        <p className="num mt-3 text-sm text-ink-dim">
+          {subtitle}
+        </p>
+      )}
+
+      {notes && (
+        <p className="serif mt-3 max-w-[60ch] text-sm italic leading-snug text-ink-dim">
+          &ldquo;{notes}&rdquo;
+        </p>
+      )}
 
       <div className="mt-10 flex flex-wrap items-baseline gap-x-4">
         <span className="serif num text-base font-bold leading-none text-ink">
-          {remainingLabel(pkg)}
+          {remainingLabel(sub)}
         </span>
         <span className="serif text-base italic leading-tight text-ink-dim">
-          {pkg.tracking_mode === "duration" ? (
+          {sub.tracking_mode === "duration" ? (
             <>
               of{" "}
               <span className="num not-italic">
-                {formatAmount(pkg.consumed + pkg.remaining)}
+                {formatAmount(sub.consumed + sub.remaining)}
               </span>{" "}
               days remain,
             </>
           ) : (
             <>
-              of <span className="num not-italic">{formatAmount(pkg.quantity ?? 0)}</span>{" "}
-              {pkg.tracking_mode === "hours" ? "hours " : ""}remain,
+              of <span className="num not-italic">{formatAmount(sub.quantity ?? 0)}</span>{" "}
+              {sub.tracking_mode === "hours" ? "hours " : ""}remain,
             </>
           )}
         </span>
       </div>
 
       <p className="serif mt-1 text-base italic leading-tight text-ink-dim">
-        {timeToExpiryVerbose(pkg)}.
+        {timeToExpiryVerbose(sub)}.
       </p>
 
       <div className="mt-10">
         <TrackBand
           color={color}
-          filled={filledFraction(pkg)}
-          tick={tickFraction(pkg)}
-          leftLabel={usedLabel(pkg)}
-          rightLabel={paceTickLabel(pkg)}
+          filled={filledFraction(sub)}
+          tick={tickFraction(sub)}
+          leftLabel={usedLabel(sub)}
+          rightLabel={paceTickLabel(sub)}
           size="lg"
         />
       </div>
 
+      {narrative && (
+        <p className="serif mt-5 text-base italic leading-snug text-ink-dim">
+          {narrative}
+        </p>
+      )}
+
       <HeroActions
-        id={pkg.id}
-        usageCount={usageCount}
+        id={sub.id}
+        usageCount={usages.length}
         usagesLoading={usagesLoading}
         onRemoved={onRemoved}
       />
@@ -134,10 +162,19 @@ function Hero({
   );
 }
 
+function buildSubtitle(sub: Subscription): string {
+  const parts: string[] = [activeWindowLabel(sub)];
+  const price = formatPrice(sub.price_cents, sub.currency);
+  if (price) parts.push(price);
+  const perUse = formatPricePerUse(sub);
+  if (perUse) parts.push(`~${perUse}`);
+  return parts.join("  ·  ");
+}
+
 // ---------------------------------------------------------------------------
-// Terminal actions live next to the entry action ("edit pack") at the bottom
+// Terminal actions live next to the entry action ("edit subscription") at the bottom
 // of the hero, on the page users actually land on. Three peers in the same
-// tracking-micro register: archive (ink-dim), delete (pace-red), edit pack
+// tracking-micro register: archive (ink-dim), delete (pace-red), edit
 // (underlined entry). Click archive/delete and the row collapses into a
 // confirm panel rendered in the same slot — no modal.
 
@@ -159,8 +196,8 @@ function HeroActions({
     setSubmitting(true);
     setError(null);
     try {
-      if (action === "archive") await api.archivePackage(id);
-      else                      await api.deletePackage(id);
+      if (action === "archive") await api.archiveSubscription(id);
+      else                      await api.deleteSubscription(id);
       onRemoved();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Couldn't remove.");
@@ -178,7 +215,7 @@ function HeroActions({
   if (pending === "archive") {
     return (
       <ConfirmPanel
-        title="Archive this pack?"
+        title="Archive this subscription?"
         body="Hides from the active list. Nothing is deleted."
         confirmLabel="Archive"
         loadingLabel="Archiving…"
@@ -194,12 +231,12 @@ function HeroActions({
   if (pending === "delete") {
     return (
       <ConfirmPanel
-        title="Delete this pack?"
+        title="Delete this subscription?"
         body={
           usagesLoading
             ? "Counting usages…"
             : usageCount > 0
-              ? `Removes the pack and its ${usageCount} ${usageNoun}. This can't be undone.`
+              ? `Removes the subscription and its ${usageCount} ${usageNoun}. This can't be undone.`
               : "This can't be undone."
         }
         confirmLabel="Delete forever"
@@ -233,10 +270,10 @@ function HeroActions({
         </button>
       </div>
       <Link
-        to={`/packages/${id}/edit`}
+        to={`/subscriptions/${id}/edit`}
         className="border-b border-ink/40 pb-0.5 text-ink-dim transition hover:border-accent hover:text-accent"
       >
-        edit pack
+        edit subscription
       </Link>
     </div>
   );
@@ -294,19 +331,78 @@ function ConfirmPanel({
   );
 }
 
-function paceTickLabel(pkg: Package): string | undefined {
+function paceTickLabel(sub: Subscription): string | undefined {
   // The tick marker on the bar reflects "where you should be" if you finish
   // exactly at expiry. Surface the matching label on the right.
   //
   // Duration mode has no separate pace (fill IS pace), so the right side
   // stays empty for active and done; not-started still gets a hint.
-  if (pkg.tracking_mode === "duration") {
-    return pkg.status === "not_start" ? "inactive" : undefined;
+  if (sub.tracking_mode === "duration") {
+    return sub.status === "not_start" ? "inactive" : undefined;
   }
-  if (pkg.days_until_expiry < 0) return "past due";
-  if (pkg.status === "done")     return "all used";
-  if (pkg.status === "not_start") return "inactive";
+  if (sub.days_until_expiry < 0) return "past due";
+  if (sub.status === "done")     return "all used";
+  if (sub.status === "not_start") return "inactive";
   return "pace";
+}
+
+// ---------------------------------------------------------------------------
+// Cadence: a quiet daily histogram of the last CADENCE_DAYS, plus a single
+// sentence naming the numbers (last used, sessions this week, average gap).
+// Read order is top-down: heading establishes the section, sparkline shows
+// the shape, sentence reads the shape aloud.
+
+function Cadence({ sub, usages }: { sub: Subscription; usages: Usage[] }) {
+  const cadence = computeCadence(usages);
+  if (!cadence) return null;
+
+  const bins        = dailyUsageBins(usages, CADENCE_DAYS);
+  const totalInWin  = bins.reduce((s, v) => s + v, 0);
+  const unit        = sub.tracking_mode === "hours" ? "hr" : "";
+  const sentence    = composeCadenceSentence(cadence);
+
+  return (
+    <section>
+      <div className="flex items-baseline justify-between border-b border-hairline pb-3">
+        <h2 className="serif text-base italic font-semibold text-ink">Cadence</h2>
+        <span className="num text-[11px] uppercase tracking-micro text-ink-faint">
+          last {CADENCE_DAYS} days
+        </span>
+      </div>
+
+      <div className="mt-6">
+        <Sparkline
+          bins={bins}
+          label={`${formatAmount(totalInWin)}${unit} across the last ${CADENCE_DAYS} days`}
+        />
+        <div className="num mt-2 flex justify-between text-[11px] uppercase tracking-micro text-ink-faint">
+          <span>{CADENCE_DAYS}d ago</span>
+          <span>today</span>
+        </div>
+      </div>
+
+      <p className="serif mt-6 max-w-[65ch] text-base italic leading-snug text-ink-dim">
+        {sentence}
+      </p>
+    </section>
+  );
+}
+
+function composeCadenceSentence(cadence: Cadence): string {
+  const sessions = cadence.sessionsThisWeek;
+  const sessionWord =
+    sessions === 0 ? "No sessions this week"
+    : sessions === 1 ? "1 session this week"
+    : `${sessions} sessions this week`;
+
+  const parts: string[] = [`Last used ${cadence.lastUsedLabel}.`, `${sessionWord}.`];
+
+  if (cadence.avgGapDays !== null) {
+    const gap = cadence.avgGapDays;
+    parts.push(gap === 1 ? "Avg 1 day between." : `Avg ${gap} days between.`);
+  }
+
+  return parts.join(" ");
 }
 
 // ---------------------------------------------------------------------------
@@ -416,7 +512,7 @@ function Skeleton() {
 function NotFound({ id }: { id: string }) {
   return (
     <div className="border-y border-hairline py-12 text-center">
-      <p className="serif text-base italic font-semibold text-ink">No such package.</p>
+      <p className="serif text-base italic font-semibold text-ink">No such subscription.</p>
       <p className="mt-3 text-sm text-ink-dim">
         <span className="num">{id}</span> may have been archived or deleted.
       </p>

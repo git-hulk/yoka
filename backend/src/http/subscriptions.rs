@@ -1,4 +1,4 @@
-//! Package handlers.
+//! Subscription handlers.
 //!
 //! Read-side only in this slice. Thin: extract path arg, call db + domain,
 //! return a wire type.
@@ -12,31 +12,34 @@ use chrono::{DateTime, Utc};
 use uuid::Uuid;
 
 use crate::{
-    db,
-    db::packages::{PackageRow, PackageWrite},
+    db::{SubscriptionRow, SubscriptionWrite},
     domain::lifecycle::{self, TrackingMode, UsageInput},
     error::AppError,
     http::AppState,
-    schema::packages::{PackageInput, PackageResponse, UsageInputBody, UsageResponse},
+    schema::subscriptions::{
+        SubscriptionInput, SubscriptionResponse, UsageInputBody, UsageResponse,
+    },
 };
 
 const SUPPORTED_CURRENCIES: &[&str] = &["USD", "SGD", "CNY", "JPY"];
 const MAX_CATEGORIES: usize = 3;
 
-pub async fn list(State(state): State<AppState>) -> Result<Json<Vec<PackageResponse>>, AppError> {
-    let rows = db::packages::list_active(&state.pool).await?;
+pub async fn list(
+    State(state): State<AppState>,
+) -> Result<Json<Vec<SubscriptionResponse>>, AppError> {
+    let rows = state.subscriptions.list_active().await?;
     if rows.is_empty() {
         return Ok(Json(Vec::new()));
     }
 
     let ids: Vec<String> = rows.iter().map(|r| r.id.clone()).collect();
-    let by_pkg = db::usages::amounts_for_pace_many(&state.pool, &ids).await?;
+    let by_sub = state.usages.amounts_for_pace_many(&ids).await?;
     let now = Utc::now();
 
     let body = rows
         .into_iter()
         .map(|row| {
-            let usages = by_pkg.get(&row.id).cloned().unwrap_or_default();
+            let usages = by_sub.get(&row.id).cloned().unwrap_or_default();
             to_response(row, &usages, now)
         })
         .collect();
@@ -44,72 +47,70 @@ pub async fn list(State(state): State<AppState>) -> Result<Json<Vec<PackageRespo
     Ok(Json(body))
 }
 
-pub async fn list_categories(
-    State(state): State<AppState>,
-) -> Result<Json<Vec<String>>, AppError> {
-    let categories = db::packages::list_categories(&state.pool).await?;
+pub async fn list_categories(State(state): State<AppState>) -> Result<Json<Vec<String>>, AppError> {
+    let categories = state.subscriptions.list_categories().await?;
     Ok(Json(categories))
 }
 
 pub async fn get_one(
     State(state): State<AppState>,
     Path(id): Path<String>,
-) -> Result<Json<PackageResponse>, AppError> {
-    let row = db::packages::fetch(&state.pool, &id).await?;
-    let usages = db::usages::amounts_for_pace(&state.pool, &id).await?;
+) -> Result<Json<SubscriptionResponse>, AppError> {
+    let row = state.subscriptions.fetch(&id).await?;
+    let usages = state.usages.amounts_for_pace(&id).await?;
     Ok(Json(to_response(row, &usages, Utc::now())))
 }
 
 pub async fn create(
     State(state): State<AppState>,
-    Json(body): Json<PackageInput>,
-) -> Result<(StatusCode, Json<PackageResponse>), AppError> {
+    Json(body): Json<SubscriptionInput>,
+) -> Result<(StatusCode, Json<SubscriptionResponse>), AppError> {
     let write = validate(&body)?;
     let id = Uuid::new_v4().to_string();
-    let row = db::packages::insert(&state.pool, &id, write).await?;
+    let row = state.subscriptions.insert(&id, write).await?;
     Ok((StatusCode::CREATED, Json(to_response(row, &[], Utc::now()))))
 }
 
 pub async fn update(
     State(state): State<AppState>,
     Path(id): Path<String>,
-    Json(body): Json<PackageInput>,
-) -> Result<Json<PackageResponse>, AppError> {
+    Json(body): Json<SubscriptionInput>,
+) -> Result<Json<SubscriptionResponse>, AppError> {
     let write = validate(&body)?;
 
     // Lock `tracking_mode` once any usage has been recorded — flipping it
     // would silently re-interpret historical amounts (units ↔ hours), or
-    // strand usages on a now-duration package.
-    let current = db::packages::fetch(&state.pool, &id).await?;
+    // strand usages on a now-duration subscription.
+    let current = state.subscriptions.fetch(&id).await?;
     if write.tracking_mode != current.tracking_mode
-        && db::usages::any_for_package(&state.pool, &id).await?
+        && state.usages.any_for_subscription(&id).await?
     {
         return Err(AppError::BadRequest("tracking_mode_locked"));
     }
 
-    let row = db::packages::update(&state.pool, &id, write).await?;
-    let usages = db::usages::amounts_for_pace(&state.pool, &id).await?;
+    let row = state.subscriptions.update(&id, write).await?;
+    let usages = state.usages.amounts_for_pace(&id).await?;
     Ok(Json(to_response(row, &usages, Utc::now())))
 }
 
-/// Hard-delete a package and all its usages. 204 on success.
+/// Hard-delete a subscription and all its usages. 204 on success.
 pub async fn delete(
     State(state): State<AppState>,
     Path(id): Path<String>,
 ) -> Result<StatusCode, AppError> {
-    db::packages::delete(&state.pool, &id).await?;
+    state.subscriptions.delete(&id).await?;
     Ok(StatusCode::NO_CONTENT)
 }
 
 /// Soft-delete: stamp `archived_at`. The row and its usages survive,
-/// but the package drops out of `list_active`. Idempotent on rows already
+/// but the subscription drops out of `list_active`. Idempotent on rows already
 /// archived — `archive` returns `NotFound` in that case, which is the
 /// right signal for the UI.
 pub async fn archive(
     State(state): State<AppState>,
     Path(id): Path<String>,
 ) -> Result<StatusCode, AppError> {
-    db::packages::archive(&state.pool, &id).await?;
+    state.subscriptions.archive(&id).await?;
     Ok(StatusCode::NO_CONTENT)
 }
 
@@ -117,18 +118,18 @@ pub async fn list_usages(
     State(state): State<AppState>,
     Path(id): Path<String>,
 ) -> Result<Json<Vec<UsageResponse>>, AppError> {
-    // 404 if the package doesn't exist — distinguishes "no such package"
-    // from "package exists but has no usages yet" (which returns []).
-    if !db::packages::exists(&state.pool, &id).await? {
+    // 404 if the subscription doesn't exist — distinguishes "no such subscription"
+    // from "subscription exists but has no usages yet" (which returns []).
+    if !state.subscriptions.exists(&id).await? {
         return Err(AppError::NotFound);
     }
 
-    let rows = db::usages::list(&state.pool, &id).await?;
+    let rows = state.usages.list(&id).await?;
     let body = rows
         .into_iter()
         .map(|r| UsageResponse {
             id: r.id,
-            package_id: r.package_id,
+            subscription_id: r.subscription_id,
             amount: r.amount,
             debited_by: r.debited_by,
             notes: r.notes,
@@ -147,10 +148,10 @@ pub async fn create_usage(
     if !body.amount.is_finite() || body.amount <= 0.0 {
         return Err(AppError::BadRequest("amount_must_be_positive"));
     }
-    // Existence + tracking-mode check in one read. Duration packs are
+    // Existence + tracking-mode check in one read. Duration subscriptions are
     // date-only — they have no quantity to debit, so usages are forbidden.
-    let pkg = db::packages::fetch(&state.pool, &id).await?;
-    if pkg.tracking_mode == TrackingMode::Duration {
+    let sub = state.subscriptions.fetch(&id).await?;
+    if sub.tracking_mode == TrackingMode::Duration {
         return Err(AppError::BadRequest("usages_forbidden_for_duration"));
     }
     let notes = body
@@ -160,13 +161,16 @@ pub async fn create_usage(
         .filter(|s| !s.is_empty());
 
     let usage_id = Uuid::new_v4().to_string();
-    let row = db::usages::insert(&state.pool, &usage_id, &id, body.amount, notes).await?;
+    let row = state
+        .usages
+        .insert(&usage_id, &id, body.amount, notes)
+        .await?;
 
     Ok((
         StatusCode::CREATED,
         Json(UsageResponse {
             id: row.id,
-            package_id: row.package_id,
+            subscription_id: row.subscription_id,
             amount: row.amount,
             debited_by: row.debited_by,
             notes: row.notes,
@@ -189,10 +193,13 @@ pub async fn update_usage(
         .map(str::trim)
         .filter(|s| !s.is_empty());
 
-    let row = db::usages::update(&state.pool, &id, &usage_id, body.amount, notes).await?;
+    let row = state
+        .usages
+        .update(&id, &usage_id, body.amount, notes)
+        .await?;
     Ok(Json(UsageResponse {
         id: row.id,
-        package_id: row.package_id,
+        subscription_id: row.subscription_id,
         amount: row.amount,
         debited_by: row.debited_by,
         notes: row.notes,
@@ -204,7 +211,7 @@ pub async fn delete_usage(
     State(state): State<AppState>,
     Path((id, usage_id)): Path<(String, String)>,
 ) -> Result<StatusCode, AppError> {
-    db::usages::delete(&state.pool, &id, &usage_id).await?;
+    state.usages.delete(&id, &usage_id).await?;
     Ok(StatusCode::NO_CONTENT)
 }
 
@@ -216,7 +223,7 @@ pub async fn delete_usage(
 /// (number, date). We only catch what the type system can't: empty names,
 /// the mode↔quantity invariant, notes normalization (blank → None), and
 /// currency code.
-fn validate(body: &PackageInput) -> Result<PackageWrite<'_>, AppError> {
+fn validate(body: &SubscriptionInput) -> Result<SubscriptionWrite<'_>, AppError> {
     let name = body.name.trim();
     if name.is_empty() {
         return Err(AppError::BadRequest("name_required"));
@@ -281,7 +288,7 @@ fn validate(body: &PackageInput) -> Result<PackageWrite<'_>, AppError> {
         return Err(AppError::BadRequest("start_date_after_expires_at"));
     }
 
-    Ok(PackageWrite {
+    Ok(SubscriptionWrite {
         name,
         quantity,
         tracking_mode: body.tracking_mode,
@@ -294,7 +301,11 @@ fn validate(body: &PackageInput) -> Result<PackageWrite<'_>, AppError> {
     })
 }
 
-fn to_response(row: PackageRow, usages: &[UsageInput], now: DateTime<Utc>) -> PackageResponse {
+fn to_response(
+    row: SubscriptionRow,
+    usages: &[UsageInput],
+    now: DateTime<Utc>,
+) -> SubscriptionResponse {
     let derived = lifecycle::derive(
         row.tracking_mode,
         row.quantity,
@@ -303,7 +314,7 @@ fn to_response(row: PackageRow, usages: &[UsageInput], now: DateTime<Utc>) -> Pa
         row.expires_at,
         now,
     );
-    PackageResponse {
+    SubscriptionResponse {
         id: row.id,
         name: row.name,
         quantity: row.quantity,

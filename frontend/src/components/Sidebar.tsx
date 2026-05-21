@@ -13,7 +13,7 @@ interface NavEntry {
   icon:    ReactNode;
 }
 
-const PackageIcon = (
+const SubscriptionIcon = (
   <svg
     viewBox="0 0 16 16"
     fill="none"
@@ -34,8 +34,8 @@ const NAV: NavEntry[] = [
   {
     to:      "/",
     label:   "Subscriptions",
-    matches: (p) => p === "/" || p.startsWith("/packages"),
-    icon:    PackageIcon,
+    matches: (p) => p === "/" || p.startsWith("/subscriptions"),
+    icon:    SubscriptionIcon,
   },
   // Future: Members, Settings — append here. The page-level routes get
   // registered in App.tsx; the sidebar only needs the link.
@@ -106,9 +106,10 @@ export default function Sidebar({ collapsed, onToggle }: Props) {
           {!collapsed && (
             <Link
               to="/"
-              className="serif text-base italic leading-none text-accent transition hover:text-ink"
+              aria-label="yoka — home"
+              className="group inline-flex items-center leading-none text-accent transition hover:text-ink"
             >
-              yoka
+              <span className="serif text-base italic">yoka</span>
             </Link>
           )}
         </div>

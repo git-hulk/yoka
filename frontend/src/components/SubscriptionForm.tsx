@@ -1,7 +1,7 @@
 import { useState } from "react";
 
 import { api, ApiError } from "../lib/api";
-import type { PackageInput } from "../lib/api";
+import type { SubscriptionInput } from "../lib/api";
 import { minorPerMajor } from "../lib/pace";
 import { CURRENCIES } from "../lib/types";
 import type { Currency, TrackingMode } from "../lib/types";
@@ -9,17 +9,17 @@ import { useFetch } from "../lib/useFetch";
 import CategoriesPicker from "./CategoriesPicker";
 
 interface Props {
-  initial?:    PackageInput;
+  initial?:    SubscriptionInput;
   /** When true, the tracking-mode segmented is disabled. Edit mode locks
    *  this field once any usage exists — flipping it would silently
-   *  re-interpret historical amounts (or strand them on a duration pack). */
+   *  re-interpret historical amounts (or strand them on a duration subscription). */
   lockTrackingMode?: boolean;
   submitLabel: string;
-  onSubmit:    (input: PackageInput) => Promise<void>;
+  onSubmit:    (input: SubscriptionInput) => Promise<void>;
   onCancel:    () => void;
 }
 
-const BLANK: PackageInput = {
+const BLANK: SubscriptionInput = {
   name:          "",
   quantity:      1,
   tracking_mode: "units",
@@ -31,7 +31,7 @@ const BLANK: PackageInput = {
   currency:      "USD",
 };
 
-export default function PackageForm({
+export default function SubscriptionForm({
   initial,
   lockTrackingMode = false,
   submitLabel,
@@ -220,7 +220,7 @@ export default function PackageForm({
             rows={3}
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
-            placeholder="What is this pack for?"
+            placeholder="What is this subscription for?"
             className={`${inputClass} resize-y`}
           />
         </Field>
@@ -363,7 +363,7 @@ function Segmented({
 // ---------------------------------------------------------------------------
 
 function defaultExpiry(): string {
-  // 90 days out — typical pack duration; user can adjust.
+  // 90 days out — typical subscription duration; user can adjust.
   const d = new Date();
   d.setUTCDate(d.getUTCDate() + 90);
   return d.toISOString().slice(0, 10);
@@ -379,21 +379,21 @@ function errorMessage(err: unknown): string {
       case "name_required":             return "Name is required.";
       case "quantity_must_be_positive": return "Quantity must be greater than 0.";
       case "quantity_forbidden_for_duration":
-        return "Duration packages don't take a quantity.";
+        return "Duration subscriptions don't take a quantity.";
       case "currency_unsupported":      return "That currency isn't supported.";
       case "start_date_after_expires_at":
         return "Start date must be on or before the expiry date.";
       case "tracking_mode_locked":
         return "Can't change tracking mode once usages are recorded.";
       case "usages_forbidden_for_duration":
-        return "Duration packages don't track usages.";
+        return "Duration subscriptions don't track usages.";
       case "categories_too_many":
         return "Up to 3 categories.";
       case "price_required":
         return "Price is required.";
       case "price_cents_must_be_nonnegative":
         return "Price can't be negative.";
-      case "not_found":                 return "Package not found.";
+      case "not_found":                 return "Subscription not found.";
       default:                          return `Couldn't save (${err.code}).`;
     }
   }

@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 
-import type { Package } from "../lib/types";
+import type { Subscription } from "../lib/types";
 import {
   filledFraction,
   formatPrice,
@@ -13,20 +13,20 @@ import StatusPill from "./StatusPill";
 import TrackBand from "./TrackBand";
 
 interface Props {
-  pkg: Package;
+  sub: Subscription;
 }
 
-export default function PackageCard({ pkg }: Props) {
-  const color = paceColor(pkg);
+export default function SubscriptionCard({ sub }: Props) {
+  const color = paceColor(sub);
 
   return (
     <Link
-      to={`/packages/${pkg.id}`}
+      to={`/subscriptions/${sub.id}`}
       className="group relative -mx-4 grid grid-cols-[minmax(0,1.4fr)_minmax(110px,1.3fr)_5.5rem_5rem] items-center gap-5 px-4 py-4 transition duration-300 ease-out hover:bg-accent-soft focus:outline-none sm:grid-cols-[minmax(0,1.4fr)_minmax(140px,1.4fr)_5.5rem_5rem_5rem]"
     >
       <div className="flex min-w-0 items-center gap-2">
         <h2 className="serif truncate text-base leading-tight text-ink decoration-accent/60 underline-offset-4 group-hover:underline">
-          {pkg.name}
+          {sub.name}
         </h2>
         <span
           aria-hidden="true"
@@ -38,24 +38,24 @@ export default function PackageCard({ pkg }: Props) {
 
       <div className="space-y-2 pb-0.5">
         <div className="num text-[11px] tabular-nums tracking-micro text-ink-faint">
-          {usageRatioLabel(pkg)}
+          {usageRatioLabel(sub)}
         </div>
         <TrackBand
           color={color}
-          filled={filledFraction(pkg)}
-          tick={tickFraction(pkg)}
+          filled={filledFraction(sub)}
+          tick={tickFraction(sub)}
           size="lg"
         />
       </div>
 
-      <StatusPill status={pkg.status} color={color} label={statusLabel(pkg.status)} />
+      <StatusPill status={sub.status} color={color} label={statusLabel(sub.status)} />
 
       <span className="num hidden text-right text-sm tabular-nums text-ink-dim sm:inline">
-        {formatPrice(pkg.price_cents, pkg.currency) ?? ""}
+        {formatPrice(sub.price_cents, sub.currency) ?? ""}
       </span>
 
       <span className="num text-right text-sm tabular-nums text-ink-dim">
-        {shortDateUtc(pkg.expires_at)}
+        {shortDateUtc(sub.expires_at)}
       </span>
     </Link>
   );

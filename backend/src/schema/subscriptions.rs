@@ -1,4 +1,4 @@
-//! Wire types for the packages resource.
+//! Wire types for the subscriptions resource.
 //!
 //! `snake_case` everywhere — JS frontends can read it directly, no rename
 //! pass. Dates are ISO-8601: `expires_at` is `YYYY-MM-DD`, timestamps are
@@ -16,7 +16,7 @@ use crate::domain::lifecycle::{Status, TrackingMode};
 /// `quantity` is `None` iff `tracking_mode == "duration"`; the handler
 /// enforces that invariant.
 #[derive(Debug, Deserialize)]
-pub struct PackageInput {
+pub struct SubscriptionInput {
     pub name: String,
     pub quantity: Option<f64>,
     pub tracking_mode: TrackingMode,
@@ -30,7 +30,7 @@ pub struct PackageInput {
 }
 
 #[derive(Debug, Serialize)]
-pub struct PackageResponse {
+pub struct SubscriptionResponse {
     pub id: String,
     pub name: String,
     pub quantity: Option<f64>,
@@ -56,7 +56,7 @@ pub struct PackageResponse {
 #[derive(Debug, Serialize)]
 pub struct UsageResponse {
     pub id: String,
-    pub package_id: String,
+    pub subscription_id: String,
     pub amount: f64,
     pub debited_by: Option<String>,
     pub notes: Option<String>,

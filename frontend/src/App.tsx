@@ -4,9 +4,9 @@ import { Route, Routes } from "react-router-dom";
 import Sidebar from "./components/Sidebar";
 import Home from "./pages/Home";
 
-const PackageDetail = lazy(() => import("./pages/PackageDetail"));
-const PackageEdit   = lazy(() => import("./pages/PackageEdit"));
-const PackageNew    = lazy(() => import("./pages/PackageNew"));
+const SubscriptionDetail = lazy(() => import("./pages/SubscriptionDetail"));
+const SubscriptionEdit   = lazy(() => import("./pages/SubscriptionEdit"));
+const SubscriptionNew    = lazy(() => import("./pages/SubscriptionNew"));
 
 const STORAGE_KEY = "yoka:sidebar";
 
@@ -71,10 +71,10 @@ export default function App() {
         <div className="mx-auto w-full max-w-5xl flex-1 px-6 pt-10 pb-20 sm:px-10">
           <Suspense fallback={<RouteFallback />}>
             <Routes>
-              <Route path="/"                   element={<Home />} />
-              <Route path="/packages/new"       element={<PackageNew />} />
-              <Route path="/packages/:id"       element={<PackageDetail />} />
-              <Route path="/packages/:id/edit"  element={<PackageEdit />} />
+              <Route path="/"                        element={<Home />} />
+              <Route path="/subscriptions/new"       element={<SubscriptionNew />} />
+              <Route path="/subscriptions/:id"       element={<SubscriptionDetail />} />
+              <Route path="/subscriptions/:id/edit"  element={<SubscriptionEdit />} />
             </Routes>
           </Suspense>
         </div>

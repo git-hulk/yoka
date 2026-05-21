@@ -21,10 +21,9 @@ async fn main() -> anyhow::Result<()> {
         .parse()?;
 
     tracing::info!(%db_url, "connecting to database");
-    let pool = yoka::db::connect(&db_url).await?;
-    yoka::migrate(&pool).await?;
+    let repos = yoka::connect_and_migrate(&db_url).await?;
 
-    let app = router(AppState { pool });
+    let app = router(AppState::from(repos));
 
     tracing::info!(%addr, "listening");
     let listener = tokio::net::TcpListener::bind(addr).await?;

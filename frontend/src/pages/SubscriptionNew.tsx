@@ -1,15 +1,15 @@
 import { useNavigate } from "react-router-dom";
 
 import { api } from "../lib/api";
-import type { PackageInput } from "../lib/api";
-import PackageForm from "../components/PackageForm";
+import type { SubscriptionInput } from "../lib/api";
+import SubscriptionForm from "../components/SubscriptionForm";
 
-export default function PackageNew() {
+export default function SubscriptionNew() {
   const navigate = useNavigate();
 
-  async function handleSubmit(input: PackageInput) {
-    const created = await api.createPackage(input);
-    navigate(`/packages/${created.id}`);
+  async function handleSubmit(input: SubscriptionInput) {
+    const created = await api.createSubscription(input);
+    navigate(`/subscriptions/${created.id}`);
   }
 
   return (
@@ -19,11 +19,11 @@ export default function PackageNew() {
           new entry
         </span>
         <h1 className="serif mt-2 text-base font-bold leading-none text-ink">
-          A new pack.
+          A new subscription.
         </h1>
       </div>
 
-      <PackageForm
+      <SubscriptionForm
         submitLabel="Create"
         onSubmit={handleSubmit}
         onCancel={() => navigate("/")}

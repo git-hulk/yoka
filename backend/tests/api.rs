@@ -31,10 +31,15 @@ async fn make_pool() -> SqlitePool {
         .unwrap()
 }
 
-async fn setup() -> AppState {
+/// Build an in-memory backend and return both the `AppState` for routing
+/// and the raw `SqlitePool` for seed helpers that need to control
+/// `created_at` (time-travel testing) — a capability the repo traits
+/// deliberately don't expose.
+async fn setup() -> (AppState, SqlitePool) {
     let pool = make_pool().await;
-    yoka::migrate(&pool).await.unwrap();
-    AppState { pool }
+    yoka::db::sqlite::migrate(&pool).await.unwrap();
+    let repos = yoka::db::sqlite::SqliteBackend { pool: pool.clone() }.into_repos();
+    (AppState::from(repos), pool)
 }
 
 async fn body_json(resp: axum::response::Response) -> serde_json::Value {
@@ -42,19 +47,19 @@ async fn body_json(resp: axum::response::Response) -> serde_json::Value {
     serde_json::from_slice(&bytes).unwrap()
 }
 
-/// Insert a units/hours package directly via SQL. `quantity` is required;
-/// for duration packs use [`insert_duration_package`] instead.
-async fn insert_package(pool: &SqlitePool, id: &str, quantity: f64, days_until: i64) {
+/// Insert a units/hours subscription directly via SQL. `quantity` is required;
+/// for duration subscriptions use [`insert_duration_subscription`] instead.
+async fn insert_subscription(pool: &SqlitePool, id: &str, quantity: f64, days_until: i64) {
     let expires_at = (Utc::now() + Duration::days(days_until)).date_naive();
     let start_date = Utc::now().date_naive();
     sqlx::query(
         r#"
-        INSERT INTO packages (id, name, quantity, tracking_mode, start_date, expires_at, currency)
+        INSERT INTO subscriptions (id, name, quantity, tracking_mode, start_date, expires_at, currency)
         VALUES (?1, ?2, ?3, 'hours', ?4, ?5, 'USD')
         "#,
     )
     .bind(id)
-    .bind(format!("pkg-{id}"))
+    .bind(format!("sub-{id}"))
     .bind(quantity)
     .bind(start_date)
     .bind(expires_at)
@@ -63,8 +68,8 @@ async fn insert_package(pool: &SqlitePool, id: &str, quantity: f64, days_until: 
     .unwrap();
 }
 
-/// Insert a duration-mode package. `quantity` is NULL (CHECK enforces it).
-async fn insert_duration_package(
+/// Insert a duration-mode subscription. `quantity` is NULL (CHECK enforces it).
+async fn insert_duration_subscription(
     pool: &SqlitePool,
     id: &str,
     days_until_end: i64,
@@ -74,12 +79,12 @@ async fn insert_duration_package(
     let expires_at = (Utc::now() + Duration::days(days_until_end)).date_naive();
     sqlx::query(
         r#"
-        INSERT INTO packages (id, name, tracking_mode, start_date, expires_at, currency)
+        INSERT INTO subscriptions (id, name, tracking_mode, start_date, expires_at, currency)
         VALUES (?1, ?2, 'duration', ?3, ?4, 'USD')
         "#,
     )
     .bind(id)
-    .bind(format!("pkg-{id}"))
+    .bind(format!("sub-{id}"))
     .bind(start_date)
     .bind(expires_at)
     .execute(pool)
@@ -87,16 +92,22 @@ async fn insert_duration_package(
     .unwrap();
 }
 
-async fn insert_usage(pool: &SqlitePool, id: &str, package_id: &str, amount: f64, hours_ago: i64) {
+async fn insert_usage(
+    pool: &SqlitePool,
+    id: &str,
+    subscription_id: &str,
+    amount: f64,
+    hours_ago: i64,
+) {
     let ts = Utc::now() - Duration::hours(hours_ago);
     sqlx::query(
         r#"
-        INSERT INTO usages (id, package_id, amount, created_at)
+        INSERT INTO usages (id, subscription_id, amount, created_at)
         VALUES (?1, ?2, ?3, ?4)
         "#,
     )
     .bind(id)
-    .bind(package_id)
+    .bind(subscription_id)
     .bind(amount)
     .bind(ts)
     .execute(pool)
@@ -104,10 +115,10 @@ async fn insert_usage(pool: &SqlitePool, id: &str, package_id: &str, amount: f64
     .unwrap();
 }
 
-/// Build a minimum-valid create-package JSON body. Override individual
+/// Build a minimum-valid create-subscription JSON body. Override individual
 /// fields via `mutate` before sending. Keeps tests compact and intention-
 /// revealing.
-fn package_body(mutate: impl FnOnce(&mut serde_json::Value)) -> serde_json::Value {
+fn subscription_body(mutate: impl FnOnce(&mut serde_json::Value)) -> serde_json::Value {
     let today = Utc::now().date_naive();
     let expires_at = (Utc::now() + Duration::days(30)).date_naive();
     let mut v = serde_json::json!({
@@ -164,12 +175,12 @@ async fn patch_json(
 // ---------------------------------------------------------------------------
 
 #[tokio::test]
-async fn get_package_404_when_missing() {
-    let app = router(setup().await);
+async fn get_subscription_404_when_missing() {
+    let app = router(setup().await.0);
     let resp = app
         .oneshot(
             Request::builder()
-                .uri("/packages/nope")
+                .uri("/subscriptions/nope")
                 .body(Body::empty())
                 .unwrap(),
         )
@@ -181,17 +192,17 @@ async fn get_package_404_when_missing() {
 }
 
 #[tokio::test]
-async fn get_package_returns_derived_pace_fields() {
-    let state = setup().await;
+async fn get_subscription_returns_derived_pace_fields() {
+    let (state, pool) = setup().await;
     // 14 units, 14 days until expiry, no usages, start_date today → Active,
     // required = 1.0/day.
-    insert_package(&state.pool, "p1", 14.0, 14).await;
+    insert_subscription(&pool, "s1", 14.0, 14).await;
 
     let app = router(state);
     let resp = app
         .oneshot(
             Request::builder()
-                .uri("/packages/p1")
+                .uri("/subscriptions/s1")
                 .body(Body::empty())
                 .unwrap(),
         )
@@ -200,7 +211,7 @@ async fn get_package_returns_derived_pace_fields() {
 
     assert_eq!(resp.status(), StatusCode::OK);
     let body = body_json(resp).await;
-    assert_eq!(body["id"], "p1");
+    assert_eq!(body["id"], "s1");
     assert_eq!(body["quantity"], 14.0);
     assert_eq!(body["tracking_mode"], "hours");
     assert_eq!(body["consumed"], 0.0);
@@ -210,21 +221,21 @@ async fn get_package_returns_derived_pace_fields() {
 }
 
 #[tokio::test]
-async fn list_usages_returns_rows_newest_first_and_404s_unknown_package() {
-    let state = setup().await;
-    insert_package(&state.pool, "p1", 20.0, 30).await;
-    insert_usage(&state.pool, "u-old", "p1", 3.0, 3).await;
-    insert_usage(&state.pool, "u-mid", "p1", 2.0, 2).await;
-    insert_usage(&state.pool, "u-new", "p1", 1.0, 1).await;
+async fn list_usages_returns_rows_newest_first_and_404s_unknown_subscription() {
+    let (state, pool) = setup().await;
+    insert_subscription(&pool, "s1", 20.0, 30).await;
+    insert_usage(&pool, "u-old", "s1", 3.0, 3).await;
+    insert_usage(&pool, "u-mid", "s1", 2.0, 2).await;
+    insert_usage(&pool, "u-new", "s1", 1.0, 1).await;
 
     let app = router(state.clone());
 
-    // Known package: 3 usages newest first.
+    // Known subscription: 3 usages newest first.
     let resp = app
         .clone()
         .oneshot(
             Request::builder()
-                .uri("/packages/p1/usages")
+                .uri("/subscriptions/s1/usages")
                 .body(Body::empty())
                 .unwrap(),
         )
@@ -238,11 +249,11 @@ async fn list_usages_returns_rows_newest_first_and_404s_unknown_package() {
     assert_eq!(arr[1]["id"], "u-mid");
     assert_eq!(arr[2]["id"], "u-old");
 
-    // Unknown package: 404, not [].
+    // Unknown subscription: 404, not [].
     let resp = app
         .oneshot(
             Request::builder()
-                .uri("/packages/ghost/usages")
+                .uri("/subscriptions/ghost/usages")
                 .body(Body::empty())
                 .unwrap(),
         )
@@ -254,14 +265,14 @@ async fn list_usages_returns_rows_newest_first_and_404s_unknown_package() {
 // ---- duration mode --------------------------------------------------------
 
 #[tokio::test]
-async fn create_duration_package_with_null_quantity_succeeds() {
-    let app = router(setup().await);
-    let body = package_body(|v| {
+async fn create_duration_subscription_with_null_quantity_succeeds() {
+    let app = router(setup().await.0);
+    let body = subscription_body(|v| {
         v["tracking_mode"] = serde_json::json!("duration");
         v["quantity"] = serde_json::Value::Null;
     });
 
-    let resp = post_json(app, "/packages", body).await;
+    let resp = post_json(app, "/subscriptions", body).await;
     assert_eq!(resp.status(), StatusCode::CREATED);
     let body = body_json(resp).await;
     assert_eq!(body["tracking_mode"], "duration");
@@ -269,44 +280,44 @@ async fn create_duration_package_with_null_quantity_succeeds() {
 }
 
 #[tokio::test]
-async fn create_duration_package_with_quantity_rejected() {
-    let app = router(setup().await);
-    let body = package_body(|v| {
+async fn create_duration_subscription_with_quantity_rejected() {
+    let app = router(setup().await.0);
+    let body = subscription_body(|v| {
         v["tracking_mode"] = serde_json::json!("duration");
         v["quantity"] = serde_json::json!(5.0);
     });
 
-    let resp = post_json(app, "/packages", body).await;
+    let resp = post_json(app, "/subscriptions", body).await;
     assert_eq!(resp.status(), StatusCode::BAD_REQUEST);
     let body = body_json(resp).await;
     assert_eq!(body["error"], "quantity_forbidden_for_duration");
 }
 
 #[tokio::test]
-async fn create_units_package_without_quantity_rejected() {
-    let app = router(setup().await);
-    let body = package_body(|v| {
+async fn create_units_subscription_without_quantity_rejected() {
+    let app = router(setup().await.0);
+    let body = subscription_body(|v| {
         v["tracking_mode"] = serde_json::json!("units");
         v["quantity"] = serde_json::Value::Null;
     });
 
-    let resp = post_json(app, "/packages", body).await;
+    let resp = post_json(app, "/subscriptions", body).await;
     assert_eq!(resp.status(), StatusCode::BAD_REQUEST);
     let body = body_json(resp).await;
     assert_eq!(body["error"], "quantity_must_be_positive");
 }
 
 #[tokio::test]
-async fn duration_package_mid_window_status_and_derivations() {
-    let state = setup().await;
+async fn duration_subscription_mid_window_status_and_derivations() {
+    let (state, pool) = setup().await;
     // 90-day window, 30 days in: consumed=30, remaining=60, no pace, active.
-    insert_duration_package(&state.pool, "d1", 60, 30).await;
+    insert_duration_subscription(&pool, "d1", 60, 30).await;
 
     let app = router(state);
     let resp = app
         .oneshot(
             Request::builder()
-                .uri("/packages/d1")
+                .uri("/subscriptions/d1")
                 .body(Body::empty())
                 .unwrap(),
         )
@@ -323,16 +334,16 @@ async fn duration_package_mid_window_status_and_derivations() {
 }
 
 #[tokio::test]
-async fn duration_package_after_window_is_done() {
-    let state = setup().await;
+async fn duration_subscription_after_window_is_done() {
+    let (state, pool) = setup().await;
     // Window ended 5 days ago — no Expired in duration mode, only Done.
-    insert_duration_package(&state.pool, "d2", -5, 95).await;
+    insert_duration_subscription(&pool, "d2", -5, 95).await;
 
     let app = router(state);
     let resp = app
         .oneshot(
             Request::builder()
-                .uri("/packages/d2")
+                .uri("/subscriptions/d2")
                 .body(Body::empty())
                 .unwrap(),
         )
@@ -345,14 +356,14 @@ async fn duration_package_after_window_is_done() {
 }
 
 #[tokio::test]
-async fn create_usage_forbidden_on_duration_package() {
-    let state = setup().await;
-    insert_duration_package(&state.pool, "d3", 30, 5).await;
+async fn create_usage_forbidden_on_duration_subscription() {
+    let (state, pool) = setup().await;
+    insert_duration_subscription(&pool, "d3", 30, 5).await;
 
     let app = router(state);
     let resp = post_json(
         app,
-        "/packages/d3/usages",
+        "/subscriptions/d3/usages",
         serde_json::json!({ "amount": 1.0, "notes": null }),
     )
     .await;
@@ -363,17 +374,17 @@ async fn create_usage_forbidden_on_duration_package() {
 
 #[tokio::test]
 async fn patch_locks_tracking_mode_once_usages_exist() {
-    let state = setup().await;
-    insert_package(&state.pool, "p1", 10.0, 30).await;
-    insert_usage(&state.pool, "u1", "p1", 1.0, 1).await;
+    let (state, pool) = setup().await;
+    insert_subscription(&pool, "s1", 10.0, 30).await;
+    insert_usage(&pool, "u1", "s1", 1.0, 1).await;
 
     let app = router(state);
     // Try to flip hours → units while a usage exists.
-    let body = package_body(|v| {
+    let body = subscription_body(|v| {
         v["tracking_mode"] = serde_json::json!("units");
         v["quantity"] = serde_json::json!(10.0);
     });
-    let resp = patch_json(app, "/packages/p1", body).await;
+    let resp = patch_json(app, "/subscriptions/s1", body).await;
     assert_eq!(resp.status(), StatusCode::BAD_REQUEST);
     let body = body_json(resp).await;
     assert_eq!(body["error"], "tracking_mode_locked");

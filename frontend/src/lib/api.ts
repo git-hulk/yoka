@@ -4,7 +4,7 @@
 // server. In production set `VITE_API_BASE` at build time (defaults to ""
 // → same-origin under /api).
 
-import type { Currency, Package, TrackingMode, Usage } from "./types";
+import type { Currency, Subscription, TrackingMode, Usage } from "./types";
 
 const BASE = (import.meta.env.VITE_API_BASE as string | undefined) ?? "";
 
@@ -48,9 +48,9 @@ async function request<T>(path: string, opts: RequestOpts = {}): Promise<T> {
   return (await res.json()) as T;
 }
 
-/** Fields the user can set when creating or editing a package.
+/** Fields the user can set when creating or editing a subscription.
  *  `quantity` is `null` iff `tracking_mode === "duration"`. */
-export interface PackageInput {
+export interface SubscriptionInput {
   name:          string;
   quantity:      number | null;
   tracking_mode: TrackingMode;
@@ -70,51 +70,51 @@ export interface UsageInput {
 }
 
 export const api = {
-  listPackages:  () =>
-    request<Package[]>("/packages"),
+  listSubscriptions:  () =>
+    request<Subscription[]>("/subscriptions"),
 
   listCategories: () =>
     request<string[]>("/categories"),
 
-  getPackage:    (id: string) =>
-    request<Package>(`/packages/${encodeURIComponent(id)}`),
+  getSubscription:    (id: string) =>
+    request<Subscription>(`/subscriptions/${encodeURIComponent(id)}`),
 
   listUsages:    (id: string) =>
-    request<Usage[]>(`/packages/${encodeURIComponent(id)}/usages`),
+    request<Usage[]>(`/subscriptions/${encodeURIComponent(id)}/usages`),
 
-  createPackage: (input: PackageInput) =>
-    request<Package>("/packages", { method: "POST", body: input }),
+  createSubscription: (input: SubscriptionInput) =>
+    request<Subscription>("/subscriptions", { method: "POST", body: input }),
 
-  updatePackage: (id: string, input: PackageInput) =>
-    request<Package>(`/packages/${encodeURIComponent(id)}`, {
+  updateSubscription: (id: string, input: SubscriptionInput) =>
+    request<Subscription>(`/subscriptions/${encodeURIComponent(id)}`, {
       method: "PATCH",
       body:   input,
     }),
 
-  /** Hard-delete: removes the package and cascades through its usages. */
-  deletePackage: (id: string) =>
-    request<void>(`/packages/${encodeURIComponent(id)}`, { method: "DELETE" }),
+  /** Hard-delete: removes the subscription and cascades through its usages. */
+  deleteSubscription: (id: string) =>
+    request<void>(`/subscriptions/${encodeURIComponent(id)}`, { method: "DELETE" }),
 
   /** Soft-delete: stamps `archived_at`. Row + usages survive but drop out
    *  of the active list. */
-  archivePackage: (id: string) =>
-    request<void>(`/packages/${encodeURIComponent(id)}/archive`, { method: "POST" }),
+  archiveSubscription: (id: string) =>
+    request<void>(`/subscriptions/${encodeURIComponent(id)}/archive`, { method: "POST" }),
 
-  createUsage: (packageId: string, input: UsageInput) =>
+  createUsage: (subscriptionId: string, input: UsageInput) =>
     request<Usage>(
-      `/packages/${encodeURIComponent(packageId)}/usages`,
+      `/subscriptions/${encodeURIComponent(subscriptionId)}/usages`,
       { method: "POST", body: input },
     ),
 
-  updateUsage: (packageId: string, usageId: string, input: UsageInput) =>
+  updateUsage: (subscriptionId: string, usageId: string, input: UsageInput) =>
     request<Usage>(
-      `/packages/${encodeURIComponent(packageId)}/usages/${encodeURIComponent(usageId)}`,
+      `/subscriptions/${encodeURIComponent(subscriptionId)}/usages/${encodeURIComponent(usageId)}`,
       { method: "PATCH", body: input },
     ),
 
-  deleteUsage: (packageId: string, usageId: string) =>
+  deleteUsage: (subscriptionId: string, usageId: string) =>
     request<void>(
-      `/packages/${encodeURIComponent(packageId)}/usages/${encodeURIComponent(usageId)}`,
+      `/subscriptions/${encodeURIComponent(subscriptionId)}/usages/${encodeURIComponent(usageId)}`,
       { method: "DELETE" },
     ),
 };

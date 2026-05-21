@@ -1,6 +1,6 @@
-//! Lifecycle derivation for a package.
+//! Lifecycle derivation for a subscription.
 //!
-//! Pure functions, no DB, no async. Given a package's tracking mode,
+//! Pure functions, no DB, no async. Given a subscription's tracking mode,
 //! optional quantity, usage history, start/expiry dates, and the current
 //! time, derive everything the UI shows: how much is left, how many days
 //! remain, the daily pace required to consume the rest by expiry, and a
@@ -14,12 +14,12 @@
 //!     start → expiry window. "Consumed" and "remaining" are in days.
 //!
 //! All time is UTC. The caller passes `now` so tests are deterministic and
-//! the same code answers "what does this package look like next Monday".
+//! the same code answers "what does this subscription look like next Monday".
 
 use chrono::{DateTime, NaiveDate, Utc};
 use serde::{Deserialize, Serialize};
 
-/// How a package's progress is measured.
+/// How a subscription's progress is measured.
 ///
 /// Persisted as TEXT in SQLite and serialized as lowercase on the wire
 /// (`"units" | "hours" | "duration"`).
@@ -41,7 +41,7 @@ pub struct UsageInput {
 
 /// Lifecycle status. Never persisted — always recomputed on read.
 ///
-/// Priority (highest first), so a package matching multiple conditions
+/// Priority (highest first), so a subscription matching multiple conditions
 /// gets the most informative label:
 ///   1. `Done`     — quantity fully consumed (or, for duration, window fully elapsed)
 ///   2. `Expired`  — past `expires_at` with quantity remaining (units/hours only)

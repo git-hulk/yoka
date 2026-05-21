@@ -1,36 +1,25 @@
 //! Database layer.
 //!
-//! Owns the connection pool and exposes query functions. Each query function
-//! takes a `&SqlitePool` and returns either a row struct (kept local to this
-//! module) or a domain-shaped value the handler can pass straight into
-//! `lifecycle::derive`. No HTTP types in here.
+//! Exposes the repository traits (`SubscriptionRepo`, `UsageRepo`) plus the
+//! row/write types they trade in. The HTTP layer holds `Arc<dyn …>` so the
+//! concrete backend is interchangeable. Each backend lives in its own
+//! submodule (`sqlite`, future `postgres`) and writes idiomatic SQL for its
+//! engine — no portable-SQL compromises.
 
-use sqlx::sqlite::{SqliteConnectOptions, SqlitePoolOptions};
-use sqlx::SqlitePool;
-use std::str::FromStr;
+use std::sync::Arc;
 
-pub mod packages;
-pub mod usages;
+pub mod repo;
+pub mod sqlite;
 
-/// Build a pool against the given SQLite URL.
+pub use repo::{SubscriptionRepo, SubscriptionRow, SubscriptionWrite, UsageRepo, UsageRow};
+
+/// Bundle of repository handles shared by HTTP handlers via `AppState`.
 ///
-/// `sqlite::memory:` is the convention for tests; a path like
-/// `sqlite://tracker.db?mode=rwc` is used in production.
-///
-/// WAL + foreign keys are on. WAL gives concurrent readers during writes,
-/// which matters even for a single-user app once the frontend starts
-/// polling. Foreign keys must be enabled per-connection in SQLite.
-pub async fn connect(url: &str) -> anyhow::Result<SqlitePool> {
-    let opts = SqliteConnectOptions::from_str(url)?
-        .create_if_missing(true)
-        .foreign_keys(true)
-        .journal_mode(sqlx::sqlite::SqliteJournalMode::Wal)
-        .synchronous(sqlx::sqlite::SqliteSynchronous::Normal);
-
-    let pool = SqlitePoolOptions::new()
-        .max_connections(8)
-        .connect_with(opts)
-        .await?;
-
-    Ok(pool)
+/// `Arc<dyn …>` so the trait objects are cheap to clone per request. The
+/// concrete impls hold their own pool (or other connection handle); cloning
+/// the `Arc` doesn't touch the pool.
+#[derive(Clone)]
+pub struct Repos {
+    pub subscriptions: Arc<dyn SubscriptionRepo>,
+    pub usages: Arc<dyn UsageRepo>,
 }

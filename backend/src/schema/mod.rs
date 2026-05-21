@@ -3,4 +3,4 @@
 //! Kept separate from db row structs so storage layout can evolve without
 //! breaking the API, and from domain types so domain stays HTTP-agnostic.
 
-pub mod packages;
+pub mod subscriptions;

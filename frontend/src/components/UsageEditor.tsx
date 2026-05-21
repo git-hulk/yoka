@@ -5,15 +5,15 @@ import { formatUsageDay, formatUsageTime } from "../lib/pace";
 import type { Usage } from "../lib/types";
 
 interface Props {
-  packageId: string;
+  subscriptionId: string;
   /** Affects unit suffix on amounts and amount-input step. */
   timeKnown: boolean;
   /** Called after any successful add/delete so the parent can refetch
-   *  derived package fields (consumed, remaining, status). */
+   *  derived subscription fields (consumed, remaining, status). */
   onChange?: () => void;
 }
 
-export default function UsageEditor({ packageId, timeKnown, onChange }: Props) {
+export default function UsageEditor({ subscriptionId, timeKnown, onChange }: Props) {
   const [items,     setItems]     = useState<Usage[] | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
 
@@ -21,7 +21,7 @@ export default function UsageEditor({ packageId, timeKnown, onChange }: Props) {
     let cancelled = false;
     setItems(null);
     setLoadError(null);
-    api.listUsages(packageId).then(
+    api.listUsages(subscriptionId).then(
       (data) => { if (!cancelled) setItems(data); },
       (err) => {
         if (cancelled) return;
@@ -29,22 +29,22 @@ export default function UsageEditor({ packageId, timeKnown, onChange }: Props) {
       },
     );
     return () => { cancelled = true; };
-  }, [packageId]);
+  }, [subscriptionId]);
 
   async function addUsage(amount: number, notes: string | null) {
-    const created = await api.createUsage(packageId, { amount, notes });
+    const created = await api.createUsage(subscriptionId, { amount, notes });
     setItems((prev) => (prev ? [created, ...prev] : [created]));
     onChange?.();
   }
 
   async function deleteUsage(usageId: string) {
-    await api.deleteUsage(packageId, usageId);
+    await api.deleteUsage(subscriptionId, usageId);
     setItems((prev) => prev?.filter((u) => u.id !== usageId) ?? null);
     onChange?.();
   }
 
   async function updateUsage(usageId: string, amount: number, notes: string | null) {
-    const updated = await api.updateUsage(packageId, usageId, { amount, notes });
+    const updated = await api.updateUsage(subscriptionId, usageId, { amount, notes });
     setItems((prev) => prev?.map((u) => (u.id === usageId ? updated : u)) ?? null);
     onChange?.();
   }
@@ -378,7 +378,7 @@ function addErrorMessage(err: unknown): string {
   if (err instanceof ApiError) {
     switch (err.code) {
       case "amount_must_be_positive": return "Amount must be greater than 0.";
-      case "not_found":                return "Package not found.";
+      case "not_found":                return "Subscription not found.";
       default:                         return `Couldn't add (${err.code}).`;
     }
   }

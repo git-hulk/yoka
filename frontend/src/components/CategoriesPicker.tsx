@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 interface Props {
   id?:      string;
   values:   readonly string[];
-  options:  readonly string[];          // existing categories from other packages
+  options:  readonly string[];          // existing categories from other subscriptions
   onChange: (values: string[]) => void;
   max?:     number;
   placeholder?: string;

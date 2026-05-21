@@ -1,4 +1,4 @@
-// Mirror of the Rust wire types in src/schema/packages.rs.
+// Mirror of the Rust wire types in src/schema/subscriptions.rs.
 // Kept hand-written (no codegen) — small surface, churn is rare.
 
 export type Status = "active" | "not_start" | "done" | "expired";
@@ -8,7 +8,7 @@ export type TrackingMode = "units" | "hours" | "duration";
 export type Currency = "USD" | "SGD" | "CNY" | "JPY";
 export const CURRENCIES: readonly Currency[] = ["USD", "SGD", "CNY", "JPY"];
 
-export interface Package {
+export interface Subscription {
   id: string;
   name: string;
   quantity: number | null;       // null iff tracking_mode === "duration"
@@ -33,7 +33,7 @@ export interface Package {
 
 export interface Usage {
   id: string;
-  package_id: string;
+  subscription_id: string;
   amount: number;
   debited_by: string | null;
   notes: string | null;

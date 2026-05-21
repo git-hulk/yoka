@@ -2,48 +2,48 @@ import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
 import { api } from "../lib/api";
-import type { PackageInput } from "../lib/api";
+import type { SubscriptionInput } from "../lib/api";
 import { isNotFound, useFetch } from "../lib/useFetch";
-import PackageForm from "../components/PackageForm";
+import SubscriptionForm from "../components/SubscriptionForm";
 import UsageEditor from "../components/UsageEditor";
 
-export default function PackageEdit() {
+export default function SubscriptionEdit() {
   const { id = "" } = useParams<{ id: string }>();
   const navigate    = useNavigate();
   const [refreshKey, setRefreshKey] = useState(0);
 
-  const pkgState    = useFetch(() => api.getPackage(id),   [id, refreshKey]);
-  const usagesState = useFetch(() => api.listUsages(id),   [id, refreshKey]);
+  const subState    = useFetch(() => api.getSubscription(id), [id, refreshKey]);
+  const usagesState = useFetch(() => api.listUsages(id),      [id, refreshKey]);
 
-  if (pkgState.status === "loading") return <Skeleton />;
-  if (pkgState.status === "error") {
-    return isNotFound(pkgState.error)
+  if (subState.status === "loading") return <Skeleton />;
+  if (subState.status === "error") {
+    return isNotFound(subState.error)
       ? <NotFound id={id} />
-      : <ErrorBox title="Couldn't load package" detail={pkgState.error.message} />;
+      : <ErrorBox title="Couldn't load subscription" detail={subState.error.message} />;
   }
 
-  const pkg = pkgState.data;
+  const sub = subState.data;
   const hasUsages =
     usagesState.status === "ok" && usagesState.data.length > 0;
 
-  const initial: PackageInput = {
-    name:          pkg.name,
-    quantity:      pkg.quantity,
-    tracking_mode: pkg.tracking_mode,
-    start_date:    pkg.start_date,
-    expires_at:    pkg.expires_at,
-    notes:         pkg.notes,
-    categories:    pkg.categories,
-    price_cents:   pkg.price_cents,
-    currency:      pkg.currency,
+  const initial: SubscriptionInput = {
+    name:          sub.name,
+    quantity:      sub.quantity,
+    tracking_mode: sub.tracking_mode,
+    start_date:    sub.start_date,
+    expires_at:    sub.expires_at,
+    notes:         sub.notes,
+    categories:    sub.categories,
+    price_cents:   sub.price_cents,
+    currency:      sub.currency,
   };
 
-  async function handleSubmit(input: PackageInput) {
-    const updated = await api.updatePackage(id, input);
-    navigate(`/packages/${updated.id}`);
+  async function handleSubmit(input: SubscriptionInput) {
+    const updated = await api.updateSubscription(id, input);
+    navigate(`/subscriptions/${updated.id}`);
   }
 
-  const isDuration = pkg.tracking_mode === "duration";
+  const isDuration = sub.tracking_mode === "duration";
 
   return (
     <div className="space-y-12">
@@ -52,22 +52,22 @@ export default function PackageEdit() {
           revising
         </span>
         <h1 className="serif mt-2 text-base font-bold leading-none text-ink">
-          {pkg.name}
+          {sub.name}
         </h1>
       </div>
 
-      <PackageForm
+      <SubscriptionForm
         initial={initial}
         lockTrackingMode={hasUsages}
         submitLabel="Save changes"
         onSubmit={handleSubmit}
-        onCancel={() => navigate(`/packages/${id}`)}
+        onCancel={() => navigate(`/subscriptions/${id}`)}
       />
 
       {!isDuration && (
         <UsageEditor
-          packageId={pkg.id}
-          timeKnown={pkg.tracking_mode === "hours"}
+          subscriptionId={sub.id}
+          timeKnown={sub.tracking_mode === "hours"}
           onChange={() => setRefreshKey((k) => k + 1)}
         />
       )}
@@ -96,7 +96,7 @@ function Skeleton() {
 function NotFound({ id }: { id: string }) {
   return (
     <div className="border-y border-hairline py-12 text-center">
-      <p className="serif text-base italic font-semibold text-ink">No such package.</p>
+      <p className="serif text-base italic font-semibold text-ink">No such subscription.</p>
       <p className="mt-3 text-sm text-ink-dim">
         <span className="num">{id}</span> may have been archived or deleted.
       </p>

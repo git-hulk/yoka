@@ -3,20 +3,37 @@
 //! Handlers are deliberately thin: extract args, call domain/db, shape the
 //! response. Anything more interesting belongs in `domain::`.
 
+use std::sync::Arc;
+
 use axum::{
     routing::{get, patch, post},
     Router,
 };
-use sqlx::SqlitePool;
 use tower_http::cors::{Any, CorsLayer};
 use tower_http::trace::TraceLayer;
 
-pub mod packages;
+use crate::db::{Repos, SubscriptionRepo, UsageRepo};
+
+pub mod subscriptions;
 
 /// Shared state passed to every handler.
+///
+/// Holds trait objects rather than a concrete pool so handlers don't know
+/// (or care) which storage backend is running underneath. `Arc` clones are
+/// cheap — handlers receive a fresh `AppState` per request.
 #[derive(Clone)]
 pub struct AppState {
-    pub pool: SqlitePool,
+    pub subscriptions: Arc<dyn SubscriptionRepo>,
+    pub usages: Arc<dyn UsageRepo>,
+}
+
+impl From<Repos> for AppState {
+    fn from(repos: Repos) -> Self {
+        Self {
+            subscriptions: repos.subscriptions,
+            usages: repos.usages,
+        }
+    }
 }
 
 pub fn router(state: AppState) -> Router {
@@ -28,22 +45,25 @@ pub fn router(state: AppState) -> Router {
         .allow_headers(Any);
 
     Router::new()
-        .route("/categories", get(packages::list_categories))
-        .route("/packages", get(packages::list).post(packages::create))
+        .route("/categories", get(subscriptions::list_categories))
         .route(
-            "/packages/:id",
-            get(packages::get_one)
-                .patch(packages::update)
-                .delete(packages::delete),
-        )
-        .route("/packages/:id/archive", post(packages::archive))
-        .route(
-            "/packages/:id/usages",
-            get(packages::list_usages).post(packages::create_usage),
+            "/subscriptions",
+            get(subscriptions::list).post(subscriptions::create),
         )
         .route(
-            "/packages/:id/usages/:usage_id",
-            patch(packages::update_usage).delete(packages::delete_usage),
+            "/subscriptions/:id",
+            get(subscriptions::get_one)
+                .patch(subscriptions::update)
+                .delete(subscriptions::delete),
+        )
+        .route("/subscriptions/:id/archive", post(subscriptions::archive))
+        .route(
+            "/subscriptions/:id/usages",
+            get(subscriptions::list_usages).post(subscriptions::create_usage),
+        )
+        .route(
+            "/subscriptions/:id/usages/:usage_id",
+            patch(subscriptions::update_usage).delete(subscriptions::delete_usage),
         )
         .with_state(state)
         .layer(cors)
