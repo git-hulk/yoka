@@ -27,11 +27,14 @@ export default {
         canvas:   "#FFFFFF",
         surface:  "#FFFFFF",
         hairline: "#D9D2BF",
-        // Fountain-pen ink. The brand color. Restrained: primary action,
-        // brand mark, focus, hover. Never decoration.
+        // Brand color: green. Used on primary action, brand mark, focus,
+        // hover, active states. Pace-status colors (pace.{green,amber,red})
+        // stay semantic — those encode burn-down health, not brand. The
+        // darker green-700 hue keeps text legible at small sizes; chips and
+        // fills use a brighter pure green via inline color (see Calendar.tsx).
         accent: {
-          DEFAULT: "#1E3A5F",
-          soft:    "#1E3A5F14",
+          DEFAULT: "#15803D",
+          soft:    "#15803D14",
         },
       },
       fontFamily: {

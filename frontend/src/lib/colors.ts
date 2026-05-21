@@ -1,15 +1,15 @@
-// Editorial identity palette. Six tinted ink colors, balanced cool/warm.
-// Used to mark each subscription with a consistent color across the app
-// (Home rows, Detail header, Cadence sparkline, Calendar chips). The accent
-// navy and the pace status hues are deliberately part of this set: a sub
-// happening to carry the same color as its pace reads as alignment, not
-// duplication, because the two appear in different positions.
+// Editorial identity palette. Six tinted ink colors, balanced cool/warm,
+// used to mark each subscription with a consistent color across the app
+// (Home rows, Detail header, Cadence sparkline). This palette is purely
+// categorical wayfinding — not the brand accent (which is green, see
+// tailwind.config.js). Navy lives here because it's a useful distinct hue
+// for subscriptions, not because the app is "branded navy".
 export const SUBSCRIPTION_COLORS = [
-  "#1E3A5F", // accent (deep ink navy)
-  "#2E6F4F", // pace-green (forest)
-  "#9C6B16", // pace-amber (gold)
-  "#9E3527", // pace-red (oxblood)
-  "#5C544A", // ink-dim (slate)
+  "#1E3A5F", // deep ink navy
+  "#2E6F4F", // forest
+  "#9C6B16", // gold
+  "#9E3527", // oxblood
+  "#5C544A", // slate
   "#5C7A52", // sage
 ] as const;
 
