@@ -12,8 +12,8 @@ export default function SubscriptionEdit() {
   const navigate    = useNavigate();
   const [refreshKey, setRefreshKey] = useState(0);
 
-  const subState    = useFetch(() => api.getSubscription(id), [id, refreshKey]);
-  const usagesState = useFetch(() => api.listUsages(id),      [id, refreshKey]);
+  const subState    = useFetch(() => api.getSubscription(id),         [id, refreshKey]);
+  const eventsState = useFetch(() => api.listSubscriptionEvents(id), [id, refreshKey]);
 
   if (subState.status === "loading") return <Skeleton />;
   if (subState.status === "error") {
@@ -23,8 +23,10 @@ export default function SubscriptionEdit() {
   }
 
   const sub = subState.data;
+  // Any linked event (pending or accepted) locks the tracking mode — matches
+  // the backend's `any_for_subscription` check.
   const hasUsages =
-    usagesState.status === "ok" && usagesState.data.length > 0;
+    eventsState.status === "ok" && eventsState.data.length > 0;
 
   const initial: SubscriptionInput = {
     name:          sub.name,

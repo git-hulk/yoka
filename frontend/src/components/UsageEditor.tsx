@@ -1,8 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { ApiError, api } from "../lib/api";
 import { formatUsageDay, formatUsageTime } from "../lib/pace";
-import type { Usage } from "../lib/types";
+import type { CalendarEvent, Usage } from "../lib/types";
+import { eventToUsage } from "../lib/types";
 
 interface Props {
   subscriptionId: string;
@@ -13,16 +14,19 @@ interface Props {
   onChange?: () => void;
 }
 
+/** Burn-down history for one subscription. Backed by events: only events
+ *  with `status === "accepted"` count as usages, and the editor surfaces
+ *  exactly those. New entries are created as accepted events. */
 export default function UsageEditor({ subscriptionId, timeKnown, onChange }: Props) {
-  const [items,     setItems]     = useState<Usage[] | null>(null);
+  const [events, setEvents] = useState<CalendarEvent[] | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
-    setItems(null);
+    setEvents(null);
     setLoadError(null);
-    api.listUsages(subscriptionId).then(
-      (data) => { if (!cancelled) setItems(data); },
+    api.listSubscriptionEvents(subscriptionId).then(
+      (data) => { if (!cancelled) setEvents(data); },
       (err) => {
         if (cancelled) return;
         setLoadError(err instanceof Error ? err.message : String(err));
@@ -31,21 +35,51 @@ export default function UsageEditor({ subscriptionId, timeKnown, onChange }: Pro
     return () => { cancelled = true; };
   }, [subscriptionId]);
 
+  // Project events → usage rows. Pending/declined events live on the
+  // calendar but stay out of this list — only accepted burns show here.
+  const items: Usage[] | null = useMemo(() => {
+    if (events === null) return null;
+    return events.flatMap((e) => {
+      const u = eventToUsage(e);
+      return u ? [u] : [];
+    });
+  }, [events]);
+
   async function addUsage(amount: number, notes: string | null) {
-    const created = await api.createUsage(subscriptionId, { amount, notes });
-    setItems((prev) => (prev ? [created, ...prev] : [created]));
+    const created = await api.createEvent({
+      title:           null,
+      start_at:        new Date().toISOString(),
+      end_at:          null,
+      status:          "accepted",
+      subscription_id: subscriptionId,
+      amount,
+      notes,
+    });
+    setEvents((prev) => (prev ? [created, ...prev] : [created]));
     onChange?.();
   }
 
   async function deleteUsage(usageId: string) {
-    await api.deleteUsage(subscriptionId, usageId);
-    setItems((prev) => prev?.filter((u) => u.id !== usageId) ?? null);
+    await api.deleteEvent(usageId);
+    setEvents((prev) => prev?.filter((e) => e.id !== usageId) ?? null);
     onChange?.();
   }
 
   async function updateUsage(usageId: string, amount: number, notes: string | null) {
-    const updated = await api.updateUsage(subscriptionId, usageId, { amount, notes });
-    setItems((prev) => prev?.map((u) => (u.id === usageId ? updated : u)) ?? null);
+    // PUT-style update: send the whole event back. We need the original row
+    // to preserve title/start_at/end_at — the editor only changes amount+notes.
+    const original = events?.find((e) => e.id === usageId);
+    if (!original) throw new Error("usage not found");
+    const updated = await api.updateEvent(usageId, {
+      title:           original.title,
+      start_at:        original.start_at,
+      end_at:          original.end_at,
+      status:          original.status,
+      subscription_id: original.subscription_id,
+      amount,
+      notes,
+    });
+    setEvents((prev) => prev?.map((e) => (e.id === usageId ? updated : e)) ?? null);
     onChange?.();
   }
 
@@ -377,9 +411,11 @@ function formatAmount(n: number): string {
 function addErrorMessage(err: unknown): string {
   if (err instanceof ApiError) {
     switch (err.code) {
-      case "amount_must_be_positive": return "Amount must be greater than 0.";
-      case "not_found":                return "Subscription not found.";
-      default:                         return `Couldn't add (${err.code}).`;
+      case "amount_must_be_positive":          return "Amount must be greater than 0.";
+      case "events_forbidden_for_duration":    return "This subscription tracks duration, not usage.";
+      case "subscription_amount_mismatch":     return "Both amount and subscription are required.";
+      case "not_found":                        return "Subscription not found.";
+      default:                                 return `Couldn't add (${err.code}).`;
     }
   }
   return err instanceof Error ? err.message : "Couldn't add usage.";
@@ -389,8 +425,8 @@ function saveErrorMessage(err: unknown): string {
   if (err instanceof ApiError) {
     switch (err.code) {
       case "amount_must_be_positive": return "Amount must be greater than 0.";
-      case "not_found":                return "Usage no longer exists.";
-      default:                         return `Couldn't save (${err.code}).`;
+      case "not_found":               return "Usage no longer exists.";
+      default:                        return `Couldn't save (${err.code}).`;
     }
   }
   return err instanceof Error ? err.message : "Couldn't save usage.";

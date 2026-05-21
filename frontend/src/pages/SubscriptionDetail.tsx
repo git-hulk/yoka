@@ -21,6 +21,7 @@ import {
   type Cadence,
 } from "../lib/pace";
 import type { Subscription, Usage } from "../lib/types";
+import { eventToUsage } from "../lib/types";
 import { isNotFound, useFetch } from "../lib/useFetch";
 import Sparkline from "../components/Sparkline";
 import StatusPill from "../components/StatusPill";
@@ -32,7 +33,7 @@ export default function SubscriptionDetail() {
   const { id = "" } = useParams<{ id: string }>();
   const navigate    = useNavigate();
   const subState    = useFetch(() => api.getSubscription(id), [id]);
-  const usagesState = useFetch(() => api.listUsages(id), [id]);
+  const eventsState = useFetch(() => api.listSubscriptionEvents(id), [id]);
 
   if (subState.status === "loading") return <Skeleton />;
   if (subState.status === "error") {
@@ -42,7 +43,14 @@ export default function SubscriptionDetail() {
   }
 
   const sub    = subState.data;
-  const usages = usagesState.status === "ok" ? usagesState.data : [];
+  // Project events → usages: only accepted, subscription-linked rows count
+  // as burns. Pending/declined events live on the calendar.
+  const usages: Usage[] = eventsState.status === "ok"
+    ? eventsState.data.flatMap((e) => {
+        const u = eventToUsage(e);
+        return u ? [u] : [];
+      })
+    : [];
 
   const isDuration = sub.tracking_mode === "duration";
 
@@ -51,7 +59,7 @@ export default function SubscriptionDetail() {
       <Hero
         sub={sub}
         usages={usages}
-        usagesLoading={usagesState.status === "loading"}
+        usagesLoading={eventsState.status === "loading"}
         onRemoved={() => navigate("/")}
       />
 
@@ -61,8 +69,8 @@ export default function SubscriptionDetail() {
 
       {!isDuration && (
         <UsageHistory
-          loading={usagesState.status === "loading"}
-          error={usagesState.status === "error" ? usagesState.error : null}
+          loading={eventsState.status === "loading"}
+          error={eventsState.status === "error" ? eventsState.error : null}
           usages={usages}
           timeKnown={sub.tracking_mode === "hours"}
         />

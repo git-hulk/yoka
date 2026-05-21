@@ -30,7 +30,7 @@
     -webkit-text-size-adjust: 100%;
   }
   body {
-    @apply bg-canvas text-ink font-sans antialiased;
+    @apply bg-white text-ink font-sans antialiased;
   }
   .num {
     font-variant-numeric: tabular-nums;
@@ -56,5 +56,16 @@
   }
   input[type="date"]::-webkit-calendar-picker-indicator:hover {
     opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }

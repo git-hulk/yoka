@@ -112,12 +112,12 @@ impl SubscriptionRepo for SqliteSubscriptionRepo {
         self.fetch(id).await
     }
 
-    /// Hard-delete a subscription and every usage that references it, in one
-    /// transaction. The `usages.subscription_id` FK is `ON DELETE RESTRICT`, so a
+    /// Hard-delete a subscription and every event that references it, in one
+    /// transaction. The `events.subscription_id` FK is `ON DELETE RESTRICT`, so a
     /// bare `DELETE FROM subscriptions` would fail; we wipe the children first.
     async fn delete(&self, id: &str) -> Result<(), AppError> {
         let mut tx = self.pool.begin().await?;
-        sqlx::query("DELETE FROM usages WHERE subscription_id = ?1")
+        sqlx::query("DELETE FROM events WHERE subscription_id = ?1")
             .bind(id)
             .execute(&mut *tx)
             .await?;

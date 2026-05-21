@@ -1,6 +1,6 @@
 //! Database layer.
 //!
-//! Exposes the repository traits (`SubscriptionRepo`, `UsageRepo`) plus the
+//! Exposes the repository traits (`SubscriptionRepo`, `EventRepo`) plus the
 //! row/write types they trade in. The HTTP layer holds `Arc<dyn …>` so the
 //! concrete backend is interchangeable. Each backend lives in its own
 //! submodule (`sqlite`, future `postgres`) and writes idiomatic SQL for its
@@ -11,7 +11,10 @@ use std::sync::Arc;
 pub mod repo;
 pub mod sqlite;
 
-pub use repo::{SubscriptionRepo, SubscriptionRow, SubscriptionWrite, UsageRepo, UsageRow};
+pub use repo::{
+    EventRepo, EventRow, EventStatus, EventWithSubscriptionRow, EventWrite, SubscriptionRepo,
+    SubscriptionRow, SubscriptionWrite,
+};
 
 /// Bundle of repository handles shared by HTTP handlers via `AppState`.
 ///
@@ -21,5 +24,5 @@ pub use repo::{SubscriptionRepo, SubscriptionRow, SubscriptionWrite, UsageRepo, 
 #[derive(Clone)]
 pub struct Repos {
     pub subscriptions: Arc<dyn SubscriptionRepo>,
-    pub usages: Arc<dyn UsageRepo>,
+    pub events: Arc<dyn EventRepo>,
 }

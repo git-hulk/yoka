@@ -6,14 +6,15 @@
 use std::sync::Arc;
 
 use axum::{
-    routing::{get, patch, post},
+    routing::{get, post},
     Router,
 };
 use tower_http::cors::{Any, CorsLayer};
 use tower_http::trace::TraceLayer;
 
-use crate::db::{Repos, SubscriptionRepo, UsageRepo};
+use crate::db::{EventRepo, Repos, SubscriptionRepo};
 
+pub mod events;
 pub mod subscriptions;
 
 /// Shared state passed to every handler.
@@ -24,14 +25,14 @@ pub mod subscriptions;
 #[derive(Clone)]
 pub struct AppState {
     pub subscriptions: Arc<dyn SubscriptionRepo>,
-    pub usages: Arc<dyn UsageRepo>,
+    pub events: Arc<dyn EventRepo>,
 }
 
 impl From<Repos> for AppState {
     fn from(repos: Repos) -> Self {
         Self {
             subscriptions: repos.subscriptions,
-            usages: repos.usages,
+            events: repos.events,
         }
     }
 }
@@ -58,13 +59,18 @@ pub fn router(state: AppState) -> Router {
         )
         .route("/subscriptions/:id/archive", post(subscriptions::archive))
         .route(
-            "/subscriptions/:id/usages",
-            get(subscriptions::list_usages).post(subscriptions::create_usage),
+            "/subscriptions/:id/events",
+            get(events::list_for_subscription),
         )
+        .route("/events", get(events::list_in_range).post(events::create))
         .route(
-            "/subscriptions/:id/usages/:usage_id",
-            patch(subscriptions::update_usage).delete(subscriptions::delete_usage),
+            "/events/:id",
+            get(events::get_one)
+                .patch(events::update)
+                .delete(events::delete),
         )
+        .route("/events/:id/accept", post(events::accept))
+        .route("/events/:id/decline", post(events::decline))
         .with_state(state)
         .layer(cors)
         .layer(TraceLayer::new_for_http())

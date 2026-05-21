@@ -53,19 +53,3 @@ pub struct SubscriptionResponse {
     pub status: Status,
 }
 
-#[derive(Debug, Serialize)]
-pub struct UsageResponse {
-    pub id: String,
-    pub subscription_id: String,
-    pub amount: f64,
-    pub debited_by: Option<String>,
-    pub notes: Option<String>,
-    pub created_at: DateTime<Utc>,
-}
-
-/// Wire input for adding a usage. `notes` is optional.
-#[derive(Debug, Deserialize)]
-pub struct UsageInputBody {
-    pub amount: f64,
-    pub notes: Option<String>,
-}

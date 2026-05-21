@@ -30,12 +30,36 @@ const SubscriptionIcon = (
   </svg>
 );
 
+const CalendarIcon = (
+  <svg
+    viewBox="0 0 16 16"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.5"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className="size-[18px]"
+    aria-hidden="true"
+  >
+    <rect x="2.25" y="3.5" width="11.5" height="10" rx="1.25" />
+    <line x1="2.25" y1="6.25" x2="13.75" y2="6.25" />
+    <line x1="5.25" y1="2.25" x2="5.25" y2="4.5"  />
+    <line x1="10.75" y1="2.25" x2="10.75" y2="4.5" />
+  </svg>
+);
+
 const NAV: NavEntry[] = [
   {
     to:      "/",
     label:   "Subscriptions",
     matches: (p) => p === "/" || p.startsWith("/subscriptions"),
     icon:    SubscriptionIcon,
+  },
+  {
+    to:      "/calendar",
+    label:   "Calendar",
+    matches: (p) => p.startsWith("/calendar"),
+    icon:    CalendarIcon,
   },
   // Future: Members, Settings — append here. The page-level routes get
   // registered in App.tsx; the sidebar only needs the link.
@@ -66,7 +90,7 @@ export default function Sidebar({ collapsed, onToggle }: Props) {
 
       <aside
         className={
-          "flex-col border-r border-hairline bg-canvas " +
+          "flex-col border-r border-hairline bg-white " +
           "md:static md:z-auto md:flex md:shrink-0 md:transition-[width] md:duration-200 md:ease-out " +
           (collapsed
             ? "hidden md:w-16"

@@ -4,7 +4,14 @@
 // server. In production set `VITE_API_BASE` at build time (defaults to ""
 // → same-origin under /api).
 
-import type { Currency, Subscription, TrackingMode, Usage } from "./types";
+import type {
+  CalendarEvent,
+  Currency,
+  EventInRange,
+  EventStatus,
+  Subscription,
+  TrackingMode,
+} from "./types";
 
 const BASE = (import.meta.env.VITE_API_BASE as string | undefined) ?? "";
 
@@ -63,10 +70,19 @@ export interface SubscriptionInput {
   currency:      Currency;
 }
 
-/** Fields when adding a usage entry. */
-export interface UsageInput {
-  amount: number;
-  notes:  string | null;
+/** Fields the user can set when creating or editing an event.
+ *
+ *  `(subscription_id, amount)` must agree: both set (burns the subscription)
+ *  or both null (standalone calendar entry). `status` defaults to "pending"
+ *  when omitted — the backend treats only "accepted" events as burns. */
+export interface EventInput {
+  title:           string | null;
+  start_at:        string;          // ISO-8601 UTC
+  end_at:          string | null;
+  status?:         EventStatus;
+  subscription_id: string | null;
+  amount:          number | null;
+  notes:           string | null;
 }
 
 export const api = {
@@ -79,8 +95,11 @@ export const api = {
   getSubscription:    (id: string) =>
     request<Subscription>(`/subscriptions/${encodeURIComponent(id)}`),
 
-  listUsages:    (id: string) =>
-    request<Usage[]>(`/subscriptions/${encodeURIComponent(id)}/usages`),
+  /** Status-agnostic — returns pending, accepted, and declined events.
+   *  Callers that want only burns (the subscription detail page) filter
+   *  on `status === "accepted"` client-side. */
+  listSubscriptionEvents: (id: string) =>
+    request<CalendarEvent[]>(`/subscriptions/${encodeURIComponent(id)}/events`),
 
   createSubscription: (input: SubscriptionInput) =>
     request<Subscription>("/subscriptions", { method: "POST", body: input }),
@@ -91,30 +110,42 @@ export const api = {
       body:   input,
     }),
 
-  /** Hard-delete: removes the subscription and cascades through its usages. */
+  /** Hard-delete: removes the subscription and cascades through its events. */
   deleteSubscription: (id: string) =>
     request<void>(`/subscriptions/${encodeURIComponent(id)}`, { method: "DELETE" }),
 
-  /** Soft-delete: stamps `archived_at`. Row + usages survive but drop out
+  /** Soft-delete: stamps `archived_at`. Row + events survive but drop out
    *  of the active list. */
   archiveSubscription: (id: string) =>
     request<void>(`/subscriptions/${encodeURIComponent(id)}/archive`, { method: "POST" }),
 
-  createUsage: (subscriptionId: string, input: UsageInput) =>
-    request<Usage>(
-      `/subscriptions/${encodeURIComponent(subscriptionId)}/usages`,
-      { method: "POST", body: input },
+  // ---------- events ------------------------------------------------------
+
+  /** Cross-subscription range query for the calendar. Half-open `[from, to)`.
+   *  Both bounds are ISO-8601 UTC instants. Includes standalone events. */
+  listEventsInRange: (from: string, to: string) =>
+    request<EventInRange[]>(
+      `/events?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`,
     ),
 
-  updateUsage: (subscriptionId: string, usageId: string, input: UsageInput) =>
-    request<Usage>(
-      `/subscriptions/${encodeURIComponent(subscriptionId)}/usages/${encodeURIComponent(usageId)}`,
-      { method: "PATCH", body: input },
-    ),
+  getEvent: (id: string) =>
+    request<CalendarEvent>(`/events/${encodeURIComponent(id)}`),
 
-  deleteUsage: (subscriptionId: string, usageId: string) =>
-    request<void>(
-      `/subscriptions/${encodeURIComponent(subscriptionId)}/usages/${encodeURIComponent(usageId)}`,
-      { method: "DELETE" },
-    ),
+  createEvent: (input: EventInput) =>
+    request<CalendarEvent>("/events", { method: "POST", body: input }),
+
+  updateEvent: (id: string, input: EventInput) =>
+    request<CalendarEvent>(`/events/${encodeURIComponent(id)}`, {
+      method: "PATCH",
+      body:   input,
+    }),
+
+  deleteEvent: (id: string) =>
+    request<void>(`/events/${encodeURIComponent(id)}`, { method: "DELETE" }),
+
+  acceptEvent: (id: string) =>
+    request<CalendarEvent>(`/events/${encodeURIComponent(id)}/accept`, { method: "POST" }),
+
+  declineEvent: (id: string) =>
+    request<CalendarEvent>(`/events/${encodeURIComponent(id)}/decline`, { method: "POST" }),
 };

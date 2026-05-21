@@ -24,8 +24,8 @@ export default {
           faint:   "#8E8675",
         },
         // Warm paper system. canvas = desk, surface = the page.
-        canvas:   "#F1ECDE",
-        surface:  "#FAF6EB",
+        canvas:   "#FFFFFF",
+        surface:  "#FFFFFF",
         hairline: "#D9D2BF",
         // Fountain-pen ink. The brand color. Restrained: primary action,
         // brand mark, focus, hover. Never decoration.
@@ -70,9 +70,35 @@ export default {
           "0%, 100%": { opacity: "0.2", transform: "scale(1)" },
           "50%":      { opacity: "0.5", transform: "scale(1.5)" },
         },
+        // Calendar motion. Short, decisive, product-register timings.
+        backdropIn: {
+          "0%":   { opacity: "0" },
+          "100%": { opacity: "1" },
+        },
+        modalIn: {
+          "0%":   { opacity: "0", transform: "translateY(8px) scale(0.98)" },
+          "100%": { opacity: "1", transform: "translateY(0)    scale(1)" },
+        },
+        chipIn: {
+          "0%":   { opacity: "0", transform: "translateY(-2px) scale(0.96)" },
+          "100%": { opacity: "1", transform: "translateY(0)    scale(1)" },
+        },
+        rowIn: {
+          "0%":   { opacity: "0", transform: "translateY(4px)" },
+          "100%": { opacity: "1", transform: "translateY(0)" },
+        },
+        gridIn: {
+          "0%":   { opacity: "0", transform: "translateY(3px)" },
+          "100%": { opacity: "1", transform: "translateY(0)" },
+        },
       },
       animation: {
-        breathe: "breathe 2.6s cubic-bezier(0.4, 0, 0.2, 1) infinite",
+        breathe:    "breathe 2.6s cubic-bezier(0.4, 0, 0.2, 1) infinite",
+        backdropIn: "backdropIn 180ms cubic-bezier(0.22, 1, 0.36, 1) both",
+        modalIn:    "modalIn 240ms cubic-bezier(0.16, 1, 0.3, 1) both",
+        chipIn:     "chipIn 220ms cubic-bezier(0.22, 1, 0.36, 1) both",
+        rowIn:      "rowIn 280ms cubic-bezier(0.22, 1, 0.36, 1) both",
+        gridIn:     "gridIn 260ms cubic-bezier(0.22, 1, 0.36, 1) both",
       },
     },
   },

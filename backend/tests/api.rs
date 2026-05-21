@@ -31,10 +31,6 @@ async fn make_pool() -> SqlitePool {
         .unwrap()
 }
 
-/// Build an in-memory backend and return both the `AppState` for routing
-/// and the raw `SqlitePool` for seed helpers that need to control
-/// `created_at` (time-travel testing) — a capability the repo traits
-/// deliberately don't expose.
 async fn setup() -> (AppState, SqlitePool) {
     let pool = make_pool().await;
     yoka::db::sqlite::migrate(&pool).await.unwrap();
@@ -47,8 +43,6 @@ async fn body_json(resp: axum::response::Response) -> serde_json::Value {
     serde_json::from_slice(&bytes).unwrap()
 }
 
-/// Insert a units/hours subscription directly via SQL. `quantity` is required;
-/// for duration subscriptions use [`insert_duration_subscription`] instead.
 async fn insert_subscription(pool: &SqlitePool, id: &str, quantity: f64, days_until: i64) {
     let expires_at = (Utc::now() + Duration::days(days_until)).date_naive();
     let start_date = Utc::now().date_naive();
@@ -68,7 +62,6 @@ async fn insert_subscription(pool: &SqlitePool, id: &str, quantity: f64, days_un
     .unwrap();
 }
 
-/// Insert a duration-mode subscription. `quantity` is NULL (CHECK enforces it).
 async fn insert_duration_subscription(
     pool: &SqlitePool,
     id: &str,
@@ -92,7 +85,9 @@ async fn insert_duration_subscription(
     .unwrap();
 }
 
-async fn insert_usage(
+/// Seed a subscription-linked, accepted event in the past. Mirrors the
+/// pre-events `insert_usage` helper for tests that just want pace inputs.
+async fn insert_accepted_event(
     pool: &SqlitePool,
     id: &str,
     subscription_id: &str,
@@ -102,22 +97,21 @@ async fn insert_usage(
     let ts = Utc::now() - Duration::hours(hours_ago);
     sqlx::query(
         r#"
-        INSERT INTO usages (id, subscription_id, amount, created_at)
-        VALUES (?1, ?2, ?3, ?4)
+        INSERT INTO events (id, start_at, status, subscription_id, amount, created_at)
+        VALUES (?1, ?2, 'accepted', ?3, ?4, ?2)
         "#,
     )
     .bind(id)
+    .bind(ts)
     .bind(subscription_id)
     .bind(amount)
-    .bind(ts)
     .execute(pool)
     .await
     .unwrap();
 }
 
 /// Build a minimum-valid create-subscription JSON body. Override individual
-/// fields via `mutate` before sending. Keeps tests compact and intention-
-/// revealing.
+/// fields via `mutate` before sending.
 fn subscription_body(mutate: impl FnOnce(&mut serde_json::Value)) -> serde_json::Value {
     let today = Utc::now().date_naive();
     let expires_at = (Utc::now() + Duration::days(30)).date_naive();
@@ -170,8 +164,14 @@ async fn patch_json(
     .unwrap()
 }
 
+/// Render a UTC timestamp as `YYYY-MM-DDTHH:MM:SS.fffZ` — RFC 3339 but using
+/// the `Z` shortcut so `+` doesn't need URL-encoding.
+fn url_encode_dt(t: &chrono::DateTime<Utc>) -> String {
+    t.format("%Y-%m-%dT%H:%M:%S%.3fZ").to_string()
+}
+
 // ---------------------------------------------------------------------------
-// Tests
+// Subscription read-side
 // ---------------------------------------------------------------------------
 
 #[tokio::test]
@@ -194,8 +194,6 @@ async fn get_subscription_404_when_missing() {
 #[tokio::test]
 async fn get_subscription_returns_derived_pace_fields() {
     let (state, pool) = setup().await;
-    // 14 units, 14 days until expiry, no usages, start_date today → Active,
-    // required = 1.0/day.
     insert_subscription(&pool, "s1", 14.0, 14).await;
 
     let app = router(state);
@@ -212,8 +210,6 @@ async fn get_subscription_returns_derived_pace_fields() {
     assert_eq!(resp.status(), StatusCode::OK);
     let body = body_json(resp).await;
     assert_eq!(body["id"], "s1");
-    assert_eq!(body["quantity"], 14.0);
-    assert_eq!(body["tracking_mode"], "hours");
     assert_eq!(body["consumed"], 0.0);
     assert_eq!(body["remaining"], 14.0);
     assert_eq!(body["status"], "active");
@@ -221,21 +217,20 @@ async fn get_subscription_returns_derived_pace_fields() {
 }
 
 #[tokio::test]
-async fn list_usages_returns_rows_newest_first_and_404s_unknown_subscription() {
+async fn list_subscription_events_returns_newest_first_and_404s_unknown_subscription() {
     let (state, pool) = setup().await;
     insert_subscription(&pool, "s1", 20.0, 30).await;
-    insert_usage(&pool, "u-old", "s1", 3.0, 3).await;
-    insert_usage(&pool, "u-mid", "s1", 2.0, 2).await;
-    insert_usage(&pool, "u-new", "s1", 1.0, 1).await;
+    insert_accepted_event(&pool, "e-old", "s1", 3.0, 3).await;
+    insert_accepted_event(&pool, "e-mid", "s1", 2.0, 2).await;
+    insert_accepted_event(&pool, "e-new", "s1", 1.0, 1).await;
 
-    let app = router(state.clone());
+    let app = router(state);
 
-    // Known subscription: 3 usages newest first.
     let resp = app
         .clone()
         .oneshot(
             Request::builder()
-                .uri("/subscriptions/s1/usages")
+                .uri("/subscriptions/s1/events")
                 .body(Body::empty())
                 .unwrap(),
         )
@@ -245,15 +240,14 @@ async fn list_usages_returns_rows_newest_first_and_404s_unknown_subscription() {
     let body = body_json(resp).await;
     let arr = body.as_array().expect("array");
     assert_eq!(arr.len(), 3);
-    assert_eq!(arr[0]["id"], "u-new");
-    assert_eq!(arr[1]["id"], "u-mid");
-    assert_eq!(arr[2]["id"], "u-old");
+    assert_eq!(arr[0]["id"], "e-new");
+    assert_eq!(arr[1]["id"], "e-mid");
+    assert_eq!(arr[2]["id"], "e-old");
 
-    // Unknown subscription: 404, not [].
     let resp = app
         .oneshot(
             Request::builder()
-                .uri("/subscriptions/ghost/usages")
+                .uri("/subscriptions/ghost/events")
                 .body(Body::empty())
                 .unwrap(),
         )
@@ -262,7 +256,9 @@ async fn list_usages_returns_rows_newest_first_and_404s_unknown_subscription() {
     assert_eq!(resp.status(), StatusCode::NOT_FOUND);
 }
 
-// ---- duration mode --------------------------------------------------------
+// ---------------------------------------------------------------------------
+// Duration mode
+// ---------------------------------------------------------------------------
 
 #[tokio::test]
 async fn create_duration_subscription_with_null_quantity_succeeds() {
@@ -294,23 +290,8 @@ async fn create_duration_subscription_with_quantity_rejected() {
 }
 
 #[tokio::test]
-async fn create_units_subscription_without_quantity_rejected() {
-    let app = router(setup().await.0);
-    let body = subscription_body(|v| {
-        v["tracking_mode"] = serde_json::json!("units");
-        v["quantity"] = serde_json::Value::Null;
-    });
-
-    let resp = post_json(app, "/subscriptions", body).await;
-    assert_eq!(resp.status(), StatusCode::BAD_REQUEST);
-    let body = body_json(resp).await;
-    assert_eq!(body["error"], "quantity_must_be_positive");
-}
-
-#[tokio::test]
 async fn duration_subscription_mid_window_status_and_derivations() {
     let (state, pool) = setup().await;
-    // 90-day window, 30 days in: consumed=30, remaining=60, no pace, active.
     insert_duration_subscription(&pool, "d1", 60, 30).await;
 
     let app = router(state);
@@ -325,61 +306,428 @@ async fn duration_subscription_mid_window_status_and_derivations() {
         .unwrap();
     assert_eq!(resp.status(), StatusCode::OK);
     let body = body_json(resp).await;
-    assert_eq!(body["tracking_mode"], "duration");
-    assert!(body["quantity"].is_null());
+    assert_eq!(body["status"], "active");
     assert_eq!(body["consumed"], 30.0);
     assert_eq!(body["remaining"], 60.0);
-    assert_eq!(body["status"], "active");
-    assert!(body["required_pace_per_day"].is_null());
 }
 
 #[tokio::test]
-async fn duration_subscription_after_window_is_done() {
-    let (state, pool) = setup().await;
-    // Window ended 5 days ago — no Expired in duration mode, only Done.
-    insert_duration_subscription(&pool, "d2", -5, 95).await;
-
-    let app = router(state);
-    let resp = app
-        .oneshot(
-            Request::builder()
-                .uri("/subscriptions/d2")
-                .body(Body::empty())
-                .unwrap(),
-        )
-        .await
-        .unwrap();
-    assert_eq!(resp.status(), StatusCode::OK);
-    let body = body_json(resp).await;
-    assert_eq!(body["status"], "done");
-    assert_eq!(body["remaining"], 0.0);
-}
-
-#[tokio::test]
-async fn create_usage_forbidden_on_duration_subscription() {
+async fn create_event_forbidden_on_duration_subscription() {
     let (state, pool) = setup().await;
     insert_duration_subscription(&pool, "d3", 30, 5).await;
 
     let app = router(state);
     let resp = post_json(
         app,
-        "/subscriptions/d3/usages",
-        serde_json::json!({ "amount": 1.0, "notes": null }),
+        "/events",
+        serde_json::json!({
+            "start_at":        Utc::now().to_rfc3339(),
+            "subscription_id": "d3",
+            "amount":          1.0,
+        }),
     )
     .await;
     assert_eq!(resp.status(), StatusCode::BAD_REQUEST);
     let body = body_json(resp).await;
-    assert_eq!(body["error"], "usages_forbidden_for_duration");
+    assert_eq!(body["error"], "events_forbidden_for_duration");
+}
+
+// ---------------------------------------------------------------------------
+// Events: status lifecycle drives pace
+// ---------------------------------------------------------------------------
+
+#[tokio::test]
+async fn pending_event_does_not_count_toward_pace() {
+    let (state, pool) = setup().await;
+    insert_subscription(&pool, "s1", 10.0, 30).await;
+
+    // Default status (omitted) is pending — should not burn the package.
+    let app = router(state);
+    let resp = post_json(
+        app.clone(),
+        "/events",
+        serde_json::json!({
+            "start_at":        (Utc::now() - Duration::hours(1)).to_rfc3339(),
+            "subscription_id": "s1",
+            "amount":          3.0,
+        }),
+    )
+    .await;
+    assert_eq!(resp.status(), StatusCode::CREATED);
+
+    let resp = app
+        .oneshot(
+            Request::builder()
+                .uri("/subscriptions/s1")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    let body = body_json(resp).await;
+    assert_eq!(body["consumed"], 0.0);
+    assert_eq!(body["remaining"], 10.0);
 }
 
 #[tokio::test]
-async fn patch_locks_tracking_mode_once_usages_exist() {
+async fn accepted_event_counts_toward_pace_and_decline_reverses_it() {
     let (state, pool) = setup().await;
     insert_subscription(&pool, "s1", 10.0, 30).await;
-    insert_usage(&pool, "u1", "s1", 1.0, 1).await;
 
     let app = router(state);
-    // Try to flip hours → units while a usage exists.
+    // Create as accepted up front.
+    let resp = post_json(
+        app.clone(),
+        "/events",
+        serde_json::json!({
+            "start_at":        (Utc::now() - Duration::hours(1)).to_rfc3339(),
+            "status":          "accepted",
+            "subscription_id": "s1",
+            "amount":          4.0,
+        }),
+    )
+    .await;
+    assert_eq!(resp.status(), StatusCode::CREATED);
+    let event_id = body_json(resp).await["id"].as_str().unwrap().to_string();
+
+    let resp = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/subscriptions/s1")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    let body = body_json(resp).await;
+    assert_eq!(body["consumed"], 4.0);
+    assert_eq!(body["remaining"], 6.0);
+
+    // Decline removes the burn.
+    let resp = post_json(
+        app.clone(),
+        &format!("/events/{event_id}/decline"),
+        serde_json::json!({}),
+    )
+    .await;
+    assert_eq!(resp.status(), StatusCode::OK);
+
+    let resp = app
+        .oneshot(
+            Request::builder()
+                .uri("/subscriptions/s1")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    let body = body_json(resp).await;
+    assert_eq!(body["consumed"], 0.0);
+    assert_eq!(body["remaining"], 10.0);
+}
+
+#[tokio::test]
+async fn accept_endpoint_flips_status_and_burns_subscription() {
+    let (state, pool) = setup().await;
+    insert_subscription(&pool, "s1", 10.0, 30).await;
+
+    let app = router(state);
+    let resp = post_json(
+        app.clone(),
+        "/events",
+        serde_json::json!({
+            "start_at":        (Utc::now() - Duration::hours(1)).to_rfc3339(),
+            "subscription_id": "s1",
+            "amount":          2.5,
+        }),
+    )
+    .await;
+    let event_id = body_json(resp).await["id"].as_str().unwrap().to_string();
+
+    let resp = post_json(
+        app.clone(),
+        &format!("/events/{event_id}/accept"),
+        serde_json::json!({}),
+    )
+    .await;
+    assert_eq!(resp.status(), StatusCode::OK);
+    let body = body_json(resp).await;
+    assert_eq!(body["status"], "accepted");
+
+    let resp = app
+        .oneshot(
+            Request::builder()
+                .uri("/subscriptions/s1")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    let body = body_json(resp).await;
+    assert_eq!(body["consumed"], 2.5);
+}
+
+#[tokio::test]
+async fn accept_on_standalone_event_rejected() {
+    let app = router(setup().await.0);
+    let resp = post_json(
+        app.clone(),
+        "/events",
+        serde_json::json!({
+            "title":    "lunch",
+            "start_at": Utc::now().to_rfc3339(),
+        }),
+    )
+    .await;
+    assert_eq!(resp.status(), StatusCode::CREATED);
+    let event_id = body_json(resp).await["id"].as_str().unwrap().to_string();
+
+    let resp = post_json(
+        app,
+        &format!("/events/{event_id}/accept"),
+        serde_json::json!({}),
+    )
+    .await;
+    assert_eq!(resp.status(), StatusCode::BAD_REQUEST);
+    let body = body_json(resp).await;
+    assert_eq!(body["error"], "accept_requires_subscription");
+}
+
+// ---------------------------------------------------------------------------
+// Events: input validation
+// ---------------------------------------------------------------------------
+
+#[tokio::test]
+async fn standalone_event_with_no_subscription_or_amount_succeeds() {
+    let app = router(setup().await.0);
+    let resp = post_json(
+        app,
+        "/events",
+        serde_json::json!({
+            "title":    "coffee",
+            "start_at": Utc::now().to_rfc3339(),
+        }),
+    )
+    .await;
+    assert_eq!(resp.status(), StatusCode::CREATED);
+    let body = body_json(resp).await;
+    assert_eq!(body["title"], "coffee");
+    assert!(body["subscription_id"].is_null());
+    assert!(body["amount"].is_null());
+    assert_eq!(body["status"], "pending");
+}
+
+#[tokio::test]
+async fn event_with_subscription_but_no_amount_rejected() {
+    let (state, pool) = setup().await;
+    insert_subscription(&pool, "s1", 10.0, 30).await;
+
+    let app = router(state);
+    let resp = post_json(
+        app,
+        "/events",
+        serde_json::json!({
+            "start_at":        Utc::now().to_rfc3339(),
+            "subscription_id": "s1",
+        }),
+    )
+    .await;
+    assert_eq!(resp.status(), StatusCode::BAD_REQUEST);
+    let body = body_json(resp).await;
+    assert_eq!(body["error"], "subscription_amount_mismatch");
+}
+
+#[tokio::test]
+async fn event_with_amount_but_no_subscription_rejected() {
+    let app = router(setup().await.0);
+    let resp = post_json(
+        app,
+        "/events",
+        serde_json::json!({
+            "start_at": Utc::now().to_rfc3339(),
+            "amount":   1.0,
+        }),
+    )
+    .await;
+    assert_eq!(resp.status(), StatusCode::BAD_REQUEST);
+    let body = body_json(resp).await;
+    assert_eq!(body["error"], "subscription_amount_mismatch");
+}
+
+#[tokio::test]
+async fn event_end_before_start_rejected() {
+    let app = router(setup().await.0);
+    let start = Utc::now();
+    let resp = post_json(
+        app,
+        "/events",
+        serde_json::json!({
+            "title":    "weird",
+            "start_at": start.to_rfc3339(),
+            "end_at":   (start - Duration::hours(1)).to_rfc3339(),
+        }),
+    )
+    .await;
+    assert_eq!(resp.status(), StatusCode::BAD_REQUEST);
+    let body = body_json(resp).await;
+    assert_eq!(body["error"], "end_before_start");
+}
+
+#[tokio::test]
+async fn future_start_at_allowed() {
+    let app = router(setup().await.0);
+    let resp = post_json(
+        app,
+        "/events",
+        serde_json::json!({
+            "title":    "next week",
+            "start_at": (Utc::now() + Duration::days(7)).to_rfc3339(),
+        }),
+    )
+    .await;
+    // Calendars schedule the future — this must not 400.
+    assert_eq!(resp.status(), StatusCode::CREATED);
+}
+
+// ---------------------------------------------------------------------------
+// Events: range query
+// ---------------------------------------------------------------------------
+
+#[tokio::test]
+async fn list_events_in_range_filters_and_joins_subscription_metadata() {
+    let (state, pool) = setup().await;
+    insert_subscription(&pool, "s1", 20.0, 30).await;
+    insert_subscription(&pool, "s2", 10.0, 30).await;
+
+    insert_accepted_event(&pool, "e1", "s1", 1.0, 3).await;
+    insert_accepted_event(&pool, "e2", "s2", 2.0, 2).await;
+    insert_accepted_event(&pool, "e3", "s1", 3.0, 1).await;
+    insert_accepted_event(&pool, "e4", "s1", 4.0, 0).await;
+
+    // Range `[now - 90m, now + 1h)` catches e3 (-1h) and e4 (-0h).
+    let from = Utc::now() - Duration::minutes(90);
+    let to = Utc::now() + Duration::hours(1);
+    let uri = format!(
+        "/events?from={}&to={}",
+        url_encode_dt(&from),
+        url_encode_dt(&to)
+    );
+
+    let app = router(state);
+    let resp = app
+        .oneshot(Request::builder().uri(&uri).body(Body::empty()).unwrap())
+        .await
+        .unwrap();
+    assert_eq!(resp.status(), StatusCode::OK);
+    let body = body_json(resp).await;
+    let arr = body.as_array().expect("array");
+    assert_eq!(arr.len(), 2);
+    assert_eq!(arr[0]["id"], "e3");
+    assert_eq!(arr[0]["subscription_name"], "sub-s1");
+    assert_eq!(arr[0]["tracking_mode"], "hours");
+    assert_eq!(arr[1]["id"], "e4");
+}
+
+#[tokio::test]
+async fn list_events_in_range_rejects_inverted_range() {
+    let app = router(setup().await.0);
+    let now = Utc::now();
+    let earlier = now - Duration::days(1);
+    let uri = format!(
+        "/events?from={}&to={}",
+        url_encode_dt(&now),
+        url_encode_dt(&earlier)
+    );
+    let resp = app
+        .oneshot(Request::builder().uri(&uri).body(Body::empty()).unwrap())
+        .await
+        .unwrap();
+    assert_eq!(resp.status(), StatusCode::BAD_REQUEST);
+    let body = body_json(resp).await;
+    assert_eq!(body["error"], "range_invalid");
+}
+
+#[tokio::test]
+async fn list_events_in_range_includes_standalone_events() {
+    let (state, _pool) = setup().await;
+    let app = router(state);
+
+    let resp = post_json(
+        app.clone(),
+        "/events",
+        serde_json::json!({
+            "title":    "lunch",
+            "start_at": Utc::now().to_rfc3339(),
+        }),
+    )
+    .await;
+    assert_eq!(resp.status(), StatusCode::CREATED);
+
+    let from = Utc::now() - Duration::hours(1);
+    let to = Utc::now() + Duration::hours(1);
+    let uri = format!(
+        "/events?from={}&to={}",
+        url_encode_dt(&from),
+        url_encode_dt(&to)
+    );
+    let resp = app
+        .oneshot(Request::builder().uri(&uri).body(Body::empty()).unwrap())
+        .await
+        .unwrap();
+    assert_eq!(resp.status(), StatusCode::OK);
+    let body = body_json(resp).await;
+    let arr = body.as_array().expect("array");
+    assert_eq!(arr.len(), 1);
+    assert_eq!(arr[0]["title"], "lunch");
+    assert!(arr[0]["subscription_id"].is_null());
+}
+
+// ---------------------------------------------------------------------------
+// Events: PATCH
+// ---------------------------------------------------------------------------
+
+#[tokio::test]
+async fn patch_event_can_move_start_at_and_change_amount() {
+    let (state, pool) = setup().await;
+    insert_subscription(&pool, "s1", 10.0, 30).await;
+    insert_accepted_event(&pool, "e1", "s1", 1.0, 1).await;
+
+    let new_start = Utc::now() - Duration::days(7);
+    let app = router(state);
+    let resp = patch_json(
+        app,
+        "/events/e1",
+        serde_json::json!({
+            "start_at":        new_start.to_rfc3339(),
+            "status":          "accepted",
+            "subscription_id": "s1",
+            "amount":          2.0,
+            "notes":           "moved",
+        }),
+    )
+    .await;
+
+    assert_eq!(resp.status(), StatusCode::OK);
+    let body = body_json(resp).await;
+    let stamped: chrono::DateTime<Utc> = body["start_at"].as_str().unwrap().parse().unwrap();
+    let drift = (stamped - new_start).num_milliseconds().abs();
+    assert!(drift < 1000);
+    assert_eq!(body["amount"], 2.0);
+    assert_eq!(body["notes"], "moved");
+}
+
+// ---------------------------------------------------------------------------
+// tracking_mode lock — any event (regardless of status) locks the mode.
+// ---------------------------------------------------------------------------
+
+#[tokio::test]
+async fn patch_locks_tracking_mode_once_events_exist() {
+    let (state, pool) = setup().await;
+    insert_subscription(&pool, "s1", 10.0, 30).await;
+    insert_accepted_event(&pool, "e1", "s1", 1.0, 1).await;
+
+    let app = router(state);
     let body = subscription_body(|v| {
         v["tracking_mode"] = serde_json::json!("units");
         v["quantity"] = serde_json::json!(10.0);

@@ -1,8 +1,8 @@
 //! SQLite backend.
 //!
 //! Owns the `SqlitePool`, the SQLite-flavored migration runner, and the
-//! concrete `SubscriptionRepo` / `UsageRepo` implementations. The rest of the app
-//! sees only the traits in `db::repo`.
+//! concrete `SubscriptionRepo` / `EventRepo` implementations. The rest of the
+//! app sees only the traits in `db::repo`.
 
 use std::str::FromStr;
 use std::sync::Arc;
@@ -12,11 +12,11 @@ use sqlx::{Executor, Row, SqlitePool};
 
 use crate::db::Repos;
 
+pub mod events;
 pub mod subscriptions;
-pub mod usages;
 
+pub use events::SqliteEventRepo;
 pub use subscriptions::SqliteSubscriptionRepo;
-pub use usages::SqliteUsageRepo;
 
 /// SQLite migrations, applied in order on startup.
 ///
@@ -55,6 +55,10 @@ const MIGRATIONS: &[(&str, &str)] = &[
         include_str!(
             "../../../migrations/sqlite/20260521_000001_rename_packages_to_subscriptions.sql"
         ),
+    ),
+    (
+        "20260521_000002_events",
+        include_str!("../../../migrations/sqlite/20260521_000002_events.sql"),
     ),
 ];
 
@@ -105,10 +109,10 @@ impl SqliteBackend {
     pub fn into_repos(self) -> Repos {
         let subscriptions: Arc<dyn crate::db::SubscriptionRepo> =
             Arc::new(SqliteSubscriptionRepo::new(self.pool.clone()));
-        let usages: Arc<dyn crate::db::UsageRepo> = Arc::new(SqliteUsageRepo::new(self.pool));
+        let events: Arc<dyn crate::db::EventRepo> = Arc::new(SqliteEventRepo::new(self.pool));
         Repos {
             subscriptions,
-            usages,
+            events,
         }
     }
 }

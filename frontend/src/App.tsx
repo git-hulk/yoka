@@ -7,6 +7,7 @@ import Home from "./pages/Home";
 const SubscriptionDetail = lazy(() => import("./pages/SubscriptionDetail"));
 const SubscriptionEdit   = lazy(() => import("./pages/SubscriptionEdit"));
 const SubscriptionNew    = lazy(() => import("./pages/SubscriptionNew"));
+const Calendar           = lazy(() => import("./pages/Calendar"));
 
 const STORAGE_KEY = "yoka:sidebar";
 
@@ -75,6 +76,7 @@ export default function App() {
               <Route path="/subscriptions/new"       element={<SubscriptionNew />} />
               <Route path="/subscriptions/:id"       element={<SubscriptionDetail />} />
               <Route path="/subscriptions/:id/edit"  element={<SubscriptionEdit />} />
+              <Route path="/calendar"                element={<Calendar />} />
             </Routes>
           </Suspense>
         </div>

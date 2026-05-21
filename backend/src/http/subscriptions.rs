@@ -1,14 +1,15 @@
 //! Subscription handlers.
 //!
-//! Read-side only in this slice. Thin: extract path arg, call db + domain,
-//! return a wire type.
+//! Thin: extract path arg, call db + domain, return a wire type. Event-side
+//! handlers live in `http::events` — subscriptions just own their own CRUD
+//! plus the archive shortcut.
 
 use axum::{
     extract::{Path, State},
     http::StatusCode,
     Json,
 };
-use chrono::{DateTime, Utc};
+use chrono::Utc;
 use uuid::Uuid;
 
 use crate::{
@@ -16,9 +17,7 @@ use crate::{
     domain::lifecycle::{self, TrackingMode, UsageInput},
     error::AppError,
     http::AppState,
-    schema::subscriptions::{
-        SubscriptionInput, SubscriptionResponse, UsageInputBody, UsageResponse,
-    },
+    schema::subscriptions::{SubscriptionInput, SubscriptionResponse},
 };
 
 const SUPPORTED_CURRENCIES: &[&str] = &["USD", "SGD", "CNY", "JPY"];
@@ -33,7 +32,7 @@ pub async fn list(
     }
 
     let ids: Vec<String> = rows.iter().map(|r| r.id.clone()).collect();
-    let by_sub = state.usages.amounts_for_pace_many(&ids).await?;
+    let by_sub = state.events.amounts_for_pace_many(&ids).await?;
     let now = Utc::now();
 
     let body = rows
@@ -57,7 +56,7 @@ pub async fn get_one(
     Path(id): Path<String>,
 ) -> Result<Json<SubscriptionResponse>, AppError> {
     let row = state.subscriptions.fetch(&id).await?;
-    let usages = state.usages.amounts_for_pace(&id).await?;
+    let usages = state.events.amounts_for_pace(&id).await?;
     Ok(Json(to_response(row, &usages, Utc::now())))
 }
 
@@ -78,22 +77,22 @@ pub async fn update(
 ) -> Result<Json<SubscriptionResponse>, AppError> {
     let write = validate(&body)?;
 
-    // Lock `tracking_mode` once any usage has been recorded — flipping it
-    // would silently re-interpret historical amounts (units ↔ hours), or
-    // strand usages on a now-duration subscription.
+    // Lock `tracking_mode` once any event has been recorded against the sub —
+    // flipping it would silently re-interpret historical amounts (units ↔
+    // hours), or strand events on a now-duration subscription.
     let current = state.subscriptions.fetch(&id).await?;
     if write.tracking_mode != current.tracking_mode
-        && state.usages.any_for_subscription(&id).await?
+        && state.events.any_for_subscription(&id).await?
     {
         return Err(AppError::BadRequest("tracking_mode_locked"));
     }
 
     let row = state.subscriptions.update(&id, write).await?;
-    let usages = state.usages.amounts_for_pace(&id).await?;
+    let usages = state.events.amounts_for_pace(&id).await?;
     Ok(Json(to_response(row, &usages, Utc::now())))
 }
 
-/// Hard-delete a subscription and all its usages. 204 on success.
+/// Hard-delete a subscription and all events linked to it. 204 on success.
 pub async fn delete(
     State(state): State<AppState>,
     Path(id): Path<String>,
@@ -102,7 +101,7 @@ pub async fn delete(
     Ok(StatusCode::NO_CONTENT)
 }
 
-/// Soft-delete: stamp `archived_at`. The row and its usages survive,
+/// Soft-delete: stamp `archived_at`. The row and its events survive,
 /// but the subscription drops out of `list_active`. Idempotent on rows already
 /// archived — `archive` returns `NotFound` in that case, which is the
 /// right signal for the UI.
@@ -111,107 +110,6 @@ pub async fn archive(
     Path(id): Path<String>,
 ) -> Result<StatusCode, AppError> {
     state.subscriptions.archive(&id).await?;
-    Ok(StatusCode::NO_CONTENT)
-}
-
-pub async fn list_usages(
-    State(state): State<AppState>,
-    Path(id): Path<String>,
-) -> Result<Json<Vec<UsageResponse>>, AppError> {
-    // 404 if the subscription doesn't exist — distinguishes "no such subscription"
-    // from "subscription exists but has no usages yet" (which returns []).
-    if !state.subscriptions.exists(&id).await? {
-        return Err(AppError::NotFound);
-    }
-
-    let rows = state.usages.list(&id).await?;
-    let body = rows
-        .into_iter()
-        .map(|r| UsageResponse {
-            id: r.id,
-            subscription_id: r.subscription_id,
-            amount: r.amount,
-            debited_by: r.debited_by,
-            notes: r.notes,
-            created_at: r.created_at,
-        })
-        .collect();
-
-    Ok(Json(body))
-}
-
-pub async fn create_usage(
-    State(state): State<AppState>,
-    Path(id): Path<String>,
-    Json(body): Json<UsageInputBody>,
-) -> Result<(StatusCode, Json<UsageResponse>), AppError> {
-    if !body.amount.is_finite() || body.amount <= 0.0 {
-        return Err(AppError::BadRequest("amount_must_be_positive"));
-    }
-    // Existence + tracking-mode check in one read. Duration subscriptions are
-    // date-only — they have no quantity to debit, so usages are forbidden.
-    let sub = state.subscriptions.fetch(&id).await?;
-    if sub.tracking_mode == TrackingMode::Duration {
-        return Err(AppError::BadRequest("usages_forbidden_for_duration"));
-    }
-    let notes = body
-        .notes
-        .as_deref()
-        .map(str::trim)
-        .filter(|s| !s.is_empty());
-
-    let usage_id = Uuid::new_v4().to_string();
-    let row = state
-        .usages
-        .insert(&usage_id, &id, body.amount, notes)
-        .await?;
-
-    Ok((
-        StatusCode::CREATED,
-        Json(UsageResponse {
-            id: row.id,
-            subscription_id: row.subscription_id,
-            amount: row.amount,
-            debited_by: row.debited_by,
-            notes: row.notes,
-            created_at: row.created_at,
-        }),
-    ))
-}
-
-pub async fn update_usage(
-    State(state): State<AppState>,
-    Path((id, usage_id)): Path<(String, String)>,
-    Json(body): Json<UsageInputBody>,
-) -> Result<Json<UsageResponse>, AppError> {
-    if !body.amount.is_finite() || body.amount <= 0.0 {
-        return Err(AppError::BadRequest("amount_must_be_positive"));
-    }
-    let notes = body
-        .notes
-        .as_deref()
-        .map(str::trim)
-        .filter(|s| !s.is_empty());
-
-    let row = state
-        .usages
-        .update(&id, &usage_id, body.amount, notes)
-        .await?;
-    Ok(Json(UsageResponse {
-        id: row.id,
-        subscription_id: row.subscription_id,
-        amount: row.amount,
-        debited_by: row.debited_by,
-        notes: row.notes,
-        created_at: row.created_at,
-    }))
-}
-
-pub async fn delete_usage(
-    State(state): State<AppState>,
-    Path((id, usage_id)): Path<(String, String)>,
-) -> Result<StatusCode, AppError> {
-    state.usages.delete(&id, &usage_id).await?;
     Ok(StatusCode::NO_CONTENT)
 }
 
@@ -304,7 +202,7 @@ fn validate(body: &SubscriptionInput) -> Result<SubscriptionWrite<'_>, AppError>
 fn to_response(
     row: SubscriptionRow,
     usages: &[UsageInput],
-    now: DateTime<Utc>,
+    now: chrono::DateTime<Utc>,
 ) -> SubscriptionResponse {
     let derived = lifecycle::derive(
         row.tracking_mode,
