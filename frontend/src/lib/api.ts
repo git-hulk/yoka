@@ -10,6 +10,7 @@ import type {
   EventInRange,
   EventStatus,
   Subscription,
+  SubscriptionsPage,
   TrackingMode,
 } from "./types";
 
@@ -87,8 +88,15 @@ export interface EventInput {
 }
 
 export const api = {
-  listSubscriptions:  () =>
-    request<Subscription[]>("/subscriptions"),
+  /** Paginated list. Server defaults: `page = 1`, `per_page = 10`
+   *  (max 100). Returns the items plus a `total` count for the page UI. */
+  listSubscriptions: (params: { page?: number; perPage?: number } = {}) => {
+    const qs = new URLSearchParams();
+    if (params.page !== undefined) qs.set("page", String(params.page));
+    if (params.perPage !== undefined) qs.set("per_page", String(params.perPage));
+    const suffix = qs.toString() ? `?${qs.toString()}` : "";
+    return request<SubscriptionsPage>(`/subscriptions${suffix}`);
+  },
 
   listCategories: () =>
     request<string[]>("/categories"),

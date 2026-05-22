@@ -85,7 +85,10 @@ export default function Calendar() {
   );
 
   // Subscription list powers the new-event modal's picker and the color map.
-  const subsState = useFetch(() => api.listSubscriptions(), []);
+  // Modal pickers need the full subscription list, not just one page. 100 is
+  // the server's per-page cap; if the active list grows past that, the picker
+  // needs a search/typeahead, not more pagination knobs here.
+  const subsState = useFetch(() => api.listSubscriptions({ perPage: 100 }), []);
 
   const [modal, setModal] = useState<ModalState>(null);
 
@@ -135,7 +138,7 @@ export default function Calendar() {
     setModal(null);
   }
 
-  const subscriptions = subsState.status === "ok" ? subsState.data : [];
+  const subscriptions = subsState.status === "ok" ? subsState.data.items : [];
   const subscriptionsError = subsState.status === "error" ? subsState.error.message : null;
 
   return (
@@ -358,11 +361,8 @@ function MonthGrid({
               onClick={() => onPickDay(d)}
               aria-label={`add event on ${key}`}
               className={
-                "group relative flex min-h-[7rem] flex-col items-stretch gap-1.5 px-2.5 py-2.5 text-left " +
-                "transition-colors duration-200 ease-out hover:bg-white " +
-                (isToday
-                  ? "bg-accent/[0.04]"
-                  : inMonth ? "bg-white" : "bg-white/50")
+                "group relative flex min-h-[7rem] flex-col items-stretch gap-1.5 bg-white px-2.5 py-2.5 text-left " +
+                "transition-colors duration-200 ease-out"
               }
             >
               <div className="flex items-center justify-between">

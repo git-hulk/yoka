@@ -165,7 +165,13 @@ pub trait SubscriptionRepo: Send + Sync + 'static {
     /// only at the SQL level — backends return `NotFound` if no row matched,
     /// which the UI treats as "nothing to do".
     async fn archive(&self, id: &str) -> Result<(), AppError>;
-    async fn list_active(&self) -> Result<Vec<SubscriptionRow>, AppError>;
+    /// Paginated active list. Returns the slice plus the *unpaginated* total
+    /// so the HTTP layer can shape a page envelope without a follow-up count.
+    async fn list_active(
+        &self,
+        limit: i64,
+        offset: i64,
+    ) -> Result<(Vec<SubscriptionRow>, i64), AppError>;
     async fn list_categories(&self) -> Result<Vec<String>, AppError>;
 }
 

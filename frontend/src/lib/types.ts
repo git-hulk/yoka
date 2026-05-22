@@ -31,6 +31,15 @@ export interface Subscription {
   status: Status;
 }
 
+/** Page envelope returned by `GET /subscriptions`. Mirror of the Rust
+ *  `ListSubscriptionsResponse`. */
+export interface SubscriptionsPage {
+  items: Subscription[];
+  total: number;
+  page: number;
+  per_page: number;
+}
+
 // ---------------------------------------------------------------------------
 // Events
 // ---------------------------------------------------------------------------

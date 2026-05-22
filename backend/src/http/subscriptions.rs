@@ -5,7 +5,7 @@
 //! plus the archive shortcut.
 
 use axum::{
-    extract::{Path, State},
+    extract::{Path, Query, State},
     http::StatusCode,
     Json,
 };
@@ -17,33 +17,52 @@ use crate::{
     domain::lifecycle::{self, TrackingMode, UsageInput},
     error::AppError,
     http::AppState,
-    schema::subscriptions::{SubscriptionInput, SubscriptionResponse},
+    schema::subscriptions::{
+        ListSubscriptionsQuery, ListSubscriptionsResponse, SubscriptionInput, SubscriptionResponse,
+    },
 };
 
 const SUPPORTED_CURRENCIES: &[&str] = &["USD", "SGD", "CNY", "JPY"];
 const MAX_CATEGORIES: usize = 3;
+const DEFAULT_PER_PAGE: u32 = 10;
+const MAX_PER_PAGE: u32 = 100;
 
 pub async fn list(
     State(state): State<AppState>,
-) -> Result<Json<Vec<SubscriptionResponse>>, AppError> {
-    let rows = state.subscriptions.list_active().await?;
-    if rows.is_empty() {
-        return Ok(Json(Vec::new()));
-    }
+    Query(q): Query<ListSubscriptionsQuery>,
+) -> Result<Json<ListSubscriptionsResponse>, AppError> {
+    let page = q.page.unwrap_or(1).max(1);
+    let per_page = q
+        .per_page
+        .unwrap_or(DEFAULT_PER_PAGE)
+        .clamp(1, MAX_PER_PAGE);
+    let offset = i64::from(page.saturating_sub(1)) * i64::from(per_page);
 
-    let ids: Vec<String> = rows.iter().map(|r| r.id.clone()).collect();
-    let by_sub = state.events.amounts_for_pace_many(&ids).await?;
-    let now = Utc::now();
+    let (rows, total) = state
+        .subscriptions
+        .list_active(i64::from(per_page), offset)
+        .await?;
 
-    let body = rows
-        .into_iter()
-        .map(|row| {
-            let usages = by_sub.get(&row.id).cloned().unwrap_or_default();
-            to_response(row, &usages, now)
-        })
-        .collect();
+    let items = if rows.is_empty() {
+        Vec::new()
+    } else {
+        let ids: Vec<String> = rows.iter().map(|r| r.id.clone()).collect();
+        let by_sub = state.events.amounts_for_pace_many(&ids).await?;
+        let now = Utc::now();
+        rows.into_iter()
+            .map(|row| {
+                let usages = by_sub.get(&row.id).cloned().unwrap_or_default();
+                to_response(row, &usages, now)
+            })
+            .collect()
+    };
 
-    Ok(Json(body))
+    Ok(Json(ListSubscriptionsResponse {
+        items,
+        total,
+        page,
+        per_page,
+    }))
 }
 
 pub async fn list_categories(State(state): State<AppState>) -> Result<Json<Vec<String>>, AppError> {

@@ -9,6 +9,26 @@ use serde::{Deserialize, Serialize};
 
 use crate::domain::lifecycle::{Status, TrackingMode};
 
+/// Query string for the paginated list endpoint. Both fields are optional —
+/// the handler falls back to `page = 1, per_page = 10` and caps `per_page`
+/// at 100 so a hostile caller can't ask for the whole table.
+#[derive(Debug, Deserialize)]
+pub struct ListSubscriptionsQuery {
+    pub page: Option<u32>,
+    pub per_page: Option<u32>,
+}
+
+/// Page envelope. `items` is the slice; `total` is the unpaginated count of
+/// matching rows so the UI can render `start–end of total` and know when to
+/// disable `next`.
+#[derive(Debug, Serialize)]
+pub struct ListSubscriptionsResponse {
+    pub items: Vec<SubscriptionResponse>,
+    pub total: i64,
+    pub page: u32,
+    pub per_page: u32,
+}
+
 /// Wire shape for create and update. Update reuses the same fields — the
 /// form is small enough that PUT-style "send everything" is simpler than
 /// per-field PATCH semantics with `Option<Option<T>>` for nullables.

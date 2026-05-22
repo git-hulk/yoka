@@ -168,15 +168,30 @@ impl SubscriptionRepo for SqliteSubscriptionRepo {
         Ok(rows.into_iter().map(|(c,)| c).collect())
     }
 
-    async fn list_active(&self) -> Result<Vec<SubscriptionRow>, AppError> {
+    async fn list_active(
+        &self,
+        limit: i64,
+        offset: i64,
+    ) -> Result<(Vec<SubscriptionRow>, i64), AppError> {
+        // Two reads against the same WHERE clause. SQLite serializes writes,
+        // so the count and the page can't diverge mid-request in a way that
+        // matters for a single-user app.
         let sql = format!(
             "SELECT {SUBSCRIPTION_COLUMNS} FROM subscriptions \
              WHERE archived_at IS NULL \
-             ORDER BY created_at DESC, id DESC"
+             ORDER BY created_at DESC, id DESC \
+             LIMIT ?1 OFFSET ?2"
         );
         let rows = sqlx::query_as::<_, SubscriptionRow>(&sql)
+            .bind(limit)
+            .bind(offset)
             .fetch_all(&self.pool)
             .await?;
-        Ok(rows)
+        let (total,): (i64,) = sqlx::query_as(
+            r#"SELECT COUNT(*) FROM subscriptions WHERE archived_at IS NULL"#,
+        )
+        .fetch_one(&self.pool)
+        .await?;
+        Ok((rows, total))
     }
 }
