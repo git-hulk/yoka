@@ -2,12 +2,18 @@
 //
 // Twelve vertical bars sized proportionally to the busiest month in the
 // section. Empty months render as just the month label (no bar). Each
-// month carries its own editorial hue so the chart reads as a year at a
-// glance; the current month is tinted with the accent color, taking
-// precedence over the per-month color so "where we are in the year" still
-// reads first.
+// currency has its own identity color so multi-currency dashboards read
+// as distinct at a glance. The current month is marked by tinting just
+// its label in the brand accent — the bar stays in the currency color
+// so identity reads first.
+//
+// A two-tick y-axis (`max → 0`) anchors the scale so a glance gives both
+// shape and magnitude. The axis column is a fixed width so the bars
+// line up horizontally across all currency sections on the same page;
+// the labels themselves are blank when nothing was spent (so a cent-
+// floor "$0.01" tick doesn't read as noise).
 
-import { formatPrice } from "../lib/pace";
+import { formatPrice, minorPerMajor } from "../lib/pace";
 import type { Currency, MonthlyTotal } from "../lib/types";
 
 interface Props {
@@ -26,30 +32,22 @@ const MONTH_LABELS = [
   "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
 ];
 
-// Per-month editorial palette. Twelve desaturated hues chosen to stay in
-// the same register as the rest of the app (forest / gold / oxblood /
-// slate / sage / moss / caramel / wine / pine / cocoa / bronze / olive).
-// Deliberately avoids the accent green (#15803D) and the retired navy.
-const MONTH_COLORS = [
-  "#2E6F4F", // Jan — forest
-  "#5C7F66", // Feb — moss
-  "#5C7A52", // Mar — sage
-  "#4A574A", // Apr — pine
-  "#9C6B16", // May — antique gold
-  "#9C7548", // Jun — caramel
-  "#7C3A4F", // Jul — wine
-  "#9E3527", // Aug — oxblood
-  "#6B4538", // Sep — cocoa
-  "#8E6B4A", // Oct — bronze
-  "#5C544A", // Nov — slate
-  "#3E4A38", // Dec — olive ink
-];
+// One identity color per currency. CNY's forest green deliberately differs
+// from the brand accent (#15803D, brighter / more saturated) so the
+// "current month" override still pops out against a CNY chart.
+const CURRENCY_BAR: Record<Currency, string> = {
+  CNY: "#2E6F4F", // green
+  USD: "#C48A28", // yellow / honey gold
+  SGD: "#7C4FAE", // purple
+  JPY: "#9E3527", // red / oxblood
+};
 
 export default function MonthlyTrendChart({ currency, totals, year }: Props) {
   // Build a dense `month → spent_cents` lookup. Backend already densifies
   // every currency it returns, but be defensive in case of stale clients.
   const byMonth = new Map(totals.map((t) => [t.month, t.spent_cents]));
   const values = Array.from({ length: 12 }, (_, i) => byMonth.get(i + 1) ?? 0);
+  const hasSpend = values.some((v) => v > 0);
   const max = Math.max(1, ...values);
 
   const now = new Date();
@@ -57,46 +55,77 @@ export default function MonthlyTrendChart({ currency, totals, year }: Props) {
   const currentMonthIdx = isCurrentYear ? now.getUTCMonth() : -1; // 0..=11
 
   return (
-    <div className="space-y-2" aria-label={`monthly spend trend in ${currency}`}>
-      <div className="flex h-20 items-end gap-1.5">
-        {values.map((v, i) => {
-          const frac = v / max;
-          // Min visible height for non-zero values so a quiet month is still
-          // a visible mark, not invisible.
-          const heightPct = v > 0 ? Math.max(3, frac * 100) : 0;
-          const current = i === currentMonthIdx;
-          const label = `${MONTH_LABELS[i]}: ${v > 0 ? formatPrice(v, currency) : "—"}`;
-          return (
-            <div
-              key={i}
-              className="flex h-full flex-1 items-end"
-              title={label}
-            >
+    <div aria-label={`monthly spend trend in ${currency}`}>
+      <div className="flex items-stretch gap-2">
+        <div className="num flex h-20 w-10 shrink-0 flex-col justify-between text-right text-[10px] tracking-micro text-ink-faint tabular-nums">
+          <span>{hasSpend ? formatPriceCompact(max, currency) : ""}</span>
+          <span>{hasSpend ? "0" : ""}</span>
+        </div>
+        <div className="flex h-20 flex-1 items-end gap-1.5 border-b border-l border-hairline pl-1.5">
+          {values.map((v, i) => {
+            const frac = v / max;
+            // Min visible height for non-zero values so a quiet month is still
+            // a visible mark, not invisible.
+            const heightPct = v > 0 ? Math.max(3, frac * 100) : 0;
+            const valueLabel = v > 0 ? formatPrice(v, currency) : "—";
+            const ariaLabel = `${MONTH_LABELS[i]}: ${valueLabel}`;
+            return (
               <div
-                className={`w-full transition-all ${current ? "bg-accent" : ""}`}
-                style={current ? { height: `${heightPct}%` } : { height: `${heightPct}%`, backgroundColor: MONTH_COLORS[i] }}
-                aria-label={label}
-              />
-            </div>
-          );
-        })}
+                key={i}
+                className="group relative flex h-full flex-1 items-end"
+              >
+                <span
+                  aria-hidden="true"
+                  className="num pointer-events-none absolute left-1/2 z-10 -translate-x-1/2 whitespace-nowrap rounded-sm bg-ink px-1.5 py-0.5 text-[10px] tracking-micro text-canvas opacity-0 transition-opacity tabular-nums group-hover:opacity-100"
+                  style={{ bottom: `calc(${heightPct}% + 4px)` }}
+                >
+                  {valueLabel}
+                </span>
+                <div
+                  className="w-full transition-all"
+                  style={{ height: `${heightPct}%`, backgroundColor: CURRENCY_BAR[currency] }}
+                  aria-label={ariaLabel}
+                />
+              </div>
+            );
+          })}
+        </div>
       </div>
-      <div className="flex gap-1.5">
-        {MONTH_LABELS.map((m, i) => {
-          const current = i === currentMonthIdx;
-          return (
-            <div
-              key={i}
-              className={
-                "flex-1 text-center text-[10px] uppercase tracking-micro " +
-                (current ? "text-accent" : "text-ink-faint")
-              }
-            >
-              {m}
-            </div>
-          );
-        })}
+      <div className="mt-2 flex items-stretch gap-2">
+        <div aria-hidden="true" className="w-10 shrink-0" />
+        <div className="flex flex-1 gap-1.5 pl-1.5">
+          {MONTH_LABELS.map((m, i) => {
+            const current = i === currentMonthIdx;
+            return (
+              <div
+                key={i}
+                className={
+                  "flex-1 text-center text-[10px] uppercase tracking-micro " +
+                  (current ? "text-accent" : "text-ink-faint")
+                }
+              >
+                {m}
+              </div>
+            );
+          })}
+        </div>
       </div>
     </div>
   );
+}
+
+/** Short magnitude label for axis ticks: "$1.8k", "¥520k", "$240". Uses
+ *  the narrow symbol ($, ¥) instead of the locale-disambiguated prefix
+ *  (S$, CN¥) — the currency section header already names the currency,
+ *  so the axis doesn't need to. */
+function formatPriceCompact(priceCents: number, currency: Currency): string {
+  const major = priceCents / minorPerMajor(currency);
+  return new Intl.NumberFormat(undefined, {
+    style:                 "currency",
+    currency,
+    currencyDisplay:       "narrowSymbol",
+    notation:              "compact",
+    compactDisplay:        "short",
+    maximumFractionDigits: 1,
+  }).format(major);
 }
