@@ -12,8 +12,9 @@ pub mod repo;
 pub mod sqlite;
 
 pub use repo::{
-    EventRepo, EventRow, EventStatus, EventWithSubscriptionRow, EventWrite, SubscriptionRepo,
-    SubscriptionRow, SubscriptionWrite,
+    BudgetRepo, BudgetRow, BudgetWrite, EventRepo, EventRow, EventStatus, EventWithSubscriptionRow,
+    EventWrite, ExpenseRepo, ExpenseRow, ExpenseWrite, RecurringExpenseRepo, RecurringExpenseRow,
+    RecurringExpenseWrite, SubscriptionRepo, SubscriptionRow, SubscriptionWrite,
 };
 
 /// Bundle of repository handles shared by HTTP handlers via `AppState`.
@@ -25,4 +26,7 @@ pub use repo::{
 pub struct Repos {
     pub subscriptions: Arc<dyn SubscriptionRepo>,
     pub events: Arc<dyn EventRepo>,
+    pub expenses: Arc<dyn ExpenseRepo>,
+    pub recurring_expenses: Arc<dyn RecurringExpenseRepo>,
+    pub budgets: Arc<dyn BudgetRepo>,
 }

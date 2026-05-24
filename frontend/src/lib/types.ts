@@ -134,3 +134,125 @@ export function eventToUsage(e: CalendarEvent): Usage | null {
     created_at: e.start_at,
   };
 }
+
+// ---------------------------------------------------------------------------
+// Finance — mirror of backend/src/schema/finance.rs
+// ---------------------------------------------------------------------------
+
+export type Cadence = "monthly" | "yearly";
+
+export type LedgerSourceKind = "subscription" | "expense" | "recurring";
+
+/** One-off expense (`expenses` table). `category` is a single string;
+ *  `""` is allowed and rendered as "Uncategorized" in the UI. */
+export interface Expense {
+  id: string;
+  occurred_on: string;           // "YYYY-MM-DD"
+  amount_cents: number;
+  currency: Currency;
+  category: string;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ExpensesPage {
+  items: Expense[];
+  total: number;
+  page: number;
+  per_page: number;
+}
+
+/** Recurring-expense rule. Instances are derived per month on the server;
+ *  this row is the rule itself. `archived_at` mirrors subscriptions. */
+export interface RecurringExpense {
+  id: string;
+  name: string;
+  amount_cents: number;
+  currency: Currency;
+  category: string;
+  cadence: Cadence;
+  start_date: string;            // "YYYY-MM-DD"
+  end_date: string | null;       // "YYYY-MM-DD", null = open-ended
+  notes: string | null;
+  archived_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+/** Per-month, per-(category, currency) budget. UNIQUE on the triple. */
+export interface Budget {
+  id: string;
+  month: string;                 // "YYYY-MM"
+  category: string;
+  currency: Currency;
+  amount_cents: number;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface LedgerSourceRef {
+  kind: LedgerSourceKind;
+  ref_id: string;
+}
+
+export interface LedgerEntry {
+  date: string;                  // "YYYY-MM-DD"
+  amount_cents: number;
+  currency: Currency;
+  category: string;              // "" = Uncategorized
+  source: LedgerSourceRef;
+  name: string;
+  notes: string | null;
+  /** Tags from a multi-category subscription beyond the budget-attribution
+   *  category. Empty for expense/recurring entries. UI surfaces these as a
+   *  tooltip on the ledger row. */
+  extra_categories: string[];
+}
+
+export interface CategoryTotal {
+  category: string;
+  currency: Currency;
+  spent_cents: number;
+}
+
+/** Pre-joined "budget bar" — one per `(category, currency)` that has either a
+ *  budget set or any spending. `budget_cents === null` means "no budget" and
+ *  the UI renders the bar in grey. */
+export interface BudgetBar {
+  category: string;
+  currency: Currency;
+  budget_cents: number | null;
+  spent_cents: number;
+}
+
+export interface MonthlyLedger {
+  month: string;                 // echo of the query month
+  entries: LedgerEntry[];
+  totals: CategoryTotal[];
+  bars: BudgetBar[];
+  /** Distinct currencies present in entries ∪ bars. The page groups itself
+   *  into one section per currency in this order. */
+  currencies: Currency[];
+}
+
+/** One trend-chart data point: spend in a single month for a single currency.
+ *  `month` is 1..=12; rows are dense across the year, so a quiet month still
+ *  appears with `spent_cents: 0`. */
+export interface MonthlyTotal {
+  month: number;
+  currency: Currency;
+  spent_cents: number;
+}
+
+/** Yearly dashboard payload — summary only. Each `BudgetBar`'s
+ *  `budget_cents` is the sum of the 12 monthly budgets for that
+ *  `(category, currency)`; if no monthly budgets exist, it's `null`.
+ *  `monthly_totals` is the 12-month trend per currency. */
+export interface YearlyLedger {
+  year: string;                  // "YYYY"
+  bars: BudgetBar[];
+  monthly_totals: MonthlyTotal[];
+  currencies: Currency[];
+}

@@ -5,13 +5,20 @@
 // → same-origin under /api).
 
 import type {
+  Budget,
+  Cadence,
   CalendarEvent,
   Currency,
   EventInRange,
   EventStatus,
+  Expense,
+  ExpensesPage,
+  MonthlyLedger,
+  RecurringExpense,
   Subscription,
   SubscriptionsPage,
   TrackingMode,
+  YearlyLedger,
 } from "./types";
 
 const BASE = (import.meta.env.VITE_API_BASE as string | undefined) ?? "";
@@ -28,7 +35,7 @@ export class ApiError extends Error {
 }
 
 interface RequestOpts {
-  method?: "GET" | "POST" | "PATCH" | "DELETE";
+  method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
   body?:   unknown;
 }
 
@@ -157,4 +164,109 @@ export const api = {
 
   declineEvent: (id: string) =>
     request<CalendarEvent>(`/events/${encodeURIComponent(id)}/decline`, { method: "POST" }),
+
+  // ---------- finance -----------------------------------------------------
+
+  /** Workhorse: monthly ledger view + pre-joined budget bars. The page hits
+   *  this once per month switch. */
+  getMonthlyLedger: (month: string) =>
+    request<MonthlyLedger>(`/finance/ledger?month=${encodeURIComponent(month)}`),
+
+  /** Yearly dashboard: aggregated bars per `(category, currency)` summing
+   *  all 12 months of spend and the 12 months of budgets. Read-only —
+   *  budgets are defined monthly. */
+  getYearlyLedger: (year: string) =>
+    request<YearlyLedger>(`/finance/yearly?year=${encodeURIComponent(year)}`),
+
+  listExpenses: (params: { page?: number; perPage?: number } = {}) => {
+    const qs = new URLSearchParams();
+    if (params.page !== undefined) qs.set("page", String(params.page));
+    if (params.perPage !== undefined) qs.set("per_page", String(params.perPage));
+    const suffix = qs.toString() ? `?${qs.toString()}` : "";
+    return request<ExpensesPage>(`/finance/expenses${suffix}`);
+  },
+
+  getExpense: (id: string) =>
+    request<Expense>(`/finance/expenses/${encodeURIComponent(id)}`),
+
+  createExpense: (input: ExpenseInput) =>
+    request<Expense>("/finance/expenses", { method: "POST", body: input }),
+
+  updateExpense: (id: string, input: ExpenseInput) =>
+    request<Expense>(`/finance/expenses/${encodeURIComponent(id)}`, {
+      method: "PATCH",
+      body:   input,
+    }),
+
+  deleteExpense: (id: string) =>
+    request<void>(`/finance/expenses/${encodeURIComponent(id)}`, { method: "DELETE" }),
+
+  listRecurringExpenses: () =>
+    request<RecurringExpense[]>("/finance/recurring-expenses"),
+
+  getRecurringExpense: (id: string) =>
+    request<RecurringExpense>(`/finance/recurring-expenses/${encodeURIComponent(id)}`),
+
+  createRecurringExpense: (input: RecurringExpenseInput) =>
+    request<RecurringExpense>("/finance/recurring-expenses", { method: "POST", body: input }),
+
+  updateRecurringExpense: (id: string, input: RecurringExpenseInput) =>
+    request<RecurringExpense>(`/finance/recurring-expenses/${encodeURIComponent(id)}`, {
+      method: "PATCH",
+      body:   input,
+    }),
+
+  deleteRecurringExpense: (id: string) =>
+    request<void>(`/finance/recurring-expenses/${encodeURIComponent(id)}`, { method: "DELETE" }),
+
+  archiveRecurringExpense: (id: string) =>
+    request<void>(`/finance/recurring-expenses/${encodeURIComponent(id)}/archive`, {
+      method: "POST",
+    }),
+
+  listBudgets: (month: string) =>
+    request<Budget[]>(`/finance/budgets?month=${encodeURIComponent(month)}`),
+
+  createBudget: (input: BudgetInput) =>
+    request<Budget>("/finance/budgets", { method: "POST", body: input }),
+
+  updateBudget: (id: string, input: BudgetInput) =>
+    request<Budget>(`/finance/budgets/${encodeURIComponent(id)}`, {
+      method: "PUT",
+      body:   input,
+    }),
+
+  deleteBudget: (id: string) =>
+    request<void>(`/finance/budgets/${encodeURIComponent(id)}`, { method: "DELETE" }),
 };
+
+// ---------------------------------------------------------------------------
+// Finance input types — wire shapes for create/update
+// ---------------------------------------------------------------------------
+
+export interface ExpenseInput {
+  occurred_on:  string;            // "YYYY-MM-DD"
+  amount_cents: number;
+  currency:     Currency;
+  category:     string;            // "" allowed
+  notes:        string | null;
+}
+
+export interface RecurringExpenseInput {
+  name:         string;
+  amount_cents: number;
+  currency:     Currency;
+  category:     string;
+  cadence:      Cadence;
+  start_date:   string;            // "YYYY-MM-DD"
+  end_date:     string | null;     // "YYYY-MM-DD" or null
+  notes:        string | null;
+}
+
+export interface BudgetInput {
+  month:        string;            // "YYYY-MM"
+  category:     string;
+  currency:     Currency;
+  amount_cents: number;
+  notes:        string | null;
+}

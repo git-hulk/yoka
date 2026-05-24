@@ -187,11 +187,10 @@ impl SubscriptionRepo for SqliteSubscriptionRepo {
             .bind(offset)
             .fetch_all(&self.pool)
             .await?;
-        let (total,): (i64,) = sqlx::query_as(
-            r#"SELECT COUNT(*) FROM subscriptions WHERE archived_at IS NULL"#,
-        )
-        .fetch_one(&self.pool)
-        .await?;
+        let (total,): (i64,) =
+            sqlx::query_as(r#"SELECT COUNT(*) FROM subscriptions WHERE archived_at IS NULL"#)
+                .fetch_one(&self.pool)
+                .await?;
         Ok((rows, total))
     }
 }

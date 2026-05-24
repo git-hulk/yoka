@@ -4,10 +4,15 @@ import { Route, Routes } from "react-router-dom";
 import Sidebar from "./components/Sidebar";
 import Home from "./pages/Home";
 
-const SubscriptionDetail = lazy(() => import("./pages/SubscriptionDetail"));
-const SubscriptionEdit   = lazy(() => import("./pages/SubscriptionEdit"));
-const SubscriptionNew    = lazy(() => import("./pages/SubscriptionNew"));
-const Calendar           = lazy(() => import("./pages/Calendar"));
+const SubscriptionDetail    = lazy(() => import("./pages/SubscriptionDetail"));
+const SubscriptionEdit      = lazy(() => import("./pages/SubscriptionEdit"));
+const SubscriptionNew       = lazy(() => import("./pages/SubscriptionNew"));
+const Calendar              = lazy(() => import("./pages/Calendar"));
+const FinanceHome           = lazy(() => import("./pages/finance/FinanceHome"));
+const ExpenseNew            = lazy(() => import("./pages/finance/ExpenseNew"));
+const ExpenseEdit           = lazy(() => import("./pages/finance/ExpenseEdit"));
+const RecurringExpenseNew   = lazy(() => import("./pages/finance/RecurringExpenseNew"));
+const RecurringExpenseEdit  = lazy(() => import("./pages/finance/RecurringExpenseEdit"));
 
 const STORAGE_KEY = "yoka:sidebar";
 
@@ -72,11 +77,16 @@ export default function App() {
         <div className="mx-auto w-full max-w-5xl flex-1 px-6 pt-10 pb-20 sm:px-10">
           <Suspense fallback={<RouteFallback />}>
             <Routes>
-              <Route path="/"                        element={<Home />} />
-              <Route path="/subscriptions/new"       element={<SubscriptionNew />} />
-              <Route path="/subscriptions/:id"       element={<SubscriptionDetail />} />
-              <Route path="/subscriptions/:id/edit"  element={<SubscriptionEdit />} />
-              <Route path="/calendar"                element={<Calendar />} />
+              <Route path="/"                                  element={<Home />} />
+              <Route path="/subscriptions/new"                 element={<SubscriptionNew />} />
+              <Route path="/subscriptions/:id"                 element={<SubscriptionDetail />} />
+              <Route path="/subscriptions/:id/edit"            element={<SubscriptionEdit />} />
+              <Route path="/calendar"                          element={<Calendar />} />
+              <Route path="/finance"                           element={<FinanceHome />} />
+              <Route path="/finance/expenses/new"              element={<ExpenseNew />} />
+              <Route path="/finance/expenses/:id/edit"         element={<ExpenseEdit />} />
+              <Route path="/finance/recurring-expenses/new"    element={<RecurringExpenseNew />} />
+              <Route path="/finance/recurring-expenses/:id/edit" element={<RecurringExpenseEdit />} />
             </Routes>
           </Suspense>
         </div>

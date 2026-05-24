@@ -20,9 +20,7 @@ use crate::{
     domain::recurrence::validate as validate_recurrence,
     error::AppError,
     http::AppState,
-    schema::events::{
-        EventInRangeResponse, EventInput, EventRangeQuery, EventResponse,
-    },
+    schema::events::{EventInRangeResponse, EventInput, EventRangeQuery, EventResponse},
 };
 
 pub async fn list_in_range(
@@ -165,18 +163,19 @@ async fn fetch_virtual_instance(
     // Cheap sanity check: the date must actually be in the series's expansion.
     // Use a tight window to avoid expanding the whole series.
     let next_day = instance_start + chrono::Duration::days(1);
-    let candidates = crate::domain::recurrence::expand_range(
-        parent.start_at,
-        &rule.0,
-        instance_start,
-        next_day,
-    );
+    let candidates =
+        crate::domain::recurrence::expand_range(parent.start_at, &rule.0, instance_start, next_day);
     if !candidates.iter().any(|c| c.date_naive() == instance_date) {
         return Err(AppError::NotFound);
     }
-    let exception = state.events.fetch_exception(parent_id, instance_date).await?;
+    let exception = state
+        .events
+        .fetch_exception(parent_id, instance_date)
+        .await?;
     let status = exception.map(|e| e.status).unwrap_or(parent.status);
-    let end_at = parent.end_at.map(|e| e + (instance_start - parent.start_at));
+    let end_at = parent
+        .end_at
+        .map(|e| e + (instance_start - parent.start_at));
     Ok(EventRow {
         id: format!("{parent_id}:{instance_date}"),
         title: parent.title,
@@ -225,10 +224,7 @@ async fn accept_or_decline_instance(
 ///   * If linked, the subscription exists and is not in `duration` mode.
 ///
 /// `status` defaults to `pending` when the client doesn't supply one.
-async fn validate<'a>(
-    state: &AppState,
-    body: &'a EventInput,
-) -> Result<EventWrite<'a>, AppError> {
+async fn validate<'a>(state: &AppState, body: &'a EventInput) -> Result<EventWrite<'a>, AppError> {
     // (subscription_id, amount) must agree.
     let (subscription_id, amount) = match (body.subscription_id.as_deref(), body.amount) {
         (Some(sid), Some(a)) => {

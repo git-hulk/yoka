@@ -99,7 +99,10 @@ impl EventRepo for SqliteEventRepo {
                     .copied()
                     .unwrap_or(p.status);
                 if effective_status == EventStatus::Accepted {
-                    out.push(UsageInput { amount, created_at: inst });
+                    out.push(UsageInput {
+                        amount,
+                        created_at: inst,
+                    });
                 }
             }
         }
@@ -151,7 +154,11 @@ impl EventRepo for SqliteEventRepo {
         let by_parent = group_exceptions(exceptions);
         let now = Utc::now();
         for p in parents {
-            let (amount, sid, rule) = match (p.amount, p.subscription_id.as_ref(), p.recurrence_rule.as_ref()) {
+            let (amount, sid, rule) = match (
+                p.amount,
+                p.subscription_id.as_ref(),
+                p.recurrence_rule.as_ref(),
+            ) {
                 (Some(a), Some(sid), Some(r)) => (a, sid.clone(), &r.0),
                 _ => continue,
             };
@@ -165,7 +172,10 @@ impl EventRepo for SqliteEventRepo {
                     .copied()
                     .unwrap_or(p.status);
                 if effective_status == EventStatus::Accepted {
-                    bucket.push(UsageInput { amount, created_at: inst });
+                    bucket.push(UsageInput {
+                        amount,
+                        created_at: inst,
+                    });
                 }
             }
         }
@@ -302,11 +312,7 @@ impl EventRepo for SqliteEventRepo {
         }
 
         // Sort by start_at, then id for stable ordering.
-        out.sort_by(|a, b| {
-            a.start_at
-                .cmp(&b.start_at)
-                .then_with(|| a.id.cmp(&b.id))
-        });
+        out.sort_by(|a, b| a.start_at.cmp(&b.start_at).then_with(|| a.id.cmp(&b.id)));
         Ok(out)
     }
 
@@ -426,15 +432,16 @@ impl EventRepo for SqliteEventRepo {
         // Confirm the parent exists *and* is a series root. A non-recurring
         // event has no virtual instances, so an exception against it is a
         // client bug — fail closed.
-        let parent_recurs: Option<(Option<String>,)> = sqlx::query_as(
-            r#"SELECT recurrence_rule FROM events WHERE id = ?1"#,
-        )
-        .bind(parent_id)
-        .fetch_optional(&self.pool)
-        .await?;
+        let parent_recurs: Option<(Option<String>,)> =
+            sqlx::query_as(r#"SELECT recurrence_rule FROM events WHERE id = ?1"#)
+                .bind(parent_id)
+                .fetch_optional(&self.pool)
+                .await?;
         match parent_recurs {
             None => return Err(AppError::NotFound),
-            Some((None,)) => return Err(AppError::BadRequest("exception_requires_recurring_parent")),
+            Some((None,)) => {
+                return Err(AppError::BadRequest("exception_requires_recurring_parent"))
+            }
             Some((Some(_),)) => {}
         }
 
@@ -579,4 +586,3 @@ fn group_exceptions(
     }
     out
 }
-

@@ -7,6 +7,10 @@ interface Props {
   onChange: (values: string[]) => void;
   max?:     number;
   placeholder?: string;
+  /** `"multi"` (default) lets the user pick up to `max` categories.
+   *  `"single"` forces `max = 1` and is the right pick for expenses/budgets
+   *  where each entry attributes to exactly one category. */
+  mode?:    "multi" | "single";
 }
 
 const DEFAULT_MAX = 3;
@@ -19,10 +23,14 @@ const DEFAULT_MAX = 3;
  *
  * Already-selected values are filtered out of the dropdown; case-insensitive
  * exact matches are treated as duplicates.
+ *
+ * In `mode="single"` the cap collapses to 1 and selecting a value replaces
+ * the current pick instead of refusing.
  */
 export default function CategoriesPicker({
-  id, values, options, onChange, max = DEFAULT_MAX, placeholder,
+  id, values, options, onChange, max, placeholder, mode = "multi",
 }: Props) {
+  const effectiveMax = mode === "single" ? 1 : (max ?? DEFAULT_MAX);
   const rootRef  = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -30,7 +38,7 @@ export default function CategoriesPicker({
   const [open,    setOpen]    = useState(false);
   const [active,  setActive]  = useState(-1);
 
-  const atMax = values.length >= max;
+  const atMax = values.length >= effectiveMax;
 
   useEffect(() => {
     if (!open) return;
@@ -73,7 +81,17 @@ export default function CategoriesPicker({
     const t = value.trim();
     if (t === "")                        return;
     if (selectedLc.has(t.toLowerCase())) return;
-    if (values.length >= max)            return;
+    // Single mode: replace the existing pick. Multi: refuse beyond cap.
+    if (values.length >= effectiveMax) {
+      if (mode === "single") {
+        onChange([t]);
+        setCurrent("");
+        setActive(-1);
+        setOpen(false);
+        inputRef.current?.focus();
+      }
+      return;
+    }
     onChange([...values, t]);
     setCurrent("");
     setActive(-1);
@@ -158,9 +176,9 @@ export default function CategoriesPicker({
           />
         )}
 
-        {atMax && (
+        {atMax && mode !== "single" && (
           <span className="serif py-2 text-xs text-ink-faint">
-            max {max} reached
+            max {effectiveMax} reached
           </span>
         )}
       </div>

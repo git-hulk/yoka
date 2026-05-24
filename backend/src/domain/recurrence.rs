@@ -32,13 +32,20 @@ pub enum Freq {
 /// codes for cross-language readability.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Weekly {
-    #[serde(rename = "MO")] Mo,
-    #[serde(rename = "TU")] Tu,
-    #[serde(rename = "WE")] We,
-    #[serde(rename = "TH")] Th,
-    #[serde(rename = "FR")] Fr,
-    #[serde(rename = "SA")] Sa,
-    #[serde(rename = "SU")] Su,
+    #[serde(rename = "MO")]
+    Mo,
+    #[serde(rename = "TU")]
+    Tu,
+    #[serde(rename = "WE")]
+    We,
+    #[serde(rename = "TH")]
+    Th,
+    #[serde(rename = "FR")]
+    Fr,
+    #[serde(rename = "SA")]
+    Sa,
+    #[serde(rename = "SU")]
+    Su,
 }
 
 impl Weekly {
@@ -109,9 +116,9 @@ pub fn expand_range(
     if to <= from {
         return Vec::new();
     }
-    let until_cutoff = rule.until.map(|d| {
-        Utc.from_utc_datetime(&d.and_hms_opt(0, 0, 0).unwrap())
-    });
+    let until_cutoff = rule
+        .until
+        .map(|d| Utc.from_utc_datetime(&d.and_hms_opt(0, 0, 0).unwrap()));
     let max_count = rule.count.unwrap_or(u32::MAX);
     // Hard cap: ~10 years of daily steps, more than enough for weekly/monthly.
     const MAX_STEPS: u32 = 4000;
@@ -155,11 +162,7 @@ pub fn expand_range(
 
 /// Candidate datetime for the Nth step of the rule's natural period. Returns
 /// `None` when the step lands on a non-existent day-of-month.
-fn nth_candidate(
-    root: DateTime<Utc>,
-    rule: &RecurrenceRule,
-    step: u32,
-) -> Option<DateTime<Utc>> {
+fn nth_candidate(root: DateTime<Utc>, rule: &RecurrenceRule, step: u32) -> Option<DateTime<Utc>> {
     match rule.freq {
         Freq::Daily | Freq::Weekly => Some(root + Duration::days(step as i64)),
         Freq::Monthly => {
@@ -175,11 +178,7 @@ fn nth_candidate(
     }
 }
 
-fn weekly_matches(
-    candidate: DateTime<Utc>,
-    root: DateTime<Utc>,
-    rule: &RecurrenceRule,
-) -> bool {
+fn weekly_matches(candidate: DateTime<Utc>, root: DateTime<Utc>, rule: &RecurrenceRule) -> bool {
     let allowed: Vec<Weekday> = match &rule.byweekday {
         Some(days) => days.iter().map(|d| d.to_chrono()).collect(),
         None => vec![root.weekday()],

@@ -4,4 +4,5 @@
 //! breaking the API, and from domain types so domain stays HTTP-agnostic.
 
 pub mod events;
+pub mod finance;
 pub mod subscriptions;

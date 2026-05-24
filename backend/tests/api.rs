@@ -909,3 +909,514 @@ async fn per_instance_edit_and_delete_rejected() {
     let body = body_json(resp).await;
     assert_eq!(body["error"], "per_instance_delete_not_supported");
 }
+
+// ---------------------------------------------------------------------------
+// Finance: ledger + expenses + recurring + budgets
+// ---------------------------------------------------------------------------
+
+/// Build a one-off expense body. Override individual fields via `mutate`.
+fn expense_body(mutate: impl FnOnce(&mut serde_json::Value)) -> serde_json::Value {
+    let mut v = serde_json::json!({
+        "occurred_on":  "2026-05-10",
+        "amount_cents": 1500,
+        "currency":     "SGD",
+        "category":     "Food",
+        "notes":        "Lunch with team",
+    });
+    mutate(&mut v);
+    v
+}
+
+fn recurring_body(mutate: impl FnOnce(&mut serde_json::Value)) -> serde_json::Value {
+    let mut v = serde_json::json!({
+        "name":         "Rent",
+        "amount_cents": 250000,
+        "currency":     "SGD",
+        "category":     "Housing",
+        "cadence":      "monthly",
+        "start_date":   "2026-01-01",
+        "end_date":     null,
+        "notes":        null,
+    });
+    mutate(&mut v);
+    v
+}
+
+fn budget_body(mutate: impl FnOnce(&mut serde_json::Value)) -> serde_json::Value {
+    let mut v = serde_json::json!({
+        "month":        "2026-05",
+        "category":     "Food",
+        "currency":     "SGD",
+        "amount_cents": 60000,
+        "notes":        null,
+    });
+    mutate(&mut v);
+    v
+}
+
+#[tokio::test]
+async fn create_expense_then_fetch_and_list() {
+    let app = router(setup().await.0);
+
+    let resp = post_json(app.clone(), "/finance/expenses", expense_body(|_| {})).await;
+    assert_eq!(resp.status(), StatusCode::CREATED);
+    let body = body_json(resp).await;
+    let id = body["id"].as_str().unwrap().to_string();
+    assert_eq!(body["amount_cents"], 1500);
+    assert_eq!(body["category"], "Food");
+
+    // Fetch one.
+    let resp = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri(format!("/finance/expenses/{id}"))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(resp.status(), StatusCode::OK);
+
+    // List paginated.
+    let resp = app
+        .oneshot(
+            Request::builder()
+                .uri("/finance/expenses")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    let body = body_json(resp).await;
+    assert_eq!(body["total"], 1);
+    assert_eq!(body["items"][0]["id"], id);
+}
+
+#[tokio::test]
+async fn expense_amount_must_be_positive() {
+    let app = router(setup().await.0);
+    let body = expense_body(|v| v["amount_cents"] = serde_json::json!(0));
+    let resp = post_json(app, "/finance/expenses", body).await;
+    assert_eq!(resp.status(), StatusCode::BAD_REQUEST);
+    let body = body_json(resp).await;
+    assert_eq!(body["error"], "amount_must_be_positive");
+}
+
+#[tokio::test]
+async fn expense_unsupported_currency_rejected() {
+    let app = router(setup().await.0);
+    let body = expense_body(|v| v["currency"] = serde_json::json!("EUR"));
+    let resp = post_json(app, "/finance/expenses", body).await;
+    assert_eq!(resp.status(), StatusCode::BAD_REQUEST);
+    let body = body_json(resp).await;
+    assert_eq!(body["error"], "currency_unsupported");
+}
+
+#[tokio::test]
+async fn recurring_expense_end_before_start_rejected() {
+    let app = router(setup().await.0);
+    let body = recurring_body(|v| v["end_date"] = serde_json::json!("2025-12-01"));
+    let resp = post_json(app, "/finance/recurring-expenses", body).await;
+    assert_eq!(resp.status(), StatusCode::BAD_REQUEST);
+    let body = body_json(resp).await;
+    assert_eq!(body["error"], "end_date_before_start");
+}
+
+#[tokio::test]
+async fn recurring_expense_archive_idempotent_via_notfound() {
+    let app = router(setup().await.0);
+    let resp = post_json(
+        app.clone(),
+        "/finance/recurring-expenses",
+        recurring_body(|_| {}),
+    )
+    .await;
+    let id = body_json(resp).await["id"].as_str().unwrap().to_string();
+
+    let resp = post_json(
+        app.clone(),
+        &format!("/finance/recurring-expenses/{id}/archive"),
+        serde_json::json!({}),
+    )
+    .await;
+    assert_eq!(resp.status(), StatusCode::NO_CONTENT);
+
+    // Already archived → 404 (the "nothing to do" signal, same as subscriptions).
+    let resp = post_json(
+        app,
+        &format!("/finance/recurring-expenses/{id}/archive"),
+        serde_json::json!({}),
+    )
+    .await;
+    assert_eq!(resp.status(), StatusCode::NOT_FOUND);
+}
+
+#[tokio::test]
+async fn budget_conflict_on_duplicate_key() {
+    let app = router(setup().await.0);
+    let resp = post_json(app.clone(), "/finance/budgets", budget_body(|_| {})).await;
+    assert_eq!(resp.status(), StatusCode::CREATED);
+
+    // Same (month, category, currency) → conflict.
+    let resp = post_json(app, "/finance/budgets", budget_body(|_| {})).await;
+    assert_eq!(resp.status(), StatusCode::BAD_REQUEST);
+    let body = body_json(resp).await;
+    assert_eq!(body["error"], "budget_conflict");
+}
+
+#[tokio::test]
+async fn budget_invalid_month_format_rejected() {
+    let app = router(setup().await.0);
+    let body = budget_body(|v| v["month"] = serde_json::json!("2026/05"));
+    let resp = post_json(app, "/finance/budgets", body).await;
+    assert_eq!(resp.status(), StatusCode::BAD_REQUEST);
+    let body = body_json(resp).await;
+    assert_eq!(body["error"], "invalid_month_format");
+}
+
+#[tokio::test]
+async fn ledger_excludes_subscriptions_and_aggregates_expense_recurring_into_bars() {
+    let (state, pool) = setup().await;
+    let app = router(state);
+
+    // Seed a subscription explicitly so we can assert it's NOT counted —
+    // subscriptions are excluded from the finance dashboard charts.
+    sqlx::query(
+        r#"
+        INSERT INTO subscriptions (id, name, quantity, tracking_mode, start_date, expires_at,
+                                   categories, price_cents, currency)
+        VALUES ('sub-A', 'Yoga 10x', 10.0, 'units', '2026-05-05', '2026-08-05',
+                '["Wellness"]', 18000, 'USD')
+        "#,
+    )
+    .execute(&pool)
+    .await
+    .unwrap();
+
+    // One-off expense May 10, $45 USD Wellness.
+    let resp = post_json(
+        app.clone(),
+        "/finance/expenses",
+        expense_body(|v| {
+            v["occurred_on"] = serde_json::json!("2026-05-10");
+            v["amount_cents"] = serde_json::json!(4500);
+            v["currency"] = serde_json::json!("USD");
+            v["category"] = serde_json::json!("Wellness");
+            v["notes"] = serde_json::Value::Null;
+        }),
+    )
+    .await;
+    assert_eq!(resp.status(), StatusCode::CREATED);
+
+    // Recurring rule: monthly, started January, $50 USD Wellness.
+    let resp = post_json(
+        app.clone(),
+        "/finance/recurring-expenses",
+        recurring_body(|v| {
+            v["name"] = serde_json::json!("Gym");
+            v["amount_cents"] = serde_json::json!(5000);
+            v["currency"] = serde_json::json!("USD");
+            v["category"] = serde_json::json!("Wellness");
+            v["start_date"] = serde_json::json!("2026-01-15");
+        }),
+    )
+    .await;
+    assert_eq!(resp.status(), StatusCode::CREATED);
+
+    // Budget: $300 USD Wellness for May.
+    let resp = post_json(
+        app.clone(),
+        "/finance/budgets",
+        budget_body(|v| {
+            v["month"] = serde_json::json!("2026-05");
+            v["category"] = serde_json::json!("Wellness");
+            v["currency"] = serde_json::json!("USD");
+            v["amount_cents"] = serde_json::json!(30000);
+        }),
+    )
+    .await;
+    assert_eq!(resp.status(), StatusCode::CREATED);
+
+    // Fetch the ledger for May 2026.
+    let resp = app
+        .oneshot(
+            Request::builder()
+                .uri("/finance/ledger?month=2026-05")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(resp.status(), StatusCode::OK);
+    let body = body_json(resp).await;
+
+    // No subscription entry: 2 rows (expense + recurring), no `subscription`
+    // source anywhere.
+    let entries = body["entries"].as_array().unwrap();
+    assert_eq!(entries.len(), 2);
+    for e in entries {
+        assert_ne!(e["source"]["kind"], "subscription");
+    }
+
+    // Bars: one ("Wellness", "USD") with budget 30000 and
+    // spent_cents = 4500 (expense) + 5000 (recurring) = 9500 — the
+    // subscription's 18000 is NOT included.
+    let bars = body["bars"].as_array().unwrap();
+    assert_eq!(bars.len(), 1);
+    assert_eq!(bars[0]["category"], "Wellness");
+    assert_eq!(bars[0]["currency"], "USD");
+    assert_eq!(bars[0]["budget_cents"], 30000);
+    assert_eq!(bars[0]["spent_cents"], 9500);
+
+    assert_eq!(body["currencies"], serde_json::json!(["USD"]));
+}
+
+#[tokio::test]
+async fn ledger_bar_with_budget_and_no_spend_still_shown() {
+    let app = router(setup().await.0);
+    let resp = post_json(
+        app.clone(),
+        "/finance/budgets",
+        budget_body(|v| {
+            v["month"] = serde_json::json!("2026-05");
+            v["category"] = serde_json::json!("Untouched");
+            v["currency"] = serde_json::json!("SGD");
+            v["amount_cents"] = serde_json::json!(10000);
+        }),
+    )
+    .await;
+    assert_eq!(resp.status(), StatusCode::CREATED);
+
+    let resp = app
+        .oneshot(
+            Request::builder()
+                .uri("/finance/ledger?month=2026-05")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    let body = body_json(resp).await;
+    let bars = body["bars"].as_array().unwrap();
+    assert_eq!(bars.len(), 1);
+    assert_eq!(bars[0]["budget_cents"], 10000);
+    assert_eq!(bars[0]["spent_cents"], 0);
+}
+
+#[tokio::test]
+async fn ledger_bar_with_spend_and_no_budget_still_shown() {
+    let app = router(setup().await.0);
+    let resp = post_json(
+        app.clone(),
+        "/finance/expenses",
+        expense_body(|v| {
+            v["occurred_on"] = serde_json::json!("2026-05-12");
+            v["amount_cents"] = serde_json::json!(2500);
+            v["currency"] = serde_json::json!("SGD");
+            v["category"] = serde_json::json!("Coffee");
+        }),
+    )
+    .await;
+    assert_eq!(resp.status(), StatusCode::CREATED);
+
+    let resp = app
+        .oneshot(
+            Request::builder()
+                .uri("/finance/ledger?month=2026-05")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    let body = body_json(resp).await;
+    let bars = body["bars"].as_array().unwrap();
+    assert_eq!(bars.len(), 1);
+    assert!(bars[0]["budget_cents"].is_null());
+    assert_eq!(bars[0]["spent_cents"], 2500);
+}
+
+#[tokio::test]
+async fn yearly_dashboard_excludes_subscriptions_aggregates_recurring_and_expense() {
+    let (state, pool) = setup().await;
+    let app = router(state);
+
+    // Seed a subscription explicitly so we can verify it's NOT counted in
+    // the yearly aggregation — subscriptions are excluded from the finance
+    // dashboard charts.
+    sqlx::query(
+        r#"
+        INSERT INTO subscriptions (id, name, quantity, tracking_mode, start_date, expires_at,
+                                   categories, price_cents, currency)
+        VALUES ('sub-A', 'Yoga 10x', 10.0, 'units', '2026-05-05', '2026-08-05',
+                '["Wellness"]', 18000, 'USD')
+        "#,
+    )
+    .execute(&pool)
+    .await
+    .unwrap();
+
+    // Two one-off expenses in different months but the same year.
+    for occurred in ["2026-02-10", "2026-09-22"] {
+        let resp = post_json(
+            app.clone(),
+            "/finance/expenses",
+            expense_body(|v| {
+                v["occurred_on"] = serde_json::json!(occurred);
+                v["amount_cents"] = serde_json::json!(4500);
+                v["currency"] = serde_json::json!("USD");
+                v["category"] = serde_json::json!("Wellness");
+                v["notes"] = serde_json::Value::Null;
+            }),
+        )
+        .await;
+        assert_eq!(resp.status(), StatusCode::CREATED);
+    }
+
+    // Monthly recurring rule: $50 every month, USD Wellness, all of 2026.
+    let resp = post_json(
+        app.clone(),
+        "/finance/recurring-expenses",
+        recurring_body(|v| {
+            v["name"] = serde_json::json!("Gym");
+            v["amount_cents"] = serde_json::json!(5000);
+            v["currency"] = serde_json::json!("USD");
+            v["category"] = serde_json::json!("Wellness");
+            v["start_date"] = serde_json::json!("2026-01-01");
+        }),
+    )
+    .await;
+    assert_eq!(resp.status(), StatusCode::CREATED);
+
+    // Budgets for the same category across 3 of the 12 months.
+    for (month, amount) in [("2026-01", 30000), ("2026-02", 30000), ("2026-12", 30000)] {
+        let resp = post_json(
+            app.clone(),
+            "/finance/budgets",
+            budget_body(|v| {
+                v["month"] = serde_json::json!(month);
+                v["category"] = serde_json::json!("Wellness");
+                v["currency"] = serde_json::json!("USD");
+                v["amount_cents"] = serde_json::json!(amount);
+            }),
+        )
+        .await;
+        assert_eq!(resp.status(), StatusCode::CREATED);
+    }
+
+    // Fetch the yearly dashboard.
+    let resp = app
+        .oneshot(
+            Request::builder()
+                .uri("/finance/yearly?year=2026")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(resp.status(), StatusCode::OK);
+    let body = body_json(resp).await;
+
+    assert_eq!(body["year"], "2026");
+    assert_eq!(body["currencies"], serde_json::json!(["USD"]));
+
+    let bars = body["bars"].as_array().unwrap();
+    assert_eq!(bars.len(), 1);
+    let bar = &bars[0];
+    assert_eq!(bar["category"], "Wellness");
+    assert_eq!(bar["currency"], "USD");
+    // Yearly budget = 30000 × 3 months = 90000.
+    assert_eq!(bar["budget_cents"], 90000);
+    // Yearly spend = 2 expenses 9000 + 12 × recurring 5000 = 69000.
+    // The subscription's 18000 is NOT included.
+    assert_eq!(bar["spent_cents"], 69000);
+
+    // Monthly trend: dense 12 entries for USD. Recurring 5000/month is the
+    // baseline; February adds expense (+4500); September adds the other
+    // expense (+4500). May is just the recurring baseline — the subscription
+    // is excluded so May does NOT spike.
+    let monthly = body["monthly_totals"].as_array().unwrap();
+    let usd: Vec<&serde_json::Value> = monthly.iter().filter(|m| m["currency"] == "USD").collect();
+    assert_eq!(usd.len(), 12);
+    let by_month: std::collections::HashMap<u64, i64> = usd
+        .iter()
+        .map(|m| {
+            (
+                m["month"].as_u64().unwrap(),
+                m["spent_cents"].as_i64().unwrap(),
+            )
+        })
+        .collect();
+    assert_eq!(by_month[&1], 5000);
+    assert_eq!(by_month[&2], 5000 + 4500);
+    assert_eq!(by_month[&5], 5000);
+    assert_eq!(by_month[&9], 5000 + 4500);
+    assert_eq!(by_month[&12], 5000);
+}
+
+#[tokio::test]
+async fn yearly_invalid_year_format_rejected() {
+    let app = router(setup().await.0);
+    let resp = app
+        .oneshot(
+            Request::builder()
+                .uri("/finance/yearly?year=26")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(resp.status(), StatusCode::BAD_REQUEST);
+    let body = body_json(resp).await;
+    assert_eq!(body["error"], "invalid_year_format");
+}
+
+#[tokio::test]
+async fn ledger_groups_currencies_separately() {
+    let app = router(setup().await.0);
+    // Two expenses, different currencies, same category.
+    let resp = post_json(
+        app.clone(),
+        "/finance/expenses",
+        expense_body(|v| {
+            v["occurred_on"] = serde_json::json!("2026-05-01");
+            v["amount_cents"] = serde_json::json!(1000);
+            v["currency"] = serde_json::json!("SGD");
+            v["category"] = serde_json::json!("Food");
+        }),
+    )
+    .await;
+    assert_eq!(resp.status(), StatusCode::CREATED);
+    let resp = post_json(
+        app.clone(),
+        "/finance/expenses",
+        expense_body(|v| {
+            v["occurred_on"] = serde_json::json!("2026-05-02");
+            v["amount_cents"] = serde_json::json!(800);
+            v["currency"] = serde_json::json!("USD");
+            v["category"] = serde_json::json!("Food");
+        }),
+    )
+    .await;
+    assert_eq!(resp.status(), StatusCode::CREATED);
+
+    let resp = app
+        .oneshot(
+            Request::builder()
+                .uri("/finance/ledger?month=2026-05")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    let body = body_json(resp).await;
+    // Two distinct currencies in the response.
+    let currencies = body["currencies"].as_array().unwrap();
+    let codes: Vec<String> = currencies
+        .iter()
+        .map(|c| c.as_str().unwrap().to_string())
+        .collect();
+    assert!(codes.contains(&"SGD".to_string()));
+    assert!(codes.contains(&"USD".to_string()));
+    assert_eq!(codes.len(), 2);
+}

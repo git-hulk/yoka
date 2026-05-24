@@ -13,9 +13,11 @@ use sqlx::{Executor, Row, SqlitePool};
 use crate::db::Repos;
 
 pub mod events;
+pub mod finance;
 pub mod subscriptions;
 
 pub use events::SqliteEventRepo;
+pub use finance::{SqliteBudgetRepo, SqliteExpenseRepo, SqliteRecurringExpenseRepo};
 pub use subscriptions::SqliteSubscriptionRepo;
 
 /// SQLite migrations, applied in order on startup.
@@ -63,6 +65,10 @@ const MIGRATIONS: &[(&str, &str)] = &[
     (
         "20260521_000003_recurring_events",
         include_str!("../../../migrations/sqlite/20260521_000003_recurring_events.sql"),
+    ),
+    (
+        "20260522_000001_finance",
+        include_str!("../../../migrations/sqlite/20260522_000001_finance.sql"),
     ),
 ];
 
@@ -113,10 +119,19 @@ impl SqliteBackend {
     pub fn into_repos(self) -> Repos {
         let subscriptions: Arc<dyn crate::db::SubscriptionRepo> =
             Arc::new(SqliteSubscriptionRepo::new(self.pool.clone()));
-        let events: Arc<dyn crate::db::EventRepo> = Arc::new(SqliteEventRepo::new(self.pool));
+        let events: Arc<dyn crate::db::EventRepo> =
+            Arc::new(SqliteEventRepo::new(self.pool.clone()));
+        let expenses: Arc<dyn crate::db::ExpenseRepo> =
+            Arc::new(SqliteExpenseRepo::new(self.pool.clone()));
+        let recurring_expenses: Arc<dyn crate::db::RecurringExpenseRepo> =
+            Arc::new(SqliteRecurringExpenseRepo::new(self.pool.clone()));
+        let budgets: Arc<dyn crate::db::BudgetRepo> = Arc::new(SqliteBudgetRepo::new(self.pool));
         Repos {
             subscriptions,
             events,
+            expenses,
+            recurring_expenses,
+            budgets,
         }
     }
 }

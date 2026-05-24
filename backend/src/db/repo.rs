@@ -15,6 +15,7 @@ use chrono::{DateTime, NaiveDate, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::types::Json;
 
+use crate::domain::ledger::Cadence;
 use crate::domain::lifecycle::{TrackingMode, UsageInput};
 use crate::domain::recurrence::RecurrenceRule;
 use crate::error::AppError;
@@ -244,4 +245,130 @@ pub trait EventRepo: Send + Sync + 'static {
         &self,
         parent_ids: &[String],
     ) -> Result<Vec<EventExceptionRow>, AppError>;
+}
+
+// ---------------------------------------------------------------------------
+// Finance: expenses, recurring expenses, budgets
+// ---------------------------------------------------------------------------
+
+/// Stored row for a one-off expense.
+#[derive(Debug, Clone, sqlx::FromRow)]
+pub struct ExpenseRow {
+    pub id: String,
+    pub occurred_on: NaiveDate,
+    pub amount_cents: i64,
+    pub currency: String,
+    pub category: String,
+    pub notes: Option<String>,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
+
+pub struct ExpenseWrite<'a> {
+    pub occurred_on: NaiveDate,
+    pub amount_cents: i64,
+    pub currency: &'a str,
+    pub category: &'a str,
+    pub notes: Option<&'a str>,
+}
+
+/// Stored row for a recurring-expense rule. Instances are derived on read.
+#[derive(Debug, Clone, sqlx::FromRow)]
+pub struct RecurringExpenseRow {
+    pub id: String,
+    pub name: String,
+    pub amount_cents: i64,
+    pub currency: String,
+    pub category: String,
+    pub cadence: Cadence,
+    pub start_date: NaiveDate,
+    pub end_date: Option<NaiveDate>,
+    pub notes: Option<String>,
+    pub archived_at: Option<DateTime<Utc>>,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
+
+pub struct RecurringExpenseWrite<'a> {
+    pub name: &'a str,
+    pub amount_cents: i64,
+    pub currency: &'a str,
+    pub category: &'a str,
+    pub cadence: Cadence,
+    pub start_date: NaiveDate,
+    pub end_date: Option<NaiveDate>,
+    pub notes: Option<&'a str>,
+}
+
+/// Stored row for a monthly budget. UNIQUE (month, category, currency).
+#[derive(Debug, Clone, sqlx::FromRow)]
+pub struct BudgetRow {
+    pub id: String,
+    pub month: String,
+    pub category: String,
+    pub currency: String,
+    pub amount_cents: i64,
+    pub notes: Option<String>,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
+
+pub struct BudgetWrite<'a> {
+    pub month: &'a str,
+    pub category: &'a str,
+    pub currency: &'a str,
+    pub amount_cents: i64,
+    pub notes: Option<&'a str>,
+}
+
+#[async_trait]
+pub trait ExpenseRepo: Send + Sync + 'static {
+    async fn fetch(&self, id: &str) -> Result<ExpenseRow, AppError>;
+    async fn insert(&self, id: &str, input: ExpenseWrite<'_>) -> Result<ExpenseRow, AppError>;
+    async fn update(&self, id: &str, input: ExpenseWrite<'_>) -> Result<ExpenseRow, AppError>;
+    async fn delete(&self, id: &str) -> Result<(), AppError>;
+    async fn list_paginated(
+        &self,
+        limit: i64,
+        offset: i64,
+    ) -> Result<(Vec<ExpenseRow>, i64), AppError>;
+    /// Every expense whose `occurred_on` falls in the inclusive month window.
+    /// Used by the ledger projection; the manage page uses `list_paginated`.
+    async fn list_in_month(
+        &self,
+        first_day: NaiveDate,
+        last_day: NaiveDate,
+    ) -> Result<Vec<ExpenseRow>, AppError>;
+}
+
+#[async_trait]
+pub trait RecurringExpenseRepo: Send + Sync + 'static {
+    async fn fetch(&self, id: &str) -> Result<RecurringExpenseRow, AppError>;
+    async fn insert(
+        &self,
+        id: &str,
+        input: RecurringExpenseWrite<'_>,
+    ) -> Result<RecurringExpenseRow, AppError>;
+    async fn update(
+        &self,
+        id: &str,
+        input: RecurringExpenseWrite<'_>,
+    ) -> Result<RecurringExpenseRow, AppError>;
+    async fn delete(&self, id: &str) -> Result<(), AppError>;
+    async fn archive(&self, id: &str) -> Result<(), AppError>;
+    async fn list_active(&self) -> Result<Vec<RecurringExpenseRow>, AppError>;
+    async fn list_all(&self) -> Result<Vec<RecurringExpenseRow>, AppError>;
+}
+
+#[async_trait]
+pub trait BudgetRepo: Send + Sync + 'static {
+    async fn fetch(&self, id: &str) -> Result<BudgetRow, AppError>;
+    async fn insert(&self, id: &str, input: BudgetWrite<'_>) -> Result<BudgetRow, AppError>;
+    async fn update(&self, id: &str, input: BudgetWrite<'_>) -> Result<BudgetRow, AppError>;
+    async fn delete(&self, id: &str) -> Result<(), AppError>;
+    async fn list_for_month(&self, month: &str) -> Result<Vec<BudgetRow>, AppError>;
+    /// Every budget row whose `month` falls in the calendar year (i.e.
+    /// month starts with `"YYYY-"`). Used by the yearly dashboard to
+    /// aggregate the 12 monthly budgets per (category, currency).
+    async fn list_for_year(&self, year: &str) -> Result<Vec<BudgetRow>, AppError>;
 }

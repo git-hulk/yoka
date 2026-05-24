@@ -72,4 +72,3 @@ pub struct SubscriptionResponse {
     pub required_pace_per_day: Option<f64>,
     pub status: Status,
 }
-
