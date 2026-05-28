@@ -1076,18 +1076,22 @@ async fn budget_invalid_month_format_rejected() {
 }
 
 #[tokio::test]
-async fn ledger_excludes_subscriptions_and_aggregates_expense_recurring_into_bars() {
+async fn ledger_includes_subscriptions_and_aggregates_into_bars() {
     let (state, pool) = setup().await;
     let app = router(state);
 
-    // Seed a subscription explicitly so we can assert it's NOT counted —
-    // subscriptions are excluded from the finance dashboard charts.
+    // Seed two subscriptions purchased in the target month — one active,
+    // one archived. Both should roll up into the same (category, currency)
+    // bar: archiving doesn't undo a paid-for subscription's cost.
     sqlx::query(
         r#"
         INSERT INTO subscriptions (id, name, quantity, tracking_mode, start_date, expires_at,
-                                   categories, price_cents, currency)
-        VALUES ('sub-A', 'Yoga 10x', 10.0, 'units', '2026-05-05', '2026-08-05',
-                '["Wellness"]', 18000, 'USD')
+                                   categories, price_cents, currency, archived_at)
+        VALUES
+          ('sub-A', 'Yoga 10x',    10.0, 'units', '2026-05-05', '2026-08-05',
+           '["Wellness"]', 18000, 'USD', NULL),
+          ('sub-B', 'Pilates 5x',   5.0, 'units', '2026-05-12', '2026-07-12',
+           '["Wellness"]',  9000, 'USD', '2026-05-20T00:00:00.000Z')
         "#,
     )
     .execute(&pool)
@@ -1151,23 +1155,24 @@ async fn ledger_excludes_subscriptions_and_aggregates_expense_recurring_into_bar
     assert_eq!(resp.status(), StatusCode::OK);
     let body = body_json(resp).await;
 
-    // No subscription entry: 2 rows (expense + recurring), no `subscription`
-    // source anywhere.
+    // Four entries: two subscriptions (active + archived) + expense + recurring.
     let entries = body["entries"].as_array().unwrap();
-    assert_eq!(entries.len(), 2);
-    for e in entries {
-        assert_ne!(e["source"]["kind"], "subscription");
-    }
+    assert_eq!(entries.len(), 4);
+    let sub_count = entries
+        .iter()
+        .filter(|e| e["source"]["kind"] == "subscription")
+        .count();
+    assert_eq!(sub_count, 2);
 
     // Bars: one ("Wellness", "USD") with budget 30000 and
-    // spent_cents = 4500 (expense) + 5000 (recurring) = 9500 — the
-    // subscription's 18000 is NOT included.
+    // spent_cents = 18000 (active sub) + 9000 (archived sub) + 4500 (expense)
+    //             + 5000 (recurring) = 36500.
     let bars = body["bars"].as_array().unwrap();
     assert_eq!(bars.len(), 1);
     assert_eq!(bars[0]["category"], "Wellness");
     assert_eq!(bars[0]["currency"], "USD");
     assert_eq!(bars[0]["budget_cents"], 30000);
-    assert_eq!(bars[0]["spent_cents"], 9500);
+    assert_eq!(bars[0]["spent_cents"], 36500);
 
     assert_eq!(body["currencies"], serde_json::json!(["USD"]));
 }
@@ -1237,13 +1242,13 @@ async fn ledger_bar_with_spend_and_no_budget_still_shown() {
 }
 
 #[tokio::test]
-async fn yearly_dashboard_excludes_subscriptions_aggregates_recurring_and_expense() {
+async fn yearly_dashboard_includes_subscriptions_recurring_and_expense() {
     let (state, pool) = setup().await;
     let app = router(state);
 
-    // Seed a subscription explicitly so we can verify it's NOT counted in
-    // the yearly aggregation — subscriptions are excluded from the finance
-    // dashboard charts.
+    // Seed a subscription that was purchased mid-year — its price rolls
+    // into both the yearly category total and the May entry of the
+    // monthly trend.
     sqlx::query(
         r#"
         INSERT INTO subscriptions (id, name, quantity, tracking_mode, start_date, expires_at,
@@ -1327,14 +1332,12 @@ async fn yearly_dashboard_excludes_subscriptions_aggregates_recurring_and_expens
     assert_eq!(bar["currency"], "USD");
     // Yearly budget = 30000 × 3 months = 90000.
     assert_eq!(bar["budget_cents"], 90000);
-    // Yearly spend = 2 expenses 9000 + 12 × recurring 5000 = 69000.
-    // The subscription's 18000 is NOT included.
-    assert_eq!(bar["spent_cents"], 69000);
+    // Yearly spend = subscription 18000 + 2 expenses 9000 + 12 × recurring 5000 = 87000.
+    assert_eq!(bar["spent_cents"], 87000);
 
     // Monthly trend: dense 12 entries for USD. Recurring 5000/month is the
     // baseline; February adds expense (+4500); September adds the other
-    // expense (+4500). May is just the recurring baseline — the subscription
-    // is excluded so May does NOT spike.
+    // expense (+4500); May adds the subscription (+18000).
     let monthly = body["monthly_totals"].as_array().unwrap();
     let usd: Vec<&serde_json::Value> = monthly.iter().filter(|m| m["currency"] == "USD").collect();
     assert_eq!(usd.len(), 12);
@@ -1349,7 +1352,7 @@ async fn yearly_dashboard_excludes_subscriptions_aggregates_recurring_and_expens
         .collect();
     assert_eq!(by_month[&1], 5000);
     assert_eq!(by_month[&2], 5000 + 4500);
-    assert_eq!(by_month[&5], 5000);
+    assert_eq!(by_month[&5], 5000 + 18000);
     assert_eq!(by_month[&9], 5000 + 4500);
     assert_eq!(by_month[&12], 5000);
 }

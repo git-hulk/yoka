@@ -1,6 +1,7 @@
 //! SQLite implementation of `SubscriptionRepo`.
 
 use async_trait::async_trait;
+use chrono::NaiveDate;
 use sqlx::types::Json;
 use sqlx::SqlitePool;
 
@@ -192,5 +193,23 @@ impl SubscriptionRepo for SqliteSubscriptionRepo {
                 .fetch_one(&self.pool)
                 .await?;
         Ok((rows, total))
+    }
+
+    async fn list_in_range(
+        &self,
+        first_day: NaiveDate,
+        last_day: NaiveDate,
+    ) -> Result<Vec<SubscriptionRow>, AppError> {
+        let sql = format!(
+            "SELECT {SUBSCRIPTION_COLUMNS} FROM subscriptions \
+             WHERE start_date BETWEEN ?1 AND ?2 \
+             ORDER BY start_date, id"
+        );
+        let rows = sqlx::query_as::<_, SubscriptionRow>(&sql)
+            .bind(first_day)
+            .bind(last_day)
+            .fetch_all(&self.pool)
+            .await?;
+        Ok(rows)
     }
 }

@@ -173,6 +173,16 @@ pub trait SubscriptionRepo: Send + Sync + 'static {
         limit: i64,
         offset: i64,
     ) -> Result<(Vec<SubscriptionRow>, i64), AppError>;
+    /// Every subscription whose `start_date` falls in the inclusive range,
+    /// including archived ones. Feeds the finance ledger projection — once a
+    /// subscription has been paid for, the cost is real regardless of whether
+    /// it's later archived; only hard-deleted rows (gone from the table) are
+    /// excluded.
+    async fn list_in_range(
+        &self,
+        first_day: NaiveDate,
+        last_day: NaiveDate,
+    ) -> Result<Vec<SubscriptionRow>, AppError>;
     async fn list_categories(&self) -> Result<Vec<String>, AppError>;
 }
 

@@ -17,9 +17,11 @@ use uuid::Uuid;
 use crate::{
     db::repo::{
         BudgetRow, BudgetWrite, ExpenseRow, ExpenseWrite, RecurringExpenseRow,
-        RecurringExpenseWrite,
+        RecurringExpenseWrite, SubscriptionRow,
     },
-    domain::ledger::{self, ExpenseLedgerInput, RecurringLedgerInput, YearMonth},
+    domain::ledger::{
+        self, ExpenseLedgerInput, RecurringLedgerInput, SubscriptionLedgerInput, YearMonth,
+    },
     error::AppError,
     http::AppState,
     schema::finance::{
@@ -46,19 +48,19 @@ pub async fn monthly_ledger(
     let first = month.first_day();
     let last = month.last_day();
 
-    // Subscriptions are intentionally excluded from the finance dashboard
-    // charts — they live on their own page. Only manual expenses and
-    // recurring rules feed the rollup.
+    let subs_rows = state.subscriptions.list_in_range(first, last).await?;
     let expenses_rows = state.expenses.list_in_month(first, last).await?;
     let rules_rows = state.recurring_expenses.list_active().await?;
     let budgets_rows = state.budgets.list_for_month(&q.month).await?;
 
+    let sub_inputs: Vec<SubscriptionLedgerInput> =
+        subs_rows.iter().map(subscription_to_ledger_input).collect();
     let expense_inputs: Vec<ExpenseLedgerInput> =
         expenses_rows.iter().map(expense_to_ledger_input).collect();
     let rule_inputs: Vec<RecurringLedgerInput> =
         rules_rows.iter().map(recurring_to_ledger_input).collect();
 
-    let ml = ledger::project_month(month, &[], &expense_inputs, &rule_inputs);
+    let ml = ledger::project_month(month, &sub_inputs, &expense_inputs, &rule_inputs);
 
     // Pre-join budgets ↔ spent totals into the `bars` shape.
     let bars = join_bars(&ml.totals, &budgets_rows);
@@ -106,16 +108,19 @@ pub async fn yearly_ledger(
 
     // `list_in_month` takes an arbitrary inclusive date range despite the name —
     // pass the year bounds to pull every expense for the year in one query.
+    let subs_rows = state.subscriptions.list_in_range(first, last).await?;
     let expenses_rows = state.expenses.list_in_month(first, last).await?;
     let rules_rows = state.recurring_expenses.list_active().await?;
     let budgets_rows = state.budgets.list_for_year(&q.year).await?;
 
+    let sub_inputs: Vec<SubscriptionLedgerInput> =
+        subs_rows.iter().map(subscription_to_ledger_input).collect();
     let expense_inputs: Vec<ExpenseLedgerInput> =
         expenses_rows.iter().map(expense_to_ledger_input).collect();
     let rule_inputs: Vec<RecurringLedgerInput> =
         rules_rows.iter().map(recurring_to_ledger_input).collect();
 
-    let yearly = ledger::project_year(year, &[], &expense_inputs, &rule_inputs);
+    let yearly = ledger::project_year(year, &sub_inputs, &expense_inputs, &rule_inputs);
 
     // Aggregate budgets across the 12 months per (category, currency).
     use std::collections::BTreeMap;
@@ -446,6 +451,17 @@ fn validate_budget(body: &BudgetInput) -> Result<BudgetWrite<'_>, AppError> {
 // ---------------------------------------------------------------------------
 // Row → wire conversions
 // ---------------------------------------------------------------------------
+
+fn subscription_to_ledger_input(row: &SubscriptionRow) -> SubscriptionLedgerInput {
+    SubscriptionLedgerInput {
+        id: row.id.clone(),
+        name: row.name.clone(),
+        start_date: row.start_date,
+        price_cents: row.price_cents,
+        currency: row.currency.clone(),
+        categories: row.categories.0.clone(),
+    }
+}
 
 fn expense_to_ledger_input(row: &ExpenseRow) -> ExpenseLedgerInput {
     ExpenseLedgerInput {

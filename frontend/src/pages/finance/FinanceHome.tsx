@@ -2,8 +2,9 @@
 //
 // Each currency that has any spend or budget for the year gets its own
 // monthly trend chart. A small picker at the top filters the view to a
-// single currency on demand; the default is "All". Subscriptions are
-// intentionally excluded from these rollups — they live on their own page.
+// single currency on demand; the default is "All". Subscriptions, one-off
+// expenses, and recurring rules all roll into these totals — a subscription
+// counts once on its purchase month.
 //
 // One endpoint:  GET /finance/yearly?year=YYYY
 
