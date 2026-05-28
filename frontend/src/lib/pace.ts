@@ -52,32 +52,6 @@ export function filledFraction(sub: Subscription): number {
   return clamp01(sub.consumed / sub.quantity);
 }
 
-/**
- * Fraction along the bar where the pace tick belongs, in 0..1.
- *
- * "Where the filled edge should be right now if you finish exactly at
- * expiry" = elapsed_days / total_days.
- *
- * Returns `null` when the tick is meaningless: zero-length subscriptions, before
- * the start, or duration subscriptions (where fill IS pace by definition, so a
- * separate marker would just sit on the fill edge).
- */
-export function tickFraction(sub: Subscription, now: Date = new Date()): number | null {
-  if (sub.tracking_mode === "duration") return null;
-
-  const start  = parseDateStartOfDayUtc(sub.start_date).getTime();
-  const expiry = parseExpiryEndOfDayUtc(sub.expires_at).getTime();
-  const t      = now.getTime();
-
-  const total = expiry - start;
-  if (total <= 0) return null;
-
-  const elapsed = t - start;
-  if (elapsed < 0) return null;
-
-  return clamp01(elapsed / total);
-}
-
 /** Compact bar anchor: "3w left", "5d left", "expired 4d ago". */
 export function timeToExpiryLabel(sub: Subscription): string {
   const d = sub.days_until_expiry;
@@ -368,17 +342,3 @@ function recentPacePerDay(usages: Usage[], windowDays: number, now: Date): numbe
   return sum / windowDays;
 }
 
-/**
- * Treat `YYYY-MM-DD` expiry as end-of-day UTC. A subscription expiring on
- * 2026-06-30 is still valid through that whole day; pinning to 00:00 would
- * mark it expired a day early.
- */
-function parseExpiryEndOfDayUtc(yyyyMmDd: string): Date {
-  const [y, m, d] = yyyyMmDd.split("-").map((n) => parseInt(n, 10));
-  return new Date(Date.UTC(y, m - 1, d, 23, 59, 59, 999));
-}
-
-function parseDateStartOfDayUtc(yyyyMmDd: string): Date {
-  const [y, m, d] = yyyyMmDd.split("-").map((n) => parseInt(n, 10));
-  return new Date(Date.UTC(y, m - 1, d, 0, 0, 0, 0));
-}

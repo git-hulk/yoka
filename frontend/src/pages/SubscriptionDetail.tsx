@@ -16,7 +16,6 @@ import {
   paceNarrative,
   remainingLabel,
   statusLabel,
-  tickFraction,
   timeToExpiryVerbose,
   usedLabel,
   type Cadence,
@@ -155,7 +154,6 @@ function Hero({
         <TrackBand
           color={color}
           filled={filledFraction(sub)}
-          tick={tickFraction(sub)}
           leftLabel={usedLabel(sub)}
           rightLabel={paceTickLabel(sub)}
           size="lg"

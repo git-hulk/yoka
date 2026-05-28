@@ -7,7 +7,6 @@ import {
   formatPrice,
   paceColor,
   statusLabel,
-  tickFraction,
   usageRatioLabel,
 } from "../lib/pace";
 import StatusPill from "./StatusPill";
@@ -43,7 +42,6 @@ export default function SubscriptionCard({ sub }: Props) {
         <TrackBand
           color={color}
           filled={filledFraction(sub)}
-          tick={tickFraction(sub)}
           size="lg"
         />
       </div>

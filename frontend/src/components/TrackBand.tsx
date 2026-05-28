@@ -4,8 +4,6 @@ interface Props {
   color: PaceColor;
   /** 0..1 fraction of bar to fill. */
   filled: number;
-  /** 0..1 position of the pace tick. `null` when meaningless. */
-  tick: number | null;
   /** Both omitted = no label row, just the bar. */
   leftLabel?: string;
   rightLabel?: string;
@@ -20,13 +18,11 @@ const FILL: Record<PaceColor, string> = {
 };
 
 export default function TrackBand({
-  color, filled, tick, leftLabel, rightLabel, size = "md",
+  color, filled, leftLabel, rightLabel, size = "md",
 }: Props) {
   const barHeight = size === "lg" ? "h-2.5" : "h-1.5";
-  const tickInset = size === "lg" ? "-inset-y-1.5" : "-inset-y-1";
 
   const filledPct = clampPct(filled);
-  const tickPct   = tick !== null ? clampPct(tick) : null;
   const hasLabels = leftLabel !== undefined || rightLabel !== undefined;
 
   return (
@@ -37,13 +33,6 @@ export default function TrackBand({
           style={{ width: `${filledPct}%` }}
           aria-hidden="true"
         />
-        {tickPct !== null && (
-          <div
-            className={`absolute ${tickInset} w-px bg-ink/70`}
-            style={{ left: `calc(${tickPct}% - 0.5px)` }}
-            aria-hidden="true"
-          />
-        )}
       </div>
       {hasLabels && (
         <div className="num flex justify-between text-xs text-ink-dim">
