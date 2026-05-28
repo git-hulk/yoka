@@ -20,8 +20,8 @@ export default function ExpenseEdit() {
   if (state.status === "error") {
     const notFound = state.error instanceof ApiError && state.error.status === 404;
     return (
-      <div className="space-y-6">
-        <h1 className="serif text-base font-bold text-ink">
+      <div className="space-y-3">
+        <h1 className="text-xl font-semibold tracking-tight text-ink">
           {notFound ? "Expense not found." : "Couldn't load expense."}
         </h1>
         <p className="text-sm text-ink-dim">{state.error.message}</p>
@@ -50,22 +50,20 @@ export default function ExpenseEdit() {
   }
 
   return (
-    <div className="space-y-10">
-      <div className="flex items-end justify-between gap-4 border-b border-hairline pb-4">
+    <div className="space-y-6">
+      <div className="flex flex-wrap items-end justify-between gap-3 border-b border-hairline pb-4">
         <div>
-          <span className="text-[11px] uppercase tracking-micro text-ink-faint">
-            edit expense
-          </span>
-          <h1 className="serif mt-2 text-base font-bold leading-none text-ink">
-            Adjust the entry.
+          <span className="text-xs text-ink-faint">Edit expense</span>
+          <h1 className="mt-1 text-xl font-semibold tracking-tight text-ink">
+            Adjust the entry
           </h1>
         </div>
         <button
           type="button"
           onClick={handleDelete}
-          className="text-[11px] uppercase tracking-micro text-ink-faint transition hover:text-pace-red"
+          className="inline-flex h-8 items-center rounded-md border border-pace-red/30 bg-white px-3 text-sm font-medium text-pace-red transition hover:bg-pace-red/5"
         >
-          delete
+          Delete
         </button>
       </div>
 

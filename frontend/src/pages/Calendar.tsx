@@ -227,31 +227,32 @@ function Header({
   onNext:  () => void;
 }) {
   return (
-    <header className="space-y-5 border-b border-hairline pb-6">
-      <div>
-        <p className="text-[11px] uppercase tracking-micro text-ink-faint">
-          Calendar · <span className="num tabular-nums">{yearLabel(anchor, view)}</span>
-        </p>
-        <h1 className="serif mt-3 text-4xl leading-none text-ink">
-          {primaryLabel(anchor, view)}
-        </h1>
-      </div>
-
-      <div className="flex flex-wrap items-center justify-between gap-5">
-        <div className="flex items-center gap-5">
-          <button
-            type="button"
-            onClick={onToday}
-            className="border-b border-ink-dim/40 pb-0.5 text-[11px] uppercase tracking-micro text-ink-dim transition-colors duration-200 ease-out hover:border-accent hover:text-accent"
-          >
-            today
-          </button>
-          <div className="flex items-center gap-1">
-            <NavBtn direction="prev" onClick={onPrev} />
-            <NavBtn direction="next" onClick={onNext} />
-          </div>
+    <header className="space-y-4 border-b border-hairline pb-4">
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <p className="text-xs text-ink-faint">
+            Calendar · <span className="num tabular-nums">{yearLabel(anchor, view)}</span>
+          </p>
+          <h1 className="mt-0.5 text-2xl font-semibold tracking-tight text-ink">
+            {primaryLabel(anchor, view)}
+          </h1>
         </div>
         <ViewSwitcher view={view} onChange={onView} />
+      </div>
+
+      <div className="flex items-center gap-2">
+        <button
+          type="button"
+          onClick={onToday}
+          className="inline-flex h-8 items-center rounded-md border border-hairline bg-white px-3 text-sm font-medium text-ink transition hover:bg-subtle"
+        >
+          Today
+        </button>
+        <div className="inline-flex h-8 overflow-hidden rounded-md border border-hairline bg-white">
+          <NavBtn direction="prev" onClick={onPrev} />
+          <span aria-hidden="true" className="w-px bg-hairline" />
+          <NavBtn direction="next" onClick={onNext} />
+        </div>
       </div>
     </header>
   );
@@ -265,7 +266,7 @@ function NavBtn({
       type="button"
       onClick={onClick}
       aria-label={direction === "prev" ? "previous" : "next"}
-      className="inline-flex size-8 items-center justify-center rounded-full text-ink-faint transition-colors duration-200 ease-out hover:bg-ink/[0.05] hover:text-ink"
+      className="inline-flex h-full w-8 items-center justify-center text-ink-dim transition hover:bg-subtle hover:text-ink"
     >
       <svg
         viewBox="0 0 16 16"
@@ -286,30 +287,34 @@ function NavBtn({
 }
 
 function ViewSwitcher({ view, onChange }: { view: View; onChange: (v: View) => void }) {
-  const opts: View[] = ["month", "week", "day"];
+  const opts: { value: View; label: string }[] = [
+    { value: "month", label: "Month" },
+    { value: "week",  label: "Week"  },
+    { value: "day",   label: "Day"   },
+  ];
   return (
     <div
       role="tablist"
       aria-label="calendar view"
-      className="inline-flex items-baseline gap-5 text-[11px] uppercase tracking-micro"
+      className="inline-flex h-8 rounded-md border border-hairline bg-white p-0.5"
     >
-      {opts.map((v) => {
-        const active = v === view;
+      {opts.map((opt) => {
+        const active = opt.value === view;
         return (
           <button
-            key={v}
+            key={opt.value}
             role="tab"
             type="button"
             aria-selected={active}
-            onClick={() => onChange(v)}
+            onClick={() => onChange(opt.value)}
             className={
-              "border-b pb-0.5 transition-colors duration-200 ease-out " +
+              "inline-flex items-center rounded-[5px] px-2.5 text-sm font-medium transition " +
               (active
-                ? "border-accent text-accent"
-                : "border-transparent text-ink-faint hover:text-ink-dim")
+                ? "bg-accent-soft text-accent"
+                : "text-ink-dim hover:bg-subtle hover:text-ink")
             }
           >
-            {v}
+            {opt.label}
           </button>
         );
       })}
@@ -338,11 +343,11 @@ function MonthGrid({
 
   return (
     <div className="animate-gridIn">
-      <div className="grid grid-cols-7 border-b border-hairline pb-2.5">
+      <div className="grid grid-cols-7 border-b border-hairline pb-2">
         {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((d) => (
           <div
             key={d}
-            className="px-2 text-center text-[11px] uppercase tracking-micro text-ink-faint"
+            className="px-2 text-center text-xs font-medium text-ink-dim"
           >
             {d}
           </div>
@@ -438,7 +443,7 @@ function CellChips({
         <button
           type="button"
           onClick={onMore}
-          className="self-start rounded px-1 text-[11px] uppercase tracking-micro text-ink-faint transition-colors duration-200 hover:text-accent"
+          className="self-start rounded px-1 text-xs font-medium text-ink-faint transition hover:text-accent"
         >
           +{extra} more
         </button>
@@ -598,8 +603,8 @@ function DayHeaderRow({ days, todayKey }: { days: Date[]; todayKey: string }) {
           >
             <p
               className={
-                "text-[11px] uppercase tracking-micro " +
-                (isToday ? "text-accent" : "text-ink-faint")
+                "text-xs font-medium " +
+                (isToday ? "text-accent" : "text-ink-dim")
               }
             >
               {d.toLocaleDateString(undefined, { weekday: "short" })}
@@ -725,8 +730,8 @@ function NowLine({
         style={{ gridTemplateColumns: `${GUTTER_REM}rem repeat(${columns}, minmax(0, 1fr))` }}
       >
         <div className="flex justify-end pr-2">
-          <span className="num bg-canvas px-1 text-[10px] uppercase tracking-micro text-accent">
-            now
+          <span className="num bg-canvas px-1 text-[10px] font-semibold text-accent">
+            Now
           </span>
         </div>
         {Array.from({ length: columns }, (_, i) => {
@@ -1030,13 +1035,11 @@ function NewEventModal({
       <form
         onSubmit={handleSubmit}
         onClick={(e) => e.stopPropagation()}
-        className="animate-modalIn w-full max-w-md rounded-2xl border border-hairline bg-white px-6 py-6 shadow-[0_24px_48px_-24px_rgba(26,24,20,0.25)]"
+        className="animate-modalIn w-full max-w-md rounded-md border border-hairline bg-white px-5 py-4 shadow-[0_16px_40px_-16px_rgba(26,24,20,0.25)]"
       >
         <div className="flex items-baseline justify-between border-b border-hairline pb-3">
-          <h2 className="serif text-base font-semibold text-ink">
-            New event
-          </h2>
-          <p className="num text-[11px] uppercase tracking-micro text-ink-faint">
+          <h2 className="text-base font-semibold text-ink">New event</h2>
+          <p className="num text-xs text-ink-faint">
             {date.toLocaleDateString(undefined, {
               weekday: "short", month: "short", day: "numeric",
             })}
@@ -1150,10 +1153,10 @@ function NewEventModal({
                       onClick={() => toggleWeekday(code)}
                       aria-pressed={active}
                       className={
-                        "size-8 rounded-full text-[11px] font-medium uppercase tracking-micro transition-colors duration-200 " +
+                        "h-8 min-w-8 rounded-md px-2 text-xs font-semibold transition " +
                         (active
-                          ? "bg-accent text-surface"
-                          : "border border-hairline text-ink-dim hover:border-ink-dim hover:text-ink")
+                          ? "bg-accent text-white"
+                          : "border border-hairline bg-white text-ink-dim hover:bg-subtle hover:text-ink")
                       }
                     >
                       {label}
@@ -1191,7 +1194,7 @@ function NewEventModal({
                     value={endDate}
                     onChange={(e) => setEndDate(e.target.value)}
                     onFocus={() => setEndKind("until")}
-                    className="num flex-1 border-b border-hairline bg-transparent py-1 text-sm tabular-nums text-ink outline-none transition hover:border-ink-faint focus:border-accent"
+                    className="num h-8 flex-1 rounded-md border border-hairline bg-white px-2 text-sm tabular-nums text-ink outline-none transition hover:border-ink-faint focus:border-accent focus:ring-2 focus:ring-accent-soft"
                   />
                 </label>
                 <label className="flex items-center gap-3 text-sm text-ink">
@@ -1210,7 +1213,7 @@ function NewEventModal({
                     value={endCount}
                     onChange={(e) => setEndCount(e.target.value)}
                     onFocus={() => setEndKind("count")}
-                    className="num w-16 border-b border-hairline bg-transparent py-1 text-sm tabular-nums text-ink outline-none transition hover:border-ink-faint focus:border-accent"
+                    className="num h-8 w-16 rounded-md border border-hairline bg-white px-2 text-sm tabular-nums text-ink outline-none transition hover:border-ink-faint focus:border-accent focus:ring-2 focus:ring-accent-soft"
                   />
                   <span className="text-ink-dim">occurrences</span>
                 </label>
@@ -1220,8 +1223,8 @@ function NewEventModal({
         </div>
 
         {hasSub && (
-          <p className="mt-4 text-[11px] uppercase tracking-micro text-ink-faint">
-            Saved as pending — accept later to burn the subscription.
+          <p className="mt-3 text-xs text-ink-faint">
+            Saved as pending. Accept it later to burn the subscription.
           </p>
         )}
 
@@ -1229,21 +1232,21 @@ function NewEventModal({
           <p className="mt-3 text-xs text-pace-red">{error}</p>
         )}
 
-        <div className="mt-6 flex items-center justify-end gap-3 border-t border-hairline pt-4">
+        <div className="mt-5 flex items-center justify-end gap-2 border-t border-hairline pt-3">
           <button
             type="button"
             onClick={onClose}
             disabled={submitting}
-            className="rounded-full px-3 py-1.5 text-[11px] uppercase tracking-micro text-ink-faint transition-colors duration-200 hover:text-ink disabled:opacity-50"
+            className="inline-flex h-8 items-center rounded-md border border-hairline bg-white px-3 text-sm font-medium text-ink transition hover:bg-subtle disabled:opacity-50"
           >
-            cancel
+            Cancel
           </button>
           <button
             type="submit"
             disabled={!canSubmit}
-            className="inline-flex items-baseline gap-1.5 rounded-full bg-ink px-4 py-1.5 text-sm font-medium text-surface transition-all duration-200 ease-out hover:bg-accent disabled:cursor-not-allowed disabled:bg-hairline disabled:text-ink-faint"
+            className="inline-flex h-8 items-center rounded-md border border-accent bg-accent px-3 text-sm font-medium text-white transition hover:bg-accent/90 disabled:cursor-not-allowed disabled:border-ink-faint disabled:bg-ink-faint"
           >
-            {submitting ? "saving…" : "save"} <span aria-hidden="true">→</span>
+            {submitting ? "Saving…" : "Save"}
           </button>
         </div>
       </form>
@@ -1357,12 +1360,10 @@ function EventDetailModal({
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="animate-modalIn w-full max-w-md rounded-2xl border border-hairline bg-white px-6 py-6 shadow-[0_24px_48px_-24px_rgba(26,24,20,0.25)]"
+        className="animate-modalIn w-full max-w-md rounded-md border border-hairline bg-white px-5 py-4 shadow-[0_16px_40px_-16px_rgba(26,24,20,0.25)]"
       >
         {event === null && !loadError && (
-          <p className="serif py-6 text-center text-base text-ink-faint">
-            loading…
-          </p>
+          <p className="py-6 text-center text-sm text-ink-faint">Loading…</p>
         )}
 
         {loadError && (
@@ -1373,23 +1374,23 @@ function EventDetailModal({
           <>
             <div className="flex items-start justify-between gap-3 border-b border-hairline pb-3">
               <div className="min-w-0">
-                <h2 className="serif text-base font-semibold text-ink">
+                <h2 className="text-base font-semibold text-ink">
                   {event.title?.trim() || sub?.name || "(no title)"}
                 </h2>
-                <p className="mt-1 text-[11px] uppercase tracking-micro text-ink-faint">
+                <p className="mt-0.5 text-xs text-ink-faint">
                   {formatEventWhen(event)}
                 </p>
               </div>
               <StatusBadge status={event.status} />
             </div>
 
-            <dl className="mt-4 space-y-3 text-sm">
+            <dl className="mt-4 space-y-2 text-sm">
               {sub && (
                 <Row label="Subscription">
                   <Link
                     to={`/subscriptions/${sub.id}`}
                     onClick={onClose}
-                    className="border-b border-hairline text-ink transition-colors duration-200 hover:border-accent hover:text-accent"
+                    className="text-accent transition hover:underline"
                   >
                     {sub.name}
                   </Link>
@@ -1421,17 +1422,17 @@ function EventDetailModal({
             </dl>
 
             {actionError && (
-              <p className="mt-4 text-xs text-pace-red">{actionError}</p>
+              <p className="mt-3 text-xs text-pace-red">{actionError}</p>
             )}
 
-            <div className="mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-hairline pt-4">
+            <div className="mt-5 flex flex-wrap items-center justify-between gap-2 border-t border-hairline pt-3">
               <button
                 type="button"
                 onClick={handleDelete}
                 disabled={busy}
-                className="text-[11px] uppercase tracking-micro text-ink-faint transition-colors duration-200 hover:text-pace-red disabled:opacity-50"
+                className="inline-flex h-8 items-center rounded-md border border-pace-red/30 bg-white px-3 text-sm font-medium text-pace-red transition hover:bg-pace-red/5 disabled:opacity-50"
               >
-                {recurrence ? "delete series" : "delete"}
+                {recurrence ? "Delete series" : "Delete"}
               </button>
               <div className="flex items-center gap-2">
                 {sub && event.status !== "declined" && (
@@ -1439,9 +1440,9 @@ function EventDetailModal({
                     type="button"
                     onClick={() => runAction(() => api.declineEvent(eventId))}
                     disabled={busy}
-                    className="rounded-full border border-hairline px-3 py-1.5 text-[11px] uppercase tracking-micro text-ink-dim transition-colors duration-200 hover:border-pace-red hover:text-pace-red disabled:opacity-50"
+                    className="inline-flex h-8 items-center rounded-md border border-hairline bg-white px-3 text-sm font-medium text-ink transition hover:bg-subtle disabled:opacity-50"
                   >
-                    decline
+                    Decline
                   </button>
                 )}
                 {sub && event.status !== "accepted" && (
@@ -1449,18 +1450,18 @@ function EventDetailModal({
                     type="button"
                     onClick={() => runAction(() => api.acceptEvent(eventId))}
                     disabled={busy}
-                    className="inline-flex items-baseline gap-1.5 rounded-full bg-ink px-4 py-1.5 text-sm font-medium text-surface transition-all duration-200 ease-out hover:bg-accent disabled:cursor-not-allowed disabled:bg-hairline disabled:text-ink-faint"
+                    className="inline-flex h-8 items-center rounded-md border border-accent bg-accent px-3 text-sm font-medium text-white transition hover:bg-accent/90 disabled:cursor-not-allowed disabled:border-ink-faint disabled:bg-ink-faint"
                   >
-                    accept <span aria-hidden="true">→</span>
+                    Accept
                   </button>
                 )}
                 {!sub && (
                   <button
                     type="button"
                     onClick={onClose}
-                    className="rounded-full px-3 py-1.5 text-[11px] uppercase tracking-micro text-ink-faint transition-colors duration-200 hover:text-ink"
+                    className="inline-flex h-8 items-center rounded-md border border-hairline bg-white px-3 text-sm font-medium text-ink transition hover:bg-subtle"
                   >
-                    done
+                    Done
                   </button>
                 )}
               </div>
@@ -1475,7 +1476,7 @@ function EventDetailModal({
 function Row({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="flex items-baseline justify-between gap-4">
-      <dt className="text-[11px] uppercase tracking-micro text-ink-faint">{label}</dt>
+      <dt className="text-xs font-medium text-ink-dim">{label}</dt>
       <dd className="min-w-0 truncate text-right">{children}</dd>
     </div>
   );
@@ -1483,18 +1484,21 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
 
 function StatusBadge({ status }: { status: EventStatus }) {
   const styles: Record<EventStatus, string> = {
-    pending:  "border border-hairline text-ink-dim",
-    accepted: "border border-pace-green/40 bg-pace-green/10 text-pace-green",
-    declined: "border border-pace-red/40 bg-pace-red/10 text-pace-red",
+    pending:  "border-hairline bg-subtle text-ink-dim",
+    accepted: "border-pace-green/30 bg-pace-green/10 text-pace-green",
+    declined: "border-pace-red/30   bg-pace-red/10   text-pace-red",
+  };
+  const labels: Record<EventStatus, string> = {
+    pending: "Pending", accepted: "Accepted", declined: "Declined",
   };
   return (
     <span
       className={
-        "inline-flex shrink-0 items-center rounded-full px-2.5 py-0.5 text-[10px] uppercase tracking-micro " +
+        "inline-flex shrink-0 items-center rounded-full border px-2 py-0.5 text-xs font-medium " +
         styles[status]
       }
     >
-      {status}
+      {labels[status]}
     </span>
   );
 }
@@ -1502,16 +1506,16 @@ function StatusBadge({ status }: { status: EventStatus }) {
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <label className="block">
-      <span className="text-[11px] uppercase tracking-micro text-ink-faint">{label}</span>
+      <span className="text-xs font-medium text-ink-dim">{label}</span>
       <div className="mt-1">{children}</div>
     </label>
   );
 }
 
 const inputClass =
-  "w-full bg-transparent border-b border-hairline px-0 py-2 text-base text-ink " +
+  "h-8 w-full rounded-md border border-hairline bg-white px-2.5 text-sm text-ink " +
   "placeholder:text-ink-faint outline-none transition " +
-  "hover:border-ink-faint focus:border-accent";
+  "hover:border-ink-faint focus:border-accent focus:ring-2 focus:ring-accent-soft";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -1519,9 +1523,9 @@ const inputClass =
 
 function ErrorBox({ title, detail }: { title: string; detail: string }) {
   return (
-    <div className="border-y border-pace-red/40 bg-pace-red/5 px-1 py-5">
+    <div className="rounded-md border border-pace-red/40 bg-pace-red/5 px-4 py-3">
       <p className="text-sm font-semibold text-pace-red">{title}</p>
-      <p className="mt-1 text-xs text-ink-dim">{detail}</p>
+      <p className="mt-0.5 text-xs text-ink-dim">{detail}</p>
     </div>
   );
 }

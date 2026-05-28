@@ -49,14 +49,13 @@ export default function FinanceHome() {
   }, [filter]);
 
   return (
-    <div className="space-y-10">
+    <div className="space-y-6">
       <Heading />
 
-      <div className="flex items-baseline justify-end gap-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <YearSwitcher year={year} onChange={setYear} />
         <CurrencyFilterPicker value={filter} onChange={setFilter} />
       </div>
-
-      <YearSwitcher year={year} onChange={setYear} />
 
       {state.status === "loading" && <Skeleton />}
       {state.status === "error" && (
@@ -69,28 +68,26 @@ export default function FinanceHome() {
 
 function Heading() {
   return (
-    <div className="flex items-end justify-between gap-4 border-b border-hairline pb-4">
+    <div className="flex flex-wrap items-end justify-between gap-3 border-b border-hairline pb-4">
       <div>
-        <h1 className="serif text-base font-bold leading-none text-ink">
-          Finance
-        </h1>
-        <p className="num mt-3 text-[11px] uppercase tracking-micro text-ink-faint">
-          spend, budgets, and the trail behind them
+        <h1 className="text-xl font-semibold tracking-tight text-ink">Finance</h1>
+        <p className="mt-1 text-xs text-ink-faint">
+          Spend, budgets, and the trail behind them.
         </p>
       </div>
-      <div className="flex items-baseline gap-5">
+      <div className="flex items-center gap-2">
         <Link
           to="/finance/recurring-expenses/new"
-          className="text-[11px] uppercase tracking-micro text-ink-dim transition hover:text-accent"
+          className="inline-flex h-8 items-center rounded-md border border-hairline bg-white px-3 text-sm font-medium text-ink transition hover:bg-subtle"
         >
-          + recurring
+          Recurring
         </Link>
         <Link
           to="/finance/expenses/new"
-          className="inline-flex items-baseline gap-1.5 border-b border-ink pb-0.5 text-sm font-medium text-ink transition hover:border-accent hover:text-accent"
+          className="inline-flex h-8 items-center gap-1 rounded-md border border-accent bg-accent px-3 text-sm font-medium text-white transition hover:bg-accent/90"
         >
           <span aria-hidden="true" className="text-base leading-none">＋</span>
-          new expense
+          New expense
         </Link>
       </div>
     </div>
@@ -104,17 +101,13 @@ function CurrencyFilterPicker({
   onChange: (v: CurrencyFilter) => void;
 }) {
   return (
-    <label className="flex items-baseline gap-2 text-[11px] uppercase tracking-micro text-ink-faint">
-      showing
+    <label className="flex items-center gap-2 text-xs text-ink-dim">
+      Showing
       <select
         aria-label="currency filter"
         value={value}
         onChange={(e) => onChange(e.target.value as CurrencyFilter)}
-        className="
-          cursor-pointer border-b border-hairline bg-transparent pl-1 pr-5 pb-0.5
-          text-sm font-medium uppercase tracking-wider text-ink-dim
-          outline-none transition hover:border-ink-faint hover:text-ink focus:border-accent
-        "
+        className="h-8 cursor-pointer rounded-md border border-hairline bg-white px-2 text-sm font-medium text-ink outline-none transition hover:border-ink-faint focus:border-accent focus:ring-2 focus:ring-accent-soft"
       >
         <option value="all">All</option>
         {CURRENCIES.map((c) => (
@@ -175,14 +168,14 @@ function CurrencySection({
   );
 
   return (
-    <section className="space-y-8">
-      <header className="flex items-baseline justify-between gap-4 border-b border-hairline pb-3">
-        <h3 className="serif text-base text-ink">{currency}</h3>
+    <section className="space-y-4">
+      <header className="flex flex-wrap items-baseline justify-between gap-2 border-b border-hairline pb-2">
+        <h3 className="text-base font-semibold text-ink">{currency}</h3>
         <p className="num text-sm tabular-nums text-ink-dim">
           {formatPrice(totalSpent, currency)} this year
           {anyOver && (
-            <span className="ml-3 text-[11px] uppercase tracking-micro text-pace-red">
-              over budget
+            <span className="ml-2 inline-flex items-center rounded-full border border-pace-red/30 bg-pace-red/10 px-2 py-0.5 text-xs font-medium text-pace-red">
+              Over budget
             </span>
           )}
         </p>
@@ -208,27 +201,25 @@ function Skeleton() {
 
 function Empty() {
   return (
-    <div className="pt-6 text-center">
-      <p className="serif text-base font-semibold text-ink">
-        Nothing tracked this year.
+    <div className="rounded-md border border-dashed border-hairline bg-subtle/40 px-6 py-12 text-center">
+      <p className="text-base font-semibold text-ink">Nothing tracked this year.</p>
+      <p className="mx-auto mt-1.5 max-w-md text-sm text-ink-dim">
+        Add a one-off expense, define a recurring bill, or set a budget. Anything
+        you add will show up here.
       </p>
-      <p className="mt-3 text-sm text-ink-dim">
-        Add a one-off expense, define a recurring bill,<br className="hidden sm:inline" />
-        or set a budget — anything you add will show up here.
-      </p>
-      <div className="mt-7 flex items-baseline justify-center gap-6">
+      <div className="mt-5 flex items-center justify-center gap-2">
         <Link
           to="/finance/expenses/new"
-          className="inline-flex items-baseline gap-1.5 border-b border-ink pb-0.5 text-sm font-medium text-ink transition hover:border-accent hover:text-accent"
+          className="inline-flex h-8 items-center gap-1 rounded-md border border-accent bg-accent px-3 text-sm font-medium text-white transition hover:bg-accent/90"
         >
           <span aria-hidden="true">＋</span>
-          add an expense
+          Add an expense
         </Link>
         <Link
           to="/finance/recurring-expenses/new"
-          className="text-[11px] uppercase tracking-micro text-ink-dim transition hover:text-accent"
+          className="inline-flex h-8 items-center rounded-md border border-hairline bg-white px-3 text-sm font-medium text-ink transition hover:bg-subtle"
         >
-          add a recurring rule
+          Add a recurring rule
         </Link>
       </div>
     </div>
@@ -237,9 +228,9 @@ function Empty() {
 
 function ErrorBox({ title, detail }: { title: string; detail: string }) {
   return (
-    <div className="border-y border-pace-red/40 bg-pace-red/5 px-1 py-5">
+    <div className="rounded-md border border-pace-red/40 bg-pace-red/5 px-4 py-3">
       <p className="text-sm font-semibold text-pace-red">{title}</p>
-      <p className="mt-1 text-xs text-ink-dim">{detail}</p>
+      <p className="mt-0.5 text-xs text-ink-dim">{detail}</p>
     </div>
   );
 }

@@ -85,32 +85,30 @@ export default function UsageEditor({ subscriptionId, timeKnown, onChange }: Pro
 
   return (
     <section>
-      <div className="flex items-baseline justify-between border-b border-hairline pb-3">
-        <h2 className="serif text-base font-semibold text-ink">Usage</h2>
+      <div className="flex items-baseline justify-between border-b border-hairline pb-2">
+        <h2 className="text-base font-semibold text-ink">Usage</h2>
         {items && items.length > 0 && (
-          <span className="num text-[11px] uppercase tracking-micro text-ink-faint">
+          <span className="num text-xs text-ink-faint">
             {items.length} {items.length === 1 ? "entry" : "entries"}
           </span>
         )}
       </div>
 
       {items === null && !loadError && (
-        <p className="serif py-6 text-center text-base text-ink-faint">
-          loading…
-        </p>
+        <p className="py-6 text-center text-sm text-ink-faint">Loading…</p>
       )}
 
       {loadError && (
-        <div className="border-b border-pace-red/40 px-1 py-5">
+        <div className="mt-3 rounded-md border border-pace-red/40 bg-pace-red/5 px-4 py-3">
           <p className="text-sm font-semibold text-pace-red">
             Couldn't load usage history
           </p>
-          <p className="mt-1 text-xs text-ink-dim">{loadError}</p>
+          <p className="mt-0.5 text-xs text-ink-dim">{loadError}</p>
         </div>
       )}
 
       {items && items.length > 0 && (
-        <ul className="divide-y divide-hairline">
+        <ul className="mt-1 divide-y divide-hairline">
           {items.map((u) => (
             <li key={u.id}>
               <Row
@@ -125,9 +123,7 @@ export default function UsageEditor({ subscriptionId, timeKnown, onChange }: Pro
       )}
 
       {items && items.length === 0 && (
-        <p className="serif py-6 text-center text-base text-ink-faint">
-          no usages yet.
-        </p>
+        <p className="py-6 text-center text-sm text-ink-faint">No usages yet.</p>
       )}
 
       <AddForm
@@ -180,39 +176,32 @@ function Row({
   }
 
   return (
-    <div className="group grid grid-cols-[auto_1fr_auto_auto_1.5rem] items-baseline gap-4 py-4">
-      <span className="serif text-sm text-ink-dim">
+    <div className="group grid grid-cols-[auto_1fr_auto_auto_auto] items-baseline gap-3 py-2.5">
+      <span className="num text-sm tabular-nums text-ink-dim">
         {formatUsageDay(usage.created_at)}
       </span>
       <span className="truncate text-sm text-ink-dim">
         {composeDetail(usage)}
       </span>
-      <span className="num text-base font-medium tabular-nums text-ink">
+      <span className="num text-sm font-semibold tabular-nums text-ink">
         {formatAmount(usage.amount)}{timeKnown ? "h" : ""}
       </span>
       <button
         type="button"
         onClick={() => { setEditing(true); setError(null); }}
         aria-label="edit usage entry"
-        className="
-          text-[11px] uppercase tracking-micro text-ink-faint opacity-0 transition
-          group-hover:opacity-100 hover:text-accent focus-visible:opacity-100
-        "
+        className="rounded-md px-2 py-0.5 text-xs font-medium text-ink-faint opacity-0 transition group-hover:opacity-100 hover:bg-subtle hover:text-ink focus-visible:opacity-100"
       >
-        edit
+        Edit
       </button>
       <button
         type="button"
         onClick={handleDelete}
         disabled={deleting}
         aria-label="delete usage entry"
-        className="
-          text-base leading-none text-ink-faint opacity-0 transition
-          group-hover:opacity-100 hover:text-pace-red focus-visible:opacity-100
-          disabled:opacity-50
-        "
+        className="rounded-md px-2 py-0.5 text-xs font-medium text-ink-faint opacity-0 transition group-hover:opacity-100 hover:bg-pace-red/10 hover:text-pace-red focus-visible:opacity-100 disabled:opacity-50"
       >
-        ×
+        Delete
       </button>
 
       {error && (
@@ -258,16 +247,16 @@ function EditRow({
   return (
     <form
       onSubmit={handleSubmit}
-      className="grid grid-cols-[auto_1fr_6rem_auto_auto] items-baseline gap-4 py-4"
+      className="grid grid-cols-[auto_1fr_6rem_auto_auto] items-center gap-2 py-2.5"
     >
-      <span className="serif text-sm text-ink-dim">
+      <span className="num text-sm tabular-nums text-ink-dim">
         {formatUsageDay(usage.created_at)}
       </span>
       <input
         type="text"
         value={notes}
         onChange={(e) => setNotes(e.target.value)}
-        placeholder="notes (optional)"
+        placeholder="Notes (optional)"
         aria-label="notes"
         className={inputClass}
       />
@@ -286,19 +275,16 @@ function EditRow({
         type="button"
         onClick={onCancel}
         disabled={saving}
-        className="text-[11px] uppercase tracking-micro text-ink-faint transition hover:text-ink disabled:opacity-50"
+        className="inline-flex h-8 items-center rounded-md border border-hairline bg-white px-2.5 text-xs font-medium text-ink transition hover:bg-subtle disabled:opacity-50"
       >
-        cancel
+        Cancel
       </button>
       <button
         type="submit"
         disabled={!canSave}
-        className="
-          text-[11px] uppercase tracking-micro text-accent transition hover:text-ink
-          disabled:cursor-not-allowed disabled:text-ink-faint
-        "
+        className="inline-flex h-8 items-center rounded-md border border-accent bg-accent px-2.5 text-xs font-medium text-white transition hover:bg-accent/90 disabled:cursor-not-allowed disabled:border-ink-faint disabled:bg-ink-faint"
       >
-        {saving ? "saving…" : "save"}
+        {saving ? "Saving…" : "Save"}
       </button>
 
       {error && (
@@ -345,12 +331,10 @@ function AddForm({
   return (
     <form
       onSubmit={handleSubmit}
-      className="mt-6 border-t border-hairline pt-5"
+      className="mt-4 rounded-md border border-hairline bg-subtle/40 p-3"
     >
-      <p className="text-[11px] uppercase tracking-micro text-ink-faint">
-        + add usage
-      </p>
-      <div className="mt-3 grid grid-cols-[6rem_1fr_auto] items-baseline gap-4">
+      <p className="text-xs font-medium text-ink-dim">Add usage</p>
+      <div className="mt-2 grid grid-cols-[6rem_1fr_auto] items-center gap-2">
         <input
           type="number"
           min={0}
@@ -366,26 +350,19 @@ function AddForm({
           type="text"
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
-          placeholder="notes (optional)"
+          placeholder="Notes (optional)"
           aria-label="notes"
           className={inputClass}
         />
         <button
           type="submit"
           disabled={!canSubmit}
-          className="
-            inline-flex items-baseline gap-1.5 border-b border-ink pb-0.5 text-sm font-medium
-            text-ink transition hover:border-accent hover:text-accent
-            disabled:cursor-not-allowed disabled:border-hairline disabled:text-ink-faint
-          "
+          className="inline-flex h-8 items-center rounded-md border border-accent bg-accent px-3 text-sm font-medium text-white transition hover:bg-accent/90 disabled:cursor-not-allowed disabled:border-ink-faint disabled:bg-ink-faint"
         >
-          {submitting ? "adding…" : "add"}
-          <span aria-hidden="true">→</span>
+          {submitting ? "Adding…" : "Add"}
         </button>
       </div>
-      {error && (
-        <p className="mt-2 text-xs text-pace-red">{error}</p>
-      )}
+      {error && <p className="mt-2 text-xs text-pace-red">{error}</p>}
     </form>
   );
 }
@@ -393,9 +370,9 @@ function AddForm({
 // ---------------------------------------------------------------------------
 
 const inputClass =
-  "w-full bg-transparent border-b border-hairline px-0 py-2 text-base text-ink " +
+  "h-8 w-full rounded-md border border-hairline bg-white px-2.5 text-sm text-ink " +
   "placeholder:text-ink-faint outline-none transition " +
-  "hover:border-ink-faint focus:border-accent";
+  "hover:border-ink-faint focus:border-accent focus:ring-2 focus:ring-accent-soft";
 
 function composeDetail(u: Usage): string {
   const time  = formatUsageTime(u.created_at);

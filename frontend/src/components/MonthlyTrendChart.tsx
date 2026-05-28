@@ -57,7 +57,7 @@ export default function MonthlyTrendChart({ currency, totals, year }: Props) {
   return (
     <div aria-label={`monthly spend trend in ${currency}`}>
       <div className="flex items-stretch gap-2">
-        <div className="num flex h-20 w-10 shrink-0 flex-col justify-between text-right text-[10px] tracking-micro text-ink-faint tabular-nums">
+        <div className="num flex h-20 w-10 shrink-0 flex-col justify-between text-right text-[10px] font-medium text-ink-faint tabular-nums">
           <span>{hasSpend ? formatPriceCompact(max, currency) : ""}</span>
           <span>{hasSpend ? "0" : ""}</span>
         </div>
@@ -76,7 +76,7 @@ export default function MonthlyTrendChart({ currency, totals, year }: Props) {
               >
                 <span
                   aria-hidden="true"
-                  className="num pointer-events-none absolute left-1/2 z-10 -translate-x-1/2 whitespace-nowrap rounded-sm bg-ink px-1.5 py-0.5 text-[10px] tracking-micro text-canvas opacity-0 transition-opacity tabular-nums group-hover:opacity-100"
+                  className="num pointer-events-none absolute left-1/2 z-10 -translate-x-1/2 whitespace-nowrap rounded-md bg-ink px-1.5 py-0.5 text-[10px] font-medium text-white opacity-0 transition-opacity tabular-nums group-hover:opacity-100"
                   style={{ bottom: `calc(${heightPct}% + 4px)` }}
                 >
                   {valueLabel}
@@ -100,7 +100,7 @@ export default function MonthlyTrendChart({ currency, totals, year }: Props) {
               <div
                 key={i}
                 className={
-                  "flex-1 text-center text-[10px] uppercase tracking-micro " +
+                  "flex-1 text-center text-[10px] font-medium " +
                   (current ? "text-accent" : "text-ink-faint")
                 }
               >

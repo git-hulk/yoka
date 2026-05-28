@@ -2,19 +2,8 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Fallback faces with adjusted metrics — keep the page from reflowing when
- * the real fonts swap in. Values are approximated against Georgia / Arial.
- * The serif headlines are the largest text on screen, so getting the swap
- * smooth here matters most.
- */
-@font-face {
-  font-family: "Source Serif Fallback";
-  src: local("Georgia"), local("Times New Roman");
-  size-adjust: 100%;
-  ascent-override: 92%;
-  descent-override: 24%;
-  line-gap-override: 0%;
-}
+/* Fallback face with adjusted metrics — keeps the page from reflowing when
+ * Inter swaps in. */
 @font-face {
   font-family: "Inter Fallback";
   src: local("Helvetica Neue"), local("Arial");
@@ -35,14 +24,10 @@
   .num {
     font-variant-numeric: tabular-nums;
   }
-  .serif {
-    @apply font-serif;
-    font-feature-settings: "liga", "dlig";
-  }
   :focus-visible {
     outline: 1px solid theme("colors.accent.DEFAULT");
-    outline-offset: 3px;
-    border-radius: 1px;
+    outline-offset: 2px;
+    border-radius: 2px;
   }
   /* Inputs already render a focus state via border-color; skip the global ring. */
   input:focus-visible,

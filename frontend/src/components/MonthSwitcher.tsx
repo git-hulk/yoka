@@ -1,6 +1,5 @@
-// Three-button month nav: ← prev | "May 2026" | next → with a "today"
-// shortcut on the right. Matches the editorial pager: hairline borders,
-// uppercase micro-tracking labels, accent on hover.
+// Three-button month nav: ← prev | "May 2026" | next → with a "Today"
+// shortcut on the right. GH-flavored pager: rounded segmented control.
 
 interface Props {
   /** Current month as "YYYY-MM". */
@@ -21,35 +20,38 @@ export default function MonthSwitcher({ month, onChange }: Props) {
   const today = formatMonth(new Date());
   const isToday = month === today;
 
-  const btn =
-    "inline-flex items-center gap-1 border-b border-hairline pb-0.5 text-sm text-ink-dim " +
-    "transition hover:border-accent hover:text-accent";
-
   return (
-    <nav
-      aria-label="Month navigation"
-      className="flex items-baseline justify-between gap-4"
-    >
-      <div className="flex items-baseline gap-6">
-        <button type="button" onClick={prev} className={btn}>
-          <span aria-hidden="true">←</span> prev
+    <nav aria-label="Month navigation" className="flex items-center gap-2">
+      <div className="inline-flex h-8 overflow-hidden rounded-md border border-hairline bg-white">
+        <button
+          type="button"
+          onClick={prev}
+          aria-label="Previous month"
+          className="inline-flex h-full w-8 items-center justify-center text-ink-dim transition hover:bg-subtle hover:text-ink"
+        >
+          <span aria-hidden="true">←</span>
         </button>
-        <h2 className="serif text-lg leading-none text-ink">{label}</h2>
-        <button type="button" onClick={next} className={btn}>
-          next <span aria-hidden="true">→</span>
+        <span aria-hidden="true" className="w-px bg-hairline" />
+        <span className="inline-flex h-full min-w-[8rem] items-center justify-center px-3 text-sm font-semibold text-ink">
+          {label}
+        </span>
+        <span aria-hidden="true" className="w-px bg-hairline" />
+        <button
+          type="button"
+          onClick={next}
+          aria-label="Next month"
+          className="inline-flex h-full w-8 items-center justify-center text-ink-dim transition hover:bg-subtle hover:text-ink"
+        >
+          <span aria-hidden="true">→</span>
         </button>
       </div>
       <button
         type="button"
         onClick={() => onChange(today)}
         disabled={isToday}
-        className={
-          "text-[11px] uppercase tracking-micro text-ink-faint transition " +
-          "hover:text-accent disabled:cursor-not-allowed disabled:opacity-40 " +
-          "disabled:hover:text-ink-faint"
-        }
+        className="inline-flex h-8 items-center rounded-md border border-hairline bg-white px-3 text-sm font-medium text-ink-dim transition hover:bg-subtle hover:text-ink disabled:cursor-not-allowed disabled:opacity-40"
       >
-        today
+        Today
       </button>
     </nav>
   );

@@ -25,7 +25,7 @@ export default function Home() {
   }
 
   return (
-    <div className="space-y-10">
+    <div className="space-y-6">
       <PageHeading count={total} />
 
       {state.status === "loading" && <Skeleton />}
@@ -38,9 +38,9 @@ export default function Home() {
         state.data.total === 0 ? (
           <Empty />
         ) : (
-          <div>
+          <div className="overflow-hidden rounded-md border border-hairline">
             <ColumnHeader />
-            <ul className="border-y border-hairline divide-y divide-hairline">
+            <ul className="divide-y divide-hairline">
               {state.data.items.map((s) => (
                 <li key={s.id}>
                   <SubscriptionCard sub={s} />
@@ -48,15 +48,17 @@ export default function Home() {
               ))}
             </ul>
             {pageCount > 1 && (
-              <Pagination
-                page={page}
-                pageCount={pageCount}
-                total={state.data.total}
-                pageStart={(page - 1) * PAGE_SIZE + 1}
-                pageEnd={(page - 1) * PAGE_SIZE + state.data.items.length}
-                onChange={setPage}
-                ariaLabel="Subscription pagination"
-              />
+              <div className="border-t border-hairline bg-subtle/60 px-4 py-2">
+                <Pagination
+                  page={page}
+                  pageCount={pageCount}
+                  total={state.data.total}
+                  pageStart={(page - 1) * PAGE_SIZE + 1}
+                  pageEnd={(page - 1) * PAGE_SIZE + state.data.items.length}
+                  onChange={setPage}
+                  ariaLabel="Subscription pagination"
+                />
+              </div>
             )}
           </div>
         )
@@ -67,23 +69,23 @@ export default function Home() {
 
 function PageHeading({ count }: { count: number | null }) {
   return (
-    <div className="flex items-end justify-between gap-4 border-b border-hairline pb-4">
+    <div className="flex flex-wrap items-end justify-between gap-3 border-b border-hairline pb-4">
       <div>
-        <h1 className="serif text-base font-bold leading-none text-ink">
+        <h1 className="text-xl font-semibold tracking-tight text-ink">
           Subscriptions
         </h1>
         {count !== null && (
-          <p className="num mt-3 text-[11px] uppercase tracking-micro text-ink-faint">
+          <p className="num mt-1 text-xs text-ink-faint">
             {count} {count === 1 ? "subscription" : "subscriptions"}
           </p>
         )}
       </div>
       <Link
         to="/subscriptions/new"
-        className="inline-flex items-baseline gap-1.5 border-b border-ink pb-0.5 text-sm font-medium text-ink transition hover:border-accent hover:text-accent"
+        className="inline-flex h-8 items-center gap-1 rounded-md border border-accent bg-accent px-3 text-sm font-medium text-white transition hover:bg-accent/90"
       >
         <span aria-hidden="true" className="text-base leading-none">＋</span>
-        new subscription
+        New subscription
       </Link>
     </div>
   );
@@ -91,7 +93,7 @@ function PageHeading({ count }: { count: number | null }) {
 
 function ColumnHeader() {
   return (
-    <div className="-mx-4 grid grid-cols-[minmax(0,1.4fr)_minmax(110px,1.3fr)_5.5rem_5rem] gap-5 px-4 pb-3 text-[11px] uppercase tracking-micro text-ink-faint sm:grid-cols-[minmax(0,1.4fr)_minmax(140px,1.4fr)_5.5rem_5rem_5rem]">
+    <div className="grid grid-cols-[minmax(0,1.4fr)_minmax(110px,1.3fr)_5.5rem_5rem] gap-5 border-b border-hairline bg-subtle/60 px-4 py-2 text-xs font-medium text-ink-dim sm:grid-cols-[minmax(0,1.4fr)_minmax(140px,1.4fr)_5.5rem_5rem_5rem]">
       <span>Name</span>
       <span>Usage</span>
       <span>Status</span>
@@ -103,15 +105,15 @@ function ColumnHeader() {
 
 function Skeleton() {
   return (
-    <div aria-busy="true">
+    <div aria-busy="true" className="overflow-hidden rounded-md border border-hairline">
       <ColumnHeader />
-      <ul className="border-y border-hairline divide-y divide-hairline">
+      <ul className="divide-y divide-hairline">
         {[0, 1, 2, 3].map((i) => (
           <li
             key={i}
-            className="-mx-4 grid grid-cols-[minmax(0,1.4fr)_minmax(110px,1.3fr)_5.5rem_5rem] items-center gap-5 px-4 py-4 sm:grid-cols-[minmax(0,1.4fr)_minmax(140px,1.4fr)_5.5rem_5rem_5rem]"
+            className="grid grid-cols-[minmax(0,1.4fr)_minmax(110px,1.3fr)_5.5rem_5rem] items-center gap-5 px-4 py-3 sm:grid-cols-[minmax(0,1.4fr)_minmax(140px,1.4fr)_5.5rem_5rem_5rem]"
           >
-            <div className="h-5 w-40 animate-pulse rounded-sm bg-ink/5" />
+            <div className="h-4 w-40 animate-pulse rounded-sm bg-ink/5" />
             <div className="space-y-2">
               <div className="h-2 w-8 animate-pulse rounded-sm bg-ink/5" />
               <div className="h-2.5 animate-pulse rounded-sm bg-ink/5" />
@@ -128,18 +130,18 @@ function Skeleton() {
 
 function Empty() {
   return (
-    <div className="pt-6 text-center">
-      <p className="serif text-base font-semibold text-ink">No subscriptions yet.</p>
-      <p className="mt-3 text-sm text-ink-dim">
-        Add a prepaid subscription and it'll show up here,<br className="hidden sm:inline" />
-        with its pace as it burns down.
+    <div className="rounded-md border border-dashed border-hairline bg-subtle/40 px-6 py-12 text-center">
+      <p className="text-base font-semibold text-ink">No subscriptions yet.</p>
+      <p className="mx-auto mt-1.5 max-w-sm text-sm text-ink-dim">
+        Add a prepaid subscription and it'll show up here, with its pace as it
+        burns down.
       </p>
       <Link
         to="/subscriptions/new"
-        className="mt-7 inline-flex items-baseline gap-1.5 border-b border-ink pb-0.5 text-sm font-medium text-ink transition hover:border-accent hover:text-accent"
+        className="mt-5 inline-flex h-8 items-center gap-1 rounded-md border border-accent bg-accent px-3 text-sm font-medium text-white transition hover:bg-accent/90"
       >
         <span aria-hidden="true">＋</span>
-        add the first one
+        Add the first one
       </Link>
     </div>
   );
@@ -147,9 +149,9 @@ function Empty() {
 
 function ErrorBox({ title, detail }: { title: string; detail: string }) {
   return (
-    <div className="border-y border-pace-red/40 bg-pace-red/5 px-1 py-5">
+    <div className="rounded-md border border-pace-red/40 bg-pace-red/5 px-4 py-3">
       <p className="text-sm font-semibold text-pace-red">{title}</p>
-      <p className="mt-1 text-xs text-ink-dim">{detail}</p>
+      <p className="mt-0.5 text-xs text-ink-dim">{detail}</p>
     </div>
   );
 }

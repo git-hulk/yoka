@@ -13,13 +13,11 @@ export default function ExpenseNew() {
   }
 
   return (
-    <div className="space-y-10">
+    <div className="space-y-6">
       <div className="border-b border-hairline pb-4">
-        <span className="text-[11px] uppercase tracking-micro text-ink-faint">
-          new entry
-        </span>
-        <h1 className="serif mt-2 text-base font-bold leading-none text-ink">
-          A one-off expense.
+        <span className="text-xs text-ink-faint">New entry</span>
+        <h1 className="mt-1 text-xl font-semibold tracking-tight text-ink">
+          New expense
         </h1>
       </div>
 

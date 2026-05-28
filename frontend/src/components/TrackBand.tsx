@@ -30,10 +30,10 @@ export default function TrackBand({
   const hasLabels = leftLabel !== undefined || rightLabel !== undefined;
 
   return (
-    <div className={hasLabels ? "space-y-2.5" : ""}>
-      <div className={`relative w-full overflow-hidden rounded-[1px] bg-ink/10 ${barHeight}`}>
+    <div className={hasLabels ? "space-y-2" : ""}>
+      <div className={`relative w-full overflow-hidden rounded-full bg-ink/10 ${barHeight}`}>
         <div
-          className={`absolute inset-y-0 left-0 rounded-[1px] transition-[width] duration-700 ease-out ${FILL[color]}`}
+          className={`absolute inset-y-0 left-0 rounded-full transition-[width] duration-700 ease-out ${FILL[color]}`}
           style={{ width: `${filledPct}%` }}
           aria-hidden="true"
         />
@@ -46,7 +46,7 @@ export default function TrackBand({
         )}
       </div>
       {hasLabels && (
-        <div className="num flex justify-between text-[11px] uppercase tracking-micro text-ink-dim">
+        <div className="num flex justify-between text-xs text-ink-dim">
           <span>{leftLabel}</span>
           <span>{rightLabel}</span>
         </div>

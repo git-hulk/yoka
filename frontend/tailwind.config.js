@@ -24,8 +24,11 @@ export default {
           faint:   "#8E8675",
         },
         // Warm paper system. canvas = desk, surface = the page.
+        // subtle is the GH-style "canvas.subtle" wash — used for hover,
+        // zebra rows, code blocks. Warm tint, not the cool gray Primer uses.
         canvas:   "#FFFFFF",
         surface:  "#FFFFFF",
+        subtle:   "#F6F4EE",
         hairline: "#D9D2BF",
         // Brand color: green. Used on primary action, brand mark, focus,
         // hover, active states. Pace-status colors (pace.{green,amber,red})
@@ -41,22 +44,12 @@ export default {
         sans: [
           "Inter",
           "Inter Fallback",
-          "ui-sans-serif",
-          "system-ui",
           "-apple-system",
+          "BlinkMacSystemFont",
           "Segoe UI",
           "Helvetica",
           "Arial",
           "sans-serif",
-        ],
-        serif: [
-          "Source Serif 4",
-          "Source Serif Fallback",
-          "ui-serif",
-          "Georgia",
-          "Cambria",
-          "Times New Roman",
-          "serif",
         ],
       },
       boxShadow: {

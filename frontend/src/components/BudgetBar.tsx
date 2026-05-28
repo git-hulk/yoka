@@ -68,9 +68,9 @@ export default function BudgetBar({ bar, onEdit }: Props) {
                 type="button"
                 onClick={onEdit}
                 aria-label={`set budget for ${label}`}
-                className="text-[11px] uppercase tracking-micro text-ink-faint transition hover:text-accent"
+                className="text-xs font-medium text-ink-faint transition hover:text-accent"
               >
-                set budget
+                Set budget
               </button>
             </>
           )}

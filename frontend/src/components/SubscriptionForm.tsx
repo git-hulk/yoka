@@ -108,8 +108,8 @@ export default function SubscriptionForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} noValidate className="space-y-10">
-      <div className="space-y-8">
+    <form onSubmit={handleSubmit} noValidate className="space-y-6">
+      <div className="space-y-4">
         <Field label="Name" htmlFor="name">
           <input
             id="name"
@@ -119,28 +119,28 @@ export default function SubscriptionForm({
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="Anthropic credits"
-            className={`${inputClass} serif text-base placeholder:text-ink-faint`}
+            className={inputClass}
           />
         </Field>
 
-        <div className="grid grid-cols-1 gap-x-8 gap-y-8 sm:grid-cols-[1fr_8rem] sm:items-end">
+        <div className="grid grid-cols-1 gap-x-4 gap-y-4 sm:grid-cols-[1fr_8rem] sm:items-end">
           <Field
             label="Tracks"
             hint={
               lockTrackingMode
-                ? "fixed once a usage is logged"
+                ? "Fixed once a usage is logged"
                 : isDuration
-                  ? "tallied by the day"
-                  : "tallied by usage"
+                  ? "Tallied by the day"
+                  : "Tallied by usage"
             }
           >
             <Segmented
               value={trackingMode}
               disabled={lockTrackingMode}
               options={[
-                { value: "units",    label: "units" },
-                { value: "hours",    label: "hours" },
-                { value: "duration", label: "duration" },
+                { value: "units",    label: "Units" },
+                { value: "hours",    label: "Hours" },
+                { value: "duration", label: "Duration" },
               ]}
               onChange={(v) => setTrackingMode(v as TrackingMode)}
             />
@@ -161,7 +161,7 @@ export default function SubscriptionForm({
           )}
         </div>
 
-        <div className="grid grid-cols-2 gap-x-8 gap-y-8">
+        <div className="grid grid-cols-2 gap-x-4 gap-y-4">
           <Field label="Starts" htmlFor="start_date">
             <input
               id="start_date"
@@ -183,20 +183,20 @@ export default function SubscriptionForm({
             />
           </Field>
 
-          <Field label="Categories" htmlFor="category" hint="up to 3">
+          <Field label="Categories" htmlFor="category" hint="Up to 3">
             <CategoriesPicker
               id="category"
               values={categories}
               onChange={setCategories}
               options={categorySuggestions}
               placeholder={
-                categorySuggestions.length > 0 ? "pick or create" : "Yoga"
+                categorySuggestions.length > 0 ? "Pick or create" : "Yoga"
               }
             />
           </Field>
 
           <Field label={`Price (${currency})`} htmlFor="price">
-            <div className="flex items-baseline gap-2">
+            <div className="flex items-stretch gap-2">
               <input
                 id="price"
                 type="number"
@@ -214,45 +214,39 @@ export default function SubscriptionForm({
           </Field>
         </div>
 
-        <Field label="Notes" htmlFor="notes" hint="optional">
+        <Field label="Notes" htmlFor="notes" hint="Optional">
           <textarea
             id="notes"
             rows={3}
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
             placeholder="What is this subscription for?"
-            className={`${inputClass} resize-y`}
+            className={`${textareaClass} resize-y`}
           />
         </Field>
       </div>
 
       {error && (
-        <div className="border-y border-pace-red/40 bg-pace-red/5 px-1 py-4">
+        <div className="rounded-md border border-pace-red/40 bg-pace-red/5 px-4 py-3">
           <p className="text-sm font-semibold text-pace-red">{error}</p>
         </div>
       )}
 
-      <div className="flex items-center justify-end gap-6 border-t border-hairline pt-6">
+      <div className="flex items-center justify-end gap-2 border-t border-hairline pt-4">
         <button
           type="button"
           onClick={onCancel}
           disabled={submitting}
-          className="text-[11px] uppercase tracking-micro text-ink-dim transition hover:text-ink disabled:opacity-50"
+          className="inline-flex h-8 items-center rounded-md border border-hairline bg-white px-3 text-sm font-medium text-ink transition hover:bg-subtle disabled:opacity-50"
         >
           Cancel
         </button>
         <button
           type="submit"
           disabled={!canSubmit}
-          className="group inline-flex items-baseline gap-2 bg-accent px-5 py-2.5 text-sm font-medium text-canvas transition hover:bg-ink disabled:cursor-not-allowed disabled:bg-ink-faint"
+          className="inline-flex h-8 items-center rounded-md border border-accent bg-accent px-3 text-sm font-medium text-white transition hover:bg-accent/90 disabled:cursor-not-allowed disabled:border-ink-faint disabled:bg-ink-faint"
         >
           {submitting ? "Saving…" : submitLabel}
-          <span
-            aria-hidden="true"
-            className="text-base leading-none transition-transform duration-300 group-hover:translate-x-0.5"
-          >
-            →
-          </span>
         </button>
       </div>
     </form>
@@ -261,11 +255,17 @@ export default function SubscriptionForm({
 
 // ---------------------------------------------------------------------------
 
-// Underline-style fields: paper feel. Border only at the bottom.
+// GH-style boxed inputs: hairline border, 6px radius, 32px height, 14px Inter,
+// accent focus ring (2px accent-soft for the GH glow effect).
 const inputClass =
-  "w-full bg-transparent border-b border-hairline px-0 py-2 text-base text-ink " +
+  "h-8 w-full rounded-md border border-hairline bg-white px-2.5 text-sm text-ink " +
   "placeholder:text-ink-faint outline-none transition " +
-  "hover:border-ink-faint focus:border-accent";
+  "hover:border-ink-faint focus:border-accent focus:ring-2 focus:ring-accent-soft";
+
+const textareaClass =
+  "w-full rounded-md border border-hairline bg-white px-2.5 py-2 text-sm text-ink " +
+  "placeholder:text-ink-faint outline-none transition " +
+  "hover:border-ink-faint focus:border-accent focus:ring-2 focus:ring-accent-soft";
 
 function CurrencySelect({
   value, onChange,
@@ -279,9 +279,9 @@ function CurrencySelect({
       value={value}
       onChange={(e) => onChange(e.target.value as Currency)}
       className="
-        cursor-pointer border-b border-hairline bg-transparent py-2 pl-1 pr-5 text-sm
-        font-medium uppercase tracking-wider text-ink-dim
-        outline-none transition hover:border-ink-faint hover:text-ink focus:border-accent
+        h-8 cursor-pointer rounded-md border border-hairline bg-white px-2 text-sm
+        font-medium text-ink-dim outline-none transition
+        hover:border-ink-faint hover:text-ink focus:border-accent focus:ring-2 focus:ring-accent-soft
       "
     >
       {CURRENCIES.map((c) => (
@@ -303,13 +303,9 @@ function Field({
 }) {
   return (
     <label htmlFor={htmlFor} className="block">
-      <div className="mb-2 flex items-baseline justify-between gap-3">
-        <span className="text-[11px] uppercase tracking-micro text-ink-faint">
-          {label}
-        </span>
-        {hint && (
-          <span className="serif text-xs text-ink-faint">{hint}</span>
-        )}
+      <div className="mb-1.5 flex items-baseline justify-between gap-3">
+        <span className="text-xs font-medium text-ink-dim">{label}</span>
+        {hint && <span className="text-xs text-ink-faint">{hint}</span>}
       </div>
       {children}
     </label>
@@ -332,7 +328,10 @@ function Segmented({
   return (
     <div
       role="radiogroup"
-      className={`inline-flex gap-6 ${disabled ? "opacity-50" : ""}`}
+      className={
+        "inline-flex h-8 rounded-md border border-hairline bg-white p-0.5 " +
+        (disabled ? "opacity-50" : "")
+      }
     >
       {options.map((opt) => {
         const active = opt.value === value;
@@ -345,10 +344,10 @@ function Segmented({
             disabled={disabled}
             onClick={() => onChange(opt.value)}
             className={
-              "pb-2 text-sm border-b transition " +
+              "inline-flex items-center rounded-[5px] px-2.5 text-sm font-medium transition " +
               (active
-                ? "serif text-ink border-ink"
-                : "text-ink-faint border-hairline hover:text-ink-dim hover:border-ink-faint") +
+                ? "bg-accent-soft text-accent"
+                : "text-ink-dim hover:bg-subtle hover:text-ink") +
               (disabled ? " cursor-not-allowed" : "")
             }
           >

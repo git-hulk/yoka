@@ -1,5 +1,5 @@
-// ← 2026 → with a "this year" shortcut. Mirrors MonthSwitcher's editorial
-// styling so the dashboard's two views feel like the same control set.
+// ← 2026 → with a "this year" shortcut. Mirrors MonthSwitcher so the
+// dashboard's two views feel like the same control set.
 
 interface Props {
   /** Current year as "YYYY". */
@@ -14,35 +14,38 @@ export default function YearSwitcher({ year, onChange }: Props) {
   const today = formatYear(new Date());
   const isToday = year === today;
 
-  const btn =
-    "inline-flex items-center gap-1 border-b border-hairline pb-0.5 text-sm text-ink-dim " +
-    "transition hover:border-accent hover:text-accent";
-
   return (
-    <nav
-      aria-label="Year navigation"
-      className="flex items-baseline justify-between gap-4"
-    >
-      <div className="flex items-baseline gap-6">
-        <button type="button" onClick={prev} className={btn}>
-          <span aria-hidden="true">←</span> prev
+    <nav aria-label="Year navigation" className="flex items-center gap-2">
+      <div className="inline-flex h-8 overflow-hidden rounded-md border border-hairline bg-white">
+        <button
+          type="button"
+          onClick={prev}
+          aria-label="Previous year"
+          className="inline-flex h-full w-8 items-center justify-center text-ink-dim transition hover:bg-subtle hover:text-ink"
+        >
+          <span aria-hidden="true">←</span>
         </button>
-        <h2 className="serif text-lg leading-none text-ink">{year}</h2>
-        <button type="button" onClick={next} className={btn}>
-          next <span aria-hidden="true">→</span>
+        <span aria-hidden="true" className="w-px bg-hairline" />
+        <span className="num inline-flex h-full min-w-[4.5rem] items-center justify-center px-3 text-sm font-semibold tabular-nums text-ink">
+          {year}
+        </span>
+        <span aria-hidden="true" className="w-px bg-hairline" />
+        <button
+          type="button"
+          onClick={next}
+          aria-label="Next year"
+          className="inline-flex h-full w-8 items-center justify-center text-ink-dim transition hover:bg-subtle hover:text-ink"
+        >
+          <span aria-hidden="true">→</span>
         </button>
       </div>
       <button
         type="button"
         onClick={() => onChange(today)}
         disabled={isToday}
-        className={
-          "text-[11px] uppercase tracking-micro text-ink-faint transition " +
-          "hover:text-accent disabled:cursor-not-allowed disabled:opacity-40 " +
-          "disabled:hover:text-ink-faint"
-        }
+        className="inline-flex h-8 items-center rounded-md border border-hairline bg-white px-3 text-sm font-medium text-ink-dim transition hover:bg-subtle hover:text-ink disabled:cursor-not-allowed disabled:opacity-40"
       >
-        this year
+        This year
       </button>
     </nav>
   );

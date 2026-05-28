@@ -23,27 +23,21 @@ export default function SubscriptionCard({ sub }: Props) {
   return (
     <Link
       to={`/subscriptions/${sub.id}`}
-      className="group relative -mx-4 grid grid-cols-[minmax(0,1.4fr)_minmax(110px,1.3fr)_5.5rem_5rem] items-center gap-5 px-4 py-4 transition duration-300 ease-out hover:bg-accent-soft focus:outline-none sm:grid-cols-[minmax(0,1.4fr)_minmax(140px,1.4fr)_5.5rem_5rem_5rem]"
+      className="group grid grid-cols-[minmax(0,1.4fr)_minmax(110px,1.3fr)_5.5rem_5rem] items-center gap-5 px-4 py-3 transition hover:bg-subtle focus:outline-none sm:grid-cols-[minmax(0,1.4fr)_minmax(140px,1.4fr)_5.5rem_5rem_5rem]"
     >
-      <div className="flex min-w-0 items-center gap-2.5">
+      <div className="flex min-w-0 items-center gap-2">
         <span
           aria-hidden="true"
           className="size-2 shrink-0 rounded-full"
           style={{ backgroundColor: subscriptionColor(sub.id) }}
         />
-        <h2 className="serif truncate text-base leading-tight text-ink decoration-accent/60 underline-offset-4 group-hover:underline">
+        <h2 className="truncate text-sm font-medium text-ink group-hover:text-accent">
           {sub.name}
         </h2>
-        <span
-          aria-hidden="true"
-          className="-translate-x-1 text-base leading-none text-accent opacity-0 transition-all duration-300 ease-out group-hover:translate-x-0 group-hover:opacity-100"
-        >
-          →
-        </span>
       </div>
 
-      <div className="space-y-2 pb-0.5">
-        <div className="num text-[11px] tabular-nums tracking-micro text-ink-faint">
+      <div className="space-y-1.5">
+        <div className="num text-[11px] tabular-nums text-ink-faint">
           {usageRatioLabel(sub)}
         </div>
         <TrackBand

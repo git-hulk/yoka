@@ -7,16 +7,19 @@ interface Props {
   label:  string;
 }
 
-const TEXT: Record<PaceColor, string> = {
-  green: "text-pace-green",
-  amber: "text-pace-amber",
-  red:   "text-pace-red",
+// GH "label" cadence: rounded pill with a tinted fill, a hairline-tinted
+// border, and the full pace color for text. Leading status mark carries
+// the verdict on its own — color is reinforcement, not the only cue.
+const PILL: Record<PaceColor, string> = {
+  green: "border-pace-green/25 bg-track-green text-pace-green",
+  amber: "border-pace-amber/25 bg-track-amber text-pace-amber",
+  red:   "border-pace-red/25   bg-track-red   text-pace-red",
 };
 
 export default function StatusPill({ status, color, label }: Props) {
   return (
     <span
-      className={`inline-flex items-center gap-2 whitespace-nowrap text-[11px] font-semibold uppercase tracking-micro ${TEXT[color]}`}
+      className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border px-2 py-0.5 text-xs font-medium ${PILL[color]}`}
     >
       <StatusMark status={status} />
       {label}

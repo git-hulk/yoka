@@ -83,8 +83,8 @@ export default function RecurringExpenseForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} noValidate className="space-y-10">
-      <div className="space-y-8">
+    <form onSubmit={handleSubmit} noValidate className="space-y-6">
+      <div className="space-y-4">
         <Field label="Name" htmlFor="name">
           <input
             id="name"
@@ -94,13 +94,13 @@ export default function RecurringExpenseForm({
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="Rent"
-            className={`${inputClass} serif text-base placeholder:text-ink-faint`}
+            className={inputClass}
           />
         </Field>
 
-        <div className="grid grid-cols-2 gap-x-8 gap-y-8">
+        <div className="grid grid-cols-2 gap-x-4 gap-y-4">
           <Field label={`Amount (${currency})`} htmlFor="amount">
-            <div className="flex items-baseline gap-2">
+            <div className="flex items-stretch gap-2">
               <input
                 id="amount"
                 type="number"
@@ -120,15 +120,15 @@ export default function RecurringExpenseForm({
             <Segmented
               value={cadence}
               options={[
-                { value: "monthly", label: "monthly" },
-                { value: "yearly",  label: "yearly" },
+                { value: "monthly", label: "Monthly" },
+                { value: "yearly",  label: "Yearly"  },
               ]}
               onChange={(v) => setCadence(v as Cadence)}
             />
           </Field>
         </div>
 
-        <div className="grid grid-cols-2 gap-x-8 gap-y-8">
+        <div className="grid grid-cols-2 gap-x-4 gap-y-4">
           <Field label="Starts" htmlFor="start_date">
             <input
               id="start_date"
@@ -139,7 +139,7 @@ export default function RecurringExpenseForm({
               className={`${inputClass} num tabular-nums`}
             />
           </Field>
-          <Field label="Ends" htmlFor="end_date" hint="optional">
+          <Field label="Ends" htmlFor="end_date" hint="Optional">
             <input
               id="end_date"
               type="date"
@@ -149,7 +149,7 @@ export default function RecurringExpenseForm({
             />
           </Field>
 
-          <Field label="Category" htmlFor="category" hint="one tag">
+          <Field label="Category" htmlFor="category" hint="One tag">
             <CategoriesPicker
               id="category"
               mode="single"
@@ -157,51 +157,45 @@ export default function RecurringExpenseForm({
               onChange={setCategory}
               options={categorySuggestions}
               placeholder={
-                categorySuggestions.length > 0 ? "pick or create" : "Housing"
+                categorySuggestions.length > 0 ? "Pick or create" : "Housing"
               }
             />
           </Field>
         </div>
 
-        <Field label="Notes" htmlFor="notes" hint="optional">
+        <Field label="Notes" htmlFor="notes" hint="Optional">
           <textarea
             id="notes"
             rows={3}
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
             placeholder="Why this is recurring."
-            className={`${inputClass} resize-y`}
+            className={`${textareaClass} resize-y`}
           />
         </Field>
       </div>
 
       {error && (
-        <div className="border-y border-pace-red/40 bg-pace-red/5 px-1 py-4">
+        <div className="rounded-md border border-pace-red/40 bg-pace-red/5 px-4 py-3">
           <p className="text-sm font-semibold text-pace-red">{error}</p>
         </div>
       )}
 
-      <div className="flex items-center justify-end gap-6 border-t border-hairline pt-6">
+      <div className="flex items-center justify-end gap-2 border-t border-hairline pt-4">
         <button
           type="button"
           onClick={onCancel}
           disabled={submitting}
-          className="text-[11px] uppercase tracking-micro text-ink-dim transition hover:text-ink disabled:opacity-50"
+          className="inline-flex h-8 items-center rounded-md border border-hairline bg-white px-3 text-sm font-medium text-ink transition hover:bg-subtle disabled:opacity-50"
         >
           Cancel
         </button>
         <button
           type="submit"
           disabled={!canSubmit}
-          className="group inline-flex items-baseline gap-2 bg-accent px-5 py-2.5 text-sm font-medium text-canvas transition hover:bg-ink disabled:cursor-not-allowed disabled:bg-ink-faint"
+          className="inline-flex h-8 items-center rounded-md border border-accent bg-accent px-3 text-sm font-medium text-white transition hover:bg-accent/90 disabled:cursor-not-allowed disabled:border-ink-faint disabled:bg-ink-faint"
         >
           {submitting ? "Saving…" : submitLabel}
-          <span
-            aria-hidden="true"
-            className="text-base leading-none transition-transform duration-300 group-hover:translate-x-0.5"
-          >
-            →
-          </span>
         </button>
       </div>
     </form>
@@ -211,9 +205,14 @@ export default function RecurringExpenseForm({
 // ---------------------------------------------------------------------------
 
 const inputClass =
-  "w-full bg-transparent border-b border-hairline px-0 py-2 text-base text-ink " +
+  "h-8 w-full rounded-md border border-hairline bg-white px-2.5 text-sm text-ink " +
   "placeholder:text-ink-faint outline-none transition " +
-  "hover:border-ink-faint focus:border-accent";
+  "hover:border-ink-faint focus:border-accent focus:ring-2 focus:ring-accent-soft";
+
+const textareaClass =
+  "w-full rounded-md border border-hairline bg-white px-2.5 py-2 text-sm text-ink " +
+  "placeholder:text-ink-faint outline-none transition " +
+  "hover:border-ink-faint focus:border-accent focus:ring-2 focus:ring-accent-soft";
 
 function CurrencySelect({
   value, onChange,
@@ -227,9 +226,9 @@ function CurrencySelect({
       value={value}
       onChange={(e) => onChange(e.target.value as Currency)}
       className="
-        cursor-pointer border-b border-hairline bg-transparent py-2 pl-1 pr-5 text-sm
-        font-medium uppercase tracking-wider text-ink-dim
-        outline-none transition hover:border-ink-faint hover:text-ink focus:border-accent
+        h-8 cursor-pointer rounded-md border border-hairline bg-white px-2 text-sm
+        font-medium text-ink-dim outline-none transition
+        hover:border-ink-faint hover:text-ink focus:border-accent focus:ring-2 focus:ring-accent-soft
       "
     >
       {CURRENCIES.map((c) => (
@@ -249,13 +248,9 @@ function Field({
 }) {
   return (
     <label htmlFor={htmlFor} className="block">
-      <div className="mb-2 flex items-baseline justify-between gap-3">
-        <span className="text-[11px] uppercase tracking-micro text-ink-faint">
-          {label}
-        </span>
-        {hint && (
-          <span className="serif text-xs text-ink-faint">{hint}</span>
-        )}
+      <div className="mb-1.5 flex items-baseline justify-between gap-3">
+        <span className="text-xs font-medium text-ink-dim">{label}</span>
+        {hint && <span className="text-xs text-ink-faint">{hint}</span>}
       </div>
       {children}
     </label>
@@ -275,7 +270,7 @@ function Segmented({
   onChange: (v: string) => void;
 }) {
   return (
-    <div role="radiogroup" className="inline-flex gap-6">
+    <div role="radiogroup" className="inline-flex h-8 rounded-md border border-hairline bg-white p-0.5">
       {options.map((opt) => {
         const active = opt.value === value;
         return (
@@ -286,10 +281,10 @@ function Segmented({
             aria-checked={active}
             onClick={() => onChange(opt.value)}
             className={
-              "pb-2 text-sm border-b transition " +
+              "inline-flex items-center rounded-[5px] px-2.5 text-sm font-medium transition " +
               (active
-                ? "serif text-ink border-ink"
-                : "text-ink-faint border-hairline hover:text-ink-dim hover:border-ink-faint")
+                ? "bg-accent-soft text-accent"
+                : "text-ink-dim hover:bg-subtle hover:text-ink")
             }
           >
             {opt.label}

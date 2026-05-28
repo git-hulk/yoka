@@ -140,8 +140,8 @@ export default function CategoriesPicker({
     <div ref={rootRef} className="relative">
       <div
         className={
-          "flex flex-wrap items-baseline gap-x-3 gap-y-1 border-b border-hairline " +
-          "pr-7 transition focus-within:border-accent hover:border-ink-faint"
+          "flex h-8 flex-wrap items-center gap-1.5 rounded-md border border-hairline bg-white " +
+          "pl-2 pr-7 transition focus-within:border-accent focus-within:ring-2 focus-within:ring-accent-soft hover:border-ink-faint"
         }
       >
         {values.map((v) => (
@@ -169,16 +169,13 @@ export default function CategoriesPicker({
             onClick={() => setOpen(true)}
             onKeyDown={onKeyDown}
             placeholder={values.length === 0 ? placeholder : undefined}
-            className="
-              min-w-[6rem] flex-1 bg-transparent py-2 text-base text-ink
-              placeholder:text-ink-faint outline-none
-            "
+            className="min-w-[6rem] flex-1 bg-transparent text-sm text-ink placeholder:text-ink-faint outline-none"
           />
         )}
 
         {atMax && mode !== "single" && (
-          <span className="serif py-2 text-xs text-ink-faint">
-            max {effectiveMax} reached
+          <span className="text-xs text-ink-faint">
+            Max {effectiveMax} reached
           </span>
         )}
       </div>
@@ -209,7 +206,7 @@ export default function CategoriesPicker({
           role="listbox"
           className="
             absolute left-0 right-0 top-full z-20 mt-1 max-h-64 overflow-y-auto
-            border border-hairline bg-surface py-1 shadow-page
+            rounded-md border border-hairline bg-white py-1 shadow-[0_8px_24px_-8px_rgba(26,24,20,0.18)]
           "
         >
           {filtered.map((opt, i) => {
@@ -249,7 +246,7 @@ export default function CategoriesPicker({
                   : "text-ink-dim hover:bg-accent-soft hover:text-ink")
               }
             >
-              <span className="serif">create</span>
+              <span className="font-medium">Create</span>
               <span className="ml-1.5 text-ink">"{trimmed}"</span>
             </li>
           )}
@@ -265,15 +262,10 @@ function Chip({ value, onRemove }: { value: string; onRemove: () => void }) {
       type="button"
       onClick={onRemove}
       aria-label={`Remove ${value}`}
-      className="group inline-flex items-baseline gap-1 py-2 text-sm transition"
+      className="group inline-flex items-center gap-1 rounded-full border border-hairline bg-subtle px-2 py-0.5 text-xs font-medium text-ink-dim transition hover:border-pace-red/30 hover:bg-pace-red/5 hover:text-pace-red"
     >
-      <span className="text-ink transition group-hover:text-pace-red">
-        {value}
-      </span>
-      <span
-        aria-hidden="true"
-        className="text-[11px] text-ink-faint transition group-hover:text-pace-red"
-      >
+      {value}
+      <span aria-hidden="true" className="text-ink-faint transition group-hover:text-pace-red">
         ×
       </span>
     </button>

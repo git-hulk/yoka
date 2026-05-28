@@ -56,7 +56,7 @@ export default function SubscriptionDetail() {
   const isDuration = sub.tracking_mode === "duration";
 
   return (
-    <div className="space-y-12">
+    <div className="space-y-8">
       <Hero
         sub={sub}
         usages={usages}
@@ -95,41 +95,41 @@ function Hero({
 
   return (
     <section>
-      <div className="flex items-center justify-between gap-3 border-b border-hairline pb-3">
-        <div className="flex items-center gap-2.5">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-hairline pb-3">
+        <div className="flex items-center gap-2">
           <span
             aria-hidden="true"
             className="size-2 shrink-0 rounded-full"
             style={{ backgroundColor: subscriptionColor(sub.id) }}
           />
-          <span className="text-[11px] uppercase tracking-micro text-ink-faint">
-            {sub.categories.length > 0 ? sub.categories.join(" · ") : "subscription"}
+          <span className="text-xs text-ink-faint">
+            {sub.categories.length > 0 ? sub.categories.join(" · ") : "Subscription"}
           </span>
         </div>
         <StatusPill status={sub.status} color={color} label={statusLabel(sub.status)} />
       </div>
 
-      <h1 className="serif mt-6 text-base font-bold leading-none text-ink">
+      <h1 className="mt-4 text-2xl font-semibold tracking-tight text-ink">
         {sub.name}
       </h1>
 
       {subtitle && (
-        <p className="num mt-3 text-sm text-ink-dim">
+        <p className="num mt-1.5 text-sm text-ink-dim">
           {subtitle}
         </p>
       )}
 
       {notes && (
-        <p className="serif mt-3 max-w-[60ch] text-sm leading-snug text-ink-dim">
-          &ldquo;{notes}&rdquo;
+        <p className="mt-3 max-w-[60ch] border-l-0 text-sm leading-relaxed text-ink-dim">
+          “{notes}”
         </p>
       )}
 
-      <div className="mt-10 flex flex-wrap items-baseline gap-x-4">
-        <span className="serif num text-base font-bold leading-none text-ink">
+      <div className="mt-8 flex flex-wrap items-baseline gap-x-2">
+        <span className="num text-2xl font-semibold leading-none text-ink">
           {remainingLabel(sub)}
         </span>
-        <span className="serif text-base leading-tight text-ink-dim">
+        <span className="text-sm leading-tight text-ink-dim">
           {sub.tracking_mode === "duration" ? (
             <>
               of{" "}
@@ -147,11 +147,11 @@ function Hero({
         </span>
       </div>
 
-      <p className="serif mt-1 text-base leading-tight text-ink-dim">
+      <p className="mt-1 text-sm leading-tight text-ink-dim">
         {timeToExpiryVerbose(sub)}.
       </p>
 
-      <div className="mt-10">
+      <div className="mt-6">
         <TrackBand
           color={color}
           filled={filledFraction(sub)}
@@ -163,7 +163,7 @@ function Hero({
       </div>
 
       {narrative && (
-        <p className="serif mt-5 text-base leading-snug text-ink-dim">
+        <p className="mt-4 max-w-[60ch] text-sm leading-relaxed text-ink-dim">
           {narrative}
         </p>
       )}
@@ -188,11 +188,9 @@ function buildSubtitle(sub: Subscription): string {
 }
 
 // ---------------------------------------------------------------------------
-// Terminal actions live next to the entry action ("edit subscription") at the bottom
-// of the hero, on the page users actually land on. Three peers in the same
-// tracking-micro register: archive (ink-dim), delete (pace-red), edit
-// (underlined entry). Click archive/delete and the row collapses into a
-// confirm panel rendered in the same slot — no modal.
+// Terminal actions live at the bottom of the hero — archive (secondary),
+// delete (destructive), edit (primary). Click archive/delete and the row
+// collapses into a confirm panel rendered in the same slot — no modal.
 
 type Pending = "archive" | "delete" | null;
 
@@ -235,7 +233,7 @@ function HeroActions({
         body="Hides from the active list. Nothing is deleted."
         confirmLabel="Archive"
         loadingLabel="Archiving…"
-        confirmTone="bg-ink"
+        confirmTone="neutral"
         onCancel={cancel}
         onConfirm={() => commit("archive")}
         submitting={submitting}
@@ -257,7 +255,7 @@ function HeroActions({
         }
         confirmLabel="Delete forever"
         loadingLabel="Deleting…"
-        confirmTone="bg-pace-red"
+        confirmTone="danger"
         onCancel={cancel}
         onConfirm={() => commit("delete")}
         submitting={submitting}
@@ -268,28 +266,28 @@ function HeroActions({
   }
 
   return (
-    <div className="mt-8 flex items-center justify-between gap-6 text-[11px] uppercase tracking-micro">
-      <div className="flex items-center gap-6">
+    <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
+      <div className="flex items-center gap-2">
         <button
           type="button"
           onClick={() => setPending("archive")}
-          className="border-b border-ink/40 pb-0.5 text-ink-dim transition hover:border-ink hover:text-ink"
+          className="inline-flex h-8 items-center rounded-md border border-hairline bg-white px-3 text-sm font-medium text-ink transition hover:bg-subtle"
         >
-          archive
+          Archive
         </button>
         <button
           type="button"
           onClick={() => setPending("delete")}
-          className="border-b border-pace-red/40 pb-0.5 text-pace-red transition hover:border-pace-red hover:text-pace-red"
+          className="inline-flex h-8 items-center rounded-md border border-pace-red/30 bg-white px-3 text-sm font-medium text-pace-red transition hover:bg-pace-red/5"
         >
-          delete
+          Delete
         </button>
       </div>
       <Link
         to={`/subscriptions/${id}/edit`}
-        className="border-b border-ink/40 pb-0.5 text-ink-dim transition hover:border-accent hover:text-accent"
+        className="inline-flex h-8 items-center rounded-md border border-accent bg-accent px-3 text-sm font-medium text-white transition hover:bg-accent/90"
       >
-        edit subscription
+        Edit subscription
       </Link>
     </div>
   );
@@ -303,44 +301,48 @@ function ConfirmPanel({
   body:         string | null;
   confirmLabel: string;
   loadingLabel: string;
-  confirmTone:  string;
+  confirmTone:  "danger" | "neutral";
   onCancel:     () => void;
   onConfirm:    () => void;
   submitting:   boolean;
   error:        string | null;
   disabled?:    boolean;
 }) {
+  const confirmClass =
+    confirmTone === "danger"
+      ? "border-pace-red bg-pace-red text-white hover:bg-pace-red/90 disabled:bg-pace-red/40 disabled:border-pace-red/40"
+      : "border-ink bg-ink text-white hover:bg-ink/90 disabled:bg-ink-faint disabled:border-ink-faint";
+
   return (
-    <div className="mt-8">
-      <p className="serif text-base text-ink">{title}</p>
+    <div className="mt-6 rounded-md border border-hairline bg-subtle/60 p-4">
+      <p className="text-sm font-semibold text-ink">{title}</p>
       {body && (
-        <p className="mt-2 text-sm text-ink-dim">{body}</p>
+        <p className="mt-1 text-sm text-ink-dim">{body}</p>
       )}
 
       {error && (
-        <p className="mt-3 text-sm font-semibold text-pace-red">{error}</p>
+        <p className="mt-2 text-sm font-semibold text-pace-red">{error}</p>
       )}
 
-      <div className="mt-6 flex items-center gap-6">
-        <button
-          type="button"
-          onClick={onCancel}
-          disabled={submitting}
-          className="text-[11px] uppercase tracking-micro text-ink-dim transition hover:text-ink disabled:opacity-50"
-        >
-          Cancel
-        </button>
+      <div className="mt-3 flex items-center gap-2">
         <button
           type="button"
           onClick={onConfirm}
           disabled={submitting || disabled}
           className={
-            `inline-flex items-baseline px-5 py-2.5 text-sm font-medium text-canvas ` +
-            `transition hover:bg-ink disabled:cursor-not-allowed disabled:bg-ink-faint ` +
-            confirmTone
+            "inline-flex h-8 items-center rounded-md border px-3 text-sm font-medium transition disabled:cursor-not-allowed " +
+            confirmClass
           }
         >
           {submitting ? loadingLabel : confirmLabel}
+        </button>
+        <button
+          type="button"
+          onClick={onCancel}
+          disabled={submitting}
+          className="inline-flex h-8 items-center rounded-md border border-hairline bg-white px-3 text-sm font-medium text-ink transition hover:bg-subtle disabled:opacity-50"
+        >
+          Cancel
         </button>
       </div>
     </div>
@@ -379,26 +381,26 @@ function Cadence({ sub, usages }: { sub: Subscription; usages: Usage[] }) {
 
   return (
     <section>
-      <div className="flex items-baseline justify-between border-b border-hairline pb-3">
-        <h2 className="serif text-base font-semibold text-ink">Cadence</h2>
-        <span className="num text-[11px] uppercase tracking-micro text-ink-faint">
-          last {CADENCE_DAYS} days
+      <div className="flex items-baseline justify-between border-b border-hairline pb-2">
+        <h2 className="text-base font-semibold text-ink">Cadence</h2>
+        <span className="num text-xs text-ink-faint">
+          Last {CADENCE_DAYS} days
         </span>
       </div>
 
-      <div className="mt-6">
+      <div className="mt-4">
         <Sparkline
           bins={bins}
           color={subscriptionColor(sub.id)}
           label={`${formatAmount(totalInWin)}${unit} across the last ${CADENCE_DAYS} days`}
         />
-        <div className="num mt-2 flex justify-between text-[11px] uppercase tracking-micro text-ink-faint">
+        <div className="num mt-1.5 flex justify-between text-xs text-ink-faint">
           <span>{CADENCE_DAYS}d ago</span>
-          <span>today</span>
+          <span>Today</span>
         </div>
       </div>
 
-      <p className="serif mt-6 max-w-[65ch] text-base leading-snug text-ink-dim">
+      <p className="mt-4 max-w-[60ch] text-sm leading-relaxed text-ink-dim">
         {sentence}
       </p>
     </section>
@@ -434,32 +436,32 @@ function UsageHistory({
 }) {
   return (
     <section>
-      <div className="flex items-baseline justify-between border-b border-hairline pb-3">
-        <h2 className="serif text-base font-semibold text-ink">History</h2>
+      <div className="flex items-baseline justify-between border-b border-hairline pb-2">
+        <h2 className="text-base font-semibold text-ink">History</h2>
         {usages.length > 0 && (
-          <span className="num text-[11px] uppercase tracking-micro text-ink-faint">
+          <span className="num text-xs text-ink-faint">
             {usages.length} {usages.length === 1 ? "entry" : "entries"}
           </span>
         )}
       </div>
 
-      {loading && <EmptyRow text="loading…" />}
+      {loading && <EmptyRow text="Loading…" />}
 
       {error && (
-        <div className="border-b border-pace-red/40 px-1 py-5">
+        <div className="mt-3 rounded-md border border-pace-red/40 bg-pace-red/5 px-4 py-3">
           <p className="text-sm font-semibold text-pace-red">
             Couldn't load history
           </p>
-          <p className="mt-1 text-xs text-ink-dim">{error.message}</p>
+          <p className="mt-0.5 text-xs text-ink-dim">{error.message}</p>
         </div>
       )}
 
       {!loading && !error && usages.length === 0 && (
-        <EmptyRow text="no usages yet" />
+        <EmptyRow text="No usages yet" />
       )}
 
       {!loading && !error && usages.length > 0 && (
-        <ul className="divide-y divide-hairline">
+        <ul className="mt-1 divide-y divide-hairline">
           {usages.map((u) => (
             <li key={u.id}>
               <LedgerRow
@@ -483,10 +485,10 @@ function LedgerRow({
   amount:  string;
 }) {
   return (
-    <div className="grid grid-cols-[auto_1fr_auto] items-baseline gap-4 py-4">
-      <span className="serif text-sm text-ink-dim">{date}</span>
+    <div className="grid grid-cols-[auto_1fr_auto] items-baseline gap-4 py-2.5">
+      <span className="num text-sm tabular-nums text-ink-dim">{date}</span>
       <span className="truncate text-sm text-ink-dim">{detail ?? ""}</span>
-      <span className="num text-base font-medium tabular-nums text-ink">
+      <span className="num text-sm font-semibold tabular-nums text-ink">
         {amount}
       </span>
     </div>
@@ -495,7 +497,7 @@ function LedgerRow({
 
 function EmptyRow({ text }: { text: string }) {
   return (
-    <p className="serif py-6 text-center text-base text-ink-faint">
+    <p className="py-6 text-center text-sm text-ink-faint">
       {text}
     </p>
   );
@@ -512,14 +514,13 @@ function composeUsageDetail(u: Usage): string | undefined {
 
 function Skeleton() {
   return (
-    <div className="space-y-12" aria-busy="true">
-      <div className="h-3 w-24 animate-pulse rounded-sm bg-ink/5" />
+    <div className="space-y-8" aria-busy="true">
       <div>
-        <div className="h-3 w-16 animate-pulse rounded-sm border-b border-hairline bg-ink/5" />
-        <div className="mt-6 h-12 w-56 animate-pulse rounded-sm bg-ink/5" />
-        <div className="mt-3 h-3 w-40 animate-pulse rounded-sm bg-ink/5" />
-        <div className="mt-10 h-16 w-32 animate-pulse rounded-sm bg-ink/5" />
-        <div className="mt-10 h-3 w-full animate-pulse rounded-sm bg-ink/5" />
+        <div className="h-3 w-24 animate-pulse rounded-sm bg-ink/5" />
+        <div className="mt-4 h-8 w-56 animate-pulse rounded-sm bg-ink/5" />
+        <div className="mt-2 h-3 w-40 animate-pulse rounded-sm bg-ink/5" />
+        <div className="mt-8 h-8 w-32 animate-pulse rounded-sm bg-ink/5" />
+        <div className="mt-6 h-3 w-full animate-pulse rounded-sm bg-ink/5" />
       </div>
       <div className="h-6 w-24 animate-pulse rounded-sm bg-ink/5" />
     </div>
@@ -528,9 +529,9 @@ function Skeleton() {
 
 function NotFound({ id }: { id: string }) {
   return (
-    <div className="border-y border-hairline py-12 text-center">
-      <p className="serif text-base font-semibold text-ink">No such subscription.</p>
-      <p className="mt-3 text-sm text-ink-dim">
+    <div className="rounded-md border border-hairline bg-subtle/40 py-12 text-center">
+      <p className="text-base font-semibold text-ink">No such subscription.</p>
+      <p className="mt-1 text-sm text-ink-dim">
         <span className="num">{id}</span> may have been archived or deleted.
       </p>
     </div>
@@ -539,9 +540,9 @@ function NotFound({ id }: { id: string }) {
 
 function ErrorBox({ title, detail }: { title: string; detail: string }) {
   return (
-    <div className="border-y border-pace-red/40 bg-pace-red/5 px-1 py-5">
+    <div className="rounded-md border border-pace-red/40 bg-pace-red/5 px-4 py-3">
       <p className="text-sm font-semibold text-pace-red">{title}</p>
-      <p className="mt-1 text-xs text-ink-dim">{detail}</p>
+      <p className="mt-0.5 text-xs text-ink-dim">{detail}</p>
     </div>
   );
 }

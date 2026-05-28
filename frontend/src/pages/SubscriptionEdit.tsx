@@ -48,12 +48,10 @@ export default function SubscriptionEdit() {
   const isDuration = sub.tracking_mode === "duration";
 
   return (
-    <div className="space-y-12">
+    <div className="space-y-8">
       <div className="border-b border-hairline pb-4">
-        <span className="text-[11px] uppercase tracking-micro text-ink-faint">
-          revising
-        </span>
-        <h1 className="serif mt-2 text-base font-bold leading-none text-ink">
+        <span className="text-xs text-ink-faint">Editing</span>
+        <h1 className="mt-1 text-xl font-semibold tracking-tight text-ink">
           {sub.name}
         </h1>
       </div>
@@ -81,14 +79,14 @@ export default function SubscriptionEdit() {
 
 function Skeleton() {
   return (
-    <div className="space-y-12" aria-busy="true">
+    <div className="space-y-8" aria-busy="true">
       <div>
         <div className="h-3 w-16 animate-pulse rounded-sm bg-ink/5" />
-        <div className="mt-3 h-10 w-56 animate-pulse rounded-sm bg-ink/5" />
+        <div className="mt-2 h-7 w-56 animate-pulse rounded-sm bg-ink/5" />
       </div>
-      <div className="space-y-6">
-        <div className="h-12 w-full animate-pulse rounded-sm bg-ink/5" />
-        <div className="h-12 w-1/2 animate-pulse rounded-sm bg-ink/5" />
+      <div className="space-y-4">
+        <div className="h-8 w-full animate-pulse rounded-sm bg-ink/5" />
+        <div className="h-8 w-1/2 animate-pulse rounded-sm bg-ink/5" />
         <div className="h-20 w-full animate-pulse rounded-sm bg-ink/5" />
       </div>
     </div>
@@ -97,9 +95,9 @@ function Skeleton() {
 
 function NotFound({ id }: { id: string }) {
   return (
-    <div className="border-y border-hairline py-12 text-center">
-      <p className="serif text-base font-semibold text-ink">No such subscription.</p>
-      <p className="mt-3 text-sm text-ink-dim">
+    <div className="rounded-md border border-hairline bg-subtle/40 py-12 text-center">
+      <p className="text-base font-semibold text-ink">No such subscription.</p>
+      <p className="mt-1 text-sm text-ink-dim">
         <span className="num">{id}</span> may have been archived or deleted.
       </p>
     </div>
@@ -108,9 +106,9 @@ function NotFound({ id }: { id: string }) {
 
 function ErrorBox({ title, detail }: { title: string; detail: string }) {
   return (
-    <div className="border-y border-pace-red/40 bg-pace-red/5 px-1 py-5">
+    <div className="rounded-md border border-pace-red/40 bg-pace-red/5 px-4 py-3">
       <p className="text-sm font-semibold text-pace-red">{title}</p>
-      <p className="mt-1 text-xs text-ink-dim">{detail}</p>
+      <p className="mt-0.5 text-xs text-ink-dim">{detail}</p>
     </div>
   );
 }

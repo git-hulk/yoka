@@ -44,12 +44,12 @@ export default function App() {
             the icon rail is always visible and carries its own toggle. */}
         {collapsed && (
           <div className="border-b border-hairline md:hidden">
-            <div className="mx-auto flex max-w-5xl items-center justify-between gap-6 px-6 pt-7 pb-5 sm:px-8">
+            <div className="mx-auto flex max-w-5xl items-center justify-between gap-4 px-4 py-3 sm:px-6">
               <button
                 type="button"
                 onClick={() => setCollapsed(false)}
                 aria-label="Show sidebar"
-                className="group inline-flex items-center gap-2 text-[11px] uppercase tracking-micro text-ink-dim transition hover:text-accent"
+                className="inline-flex h-8 items-center gap-1.5 rounded-md px-2 text-sm font-medium text-ink-dim transition hover:bg-subtle hover:text-ink"
               >
                 <svg
                   viewBox="0 0 16 16"
@@ -58,23 +58,23 @@ export default function App() {
                   strokeWidth="1.5"
                   strokeLinecap="round"
                   strokeLinejoin="round"
-                  className="size-4 text-ink-faint transition group-hover:text-accent"
+                  className="size-4"
                   aria-hidden="true"
                 >
                   <line x1="3"  y1="5"  x2="13" y2="5" />
                   <line x1="3"  y1="8"  x2="13" y2="8" />
                   <line x1="3"  y1="11" x2="13" y2="11" />
                 </svg>
-                menu
+                Menu
               </button>
-              <span className="serif text-base leading-none text-accent">
+              <span className="text-sm font-semibold tracking-tight text-accent">
                 YOKA
               </span>
             </div>
           </div>
         )}
 
-        <div className="mx-auto w-full max-w-5xl flex-1 px-6 pt-10 pb-20 sm:px-10">
+        <div className="mx-auto w-full max-w-5xl flex-1 px-6 pt-8 pb-12 sm:px-8">
           <Suspense fallback={<RouteFallback />}>
             <Routes>
               <Route path="/"                                  element={<Home />} />
