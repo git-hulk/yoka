@@ -14,11 +14,19 @@ use crate::db::Repos;
 
 pub mod events;
 pub mod finance;
+pub mod groups;
+pub mod invitations;
+pub mod sessions;
 pub mod subscriptions;
+pub mod users;
 
 pub use events::SqliteEventRepo;
 pub use finance::{SqliteBudgetRepo, SqliteExpenseRepo, SqliteRecurringExpenseRepo};
+pub use groups::SqliteGroupRepo;
+pub use invitations::SqliteInvitationRepo;
+pub use sessions::SqliteSessionRepo;
 pub use subscriptions::SqliteSubscriptionRepo;
+pub use users::SqliteUserRepo;
 
 /// SQLite migrations, applied in order on startup.
 ///
@@ -70,6 +78,10 @@ const MIGRATIONS: &[(&str, &str)] = &[
         "20260522_000001_finance",
         include_str!("../../../migrations/sqlite/20260522_000001_finance.sql"),
     ),
+    (
+        "20260614_000001_users_and_groups",
+        include_str!("../../../migrations/sqlite/20260614_000001_users_and_groups.sql"),
+    ),
 ];
 
 /// SQLite backend handle: the connected pool plus accessors that produce
@@ -114,7 +126,7 @@ impl SqliteBackend {
         migrate(&self.pool).await
     }
 
-    /// Hand out trait objects for the HTTP layer. Both repos share the pool
+    /// Hand out trait objects for the HTTP layer. All repos share the pool
     /// — `SqlitePool` is internally `Arc`-backed so cloning is cheap.
     pub fn into_repos(self) -> Repos {
         let subscriptions: Arc<dyn crate::db::SubscriptionRepo> =
@@ -125,13 +137,26 @@ impl SqliteBackend {
             Arc::new(SqliteExpenseRepo::new(self.pool.clone()));
         let recurring_expenses: Arc<dyn crate::db::RecurringExpenseRepo> =
             Arc::new(SqliteRecurringExpenseRepo::new(self.pool.clone()));
-        let budgets: Arc<dyn crate::db::BudgetRepo> = Arc::new(SqliteBudgetRepo::new(self.pool));
+        let budgets: Arc<dyn crate::db::BudgetRepo> =
+            Arc::new(SqliteBudgetRepo::new(self.pool.clone()));
+        let users: Arc<dyn crate::db::UserRepo> =
+            Arc::new(SqliteUserRepo::new(self.pool.clone()));
+        let groups: Arc<dyn crate::db::GroupRepo> =
+            Arc::new(SqliteGroupRepo::new(self.pool.clone()));
+        let invitations: Arc<dyn crate::db::InvitationRepo> =
+            Arc::new(SqliteInvitationRepo::new(self.pool.clone()));
+        let sessions: Arc<dyn crate::db::SessionRepo> =
+            Arc::new(SqliteSessionRepo::new(self.pool));
         Repos {
             subscriptions,
             events,
             expenses,
             recurring_expenses,
             budgets,
+            users,
+            groups,
+            invitations,
+            sessions,
         }
     }
 }

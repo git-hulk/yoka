@@ -10,11 +10,12 @@ use std::collections::BTreeSet;
 use axum::{
     extract::{Path, Query, State},
     http::StatusCode,
-    Json,
+    Extension, Json,
 };
 use uuid::Uuid;
 
 use crate::{
+    auth::{CurrentMember, Role},
     db::repo::{
         BudgetRow, BudgetWrite, ExpenseRow, ExpenseWrite, RecurringExpenseRow,
         RecurringExpenseWrite, SubscriptionRow,
@@ -42,16 +43,24 @@ const MAX_PER_PAGE: u32 = 100;
 
 pub async fn monthly_ledger(
     State(state): State<AppState>,
+    Extension(me): Extension<CurrentMember>,
     Query(q): Query<MonthQuery>,
 ) -> Result<Json<MonthlyLedgerResponse>, AppError> {
+    me.require_role(Role::Viewer)?;
     let month = parse_month(&q.month)?;
     let first = month.first_day();
     let last = month.last_day();
 
-    let subs_rows = state.subscriptions.list_in_range(first, last).await?;
-    let expenses_rows = state.expenses.list_in_month(first, last).await?;
-    let rules_rows = state.recurring_expenses.list_active().await?;
-    let budgets_rows = state.budgets.list_for_month(&q.month).await?;
+    let subs_rows = state
+        .subscriptions
+        .list_in_range(&me.group_id, first, last)
+        .await?;
+    let expenses_rows = state
+        .expenses
+        .list_in_month(&me.group_id, first, last)
+        .await?;
+    let rules_rows = state.recurring_expenses.list_active(&me.group_id).await?;
+    let budgets_rows = state.budgets.list_for_month(&me.group_id, &q.month).await?;
 
     let sub_inputs: Vec<SubscriptionLedgerInput> =
         subs_rows.iter().map(subscription_to_ledger_input).collect();
@@ -98,20 +107,26 @@ pub async fn monthly_ledger(
 
 pub async fn yearly_ledger(
     State(state): State<AppState>,
+    Extension(me): Extension<CurrentMember>,
     Query(q): Query<YearQuery>,
 ) -> Result<Json<YearlyLedgerResponse>, AppError> {
+    me.require_role(Role::Viewer)?;
     let year = parse_year(&q.year)?;
     let first = chrono::NaiveDate::from_ymd_opt(year, 1, 1)
         .ok_or(AppError::BadRequest("invalid_year_format"))?;
     let last = chrono::NaiveDate::from_ymd_opt(year, 12, 31)
         .ok_or(AppError::BadRequest("invalid_year_format"))?;
 
-    // `list_in_month` takes an arbitrary inclusive date range despite the name —
-    // pass the year bounds to pull every expense for the year in one query.
-    let subs_rows = state.subscriptions.list_in_range(first, last).await?;
-    let expenses_rows = state.expenses.list_in_month(first, last).await?;
-    let rules_rows = state.recurring_expenses.list_active().await?;
-    let budgets_rows = state.budgets.list_for_year(&q.year).await?;
+    let subs_rows = state
+        .subscriptions
+        .list_in_range(&me.group_id, first, last)
+        .await?;
+    let expenses_rows = state
+        .expenses
+        .list_in_month(&me.group_id, first, last)
+        .await?;
+    let rules_rows = state.recurring_expenses.list_active(&me.group_id).await?;
+    let budgets_rows = state.budgets.list_for_year(&me.group_id, &q.year).await?;
 
     let sub_inputs: Vec<SubscriptionLedgerInput> =
         subs_rows.iter().map(subscription_to_ledger_input).collect();
@@ -191,8 +206,10 @@ fn parse_year(s: &str) -> Result<i32, AppError> {
 
 pub async fn list_expenses(
     State(state): State<AppState>,
+    Extension(me): Extension<CurrentMember>,
     Query(q): Query<ListExpensesQuery>,
 ) -> Result<Json<ListExpensesResponse>, AppError> {
+    me.require_role(Role::Viewer)?;
     let page = q.page.unwrap_or(1).max(1);
     let per_page = q
         .per_page
@@ -202,7 +219,7 @@ pub async fn list_expenses(
 
     let (rows, total) = state
         .expenses
-        .list_paginated(i64::from(per_page), offset)
+        .list_paginated(&me.group_id, i64::from(per_page), offset)
         .await?;
     Ok(Json(ListExpensesResponse {
         items: rows.into_iter().map(expense_response).collect(),
@@ -214,37 +231,45 @@ pub async fn list_expenses(
 
 pub async fn get_expense(
     State(state): State<AppState>,
+    Extension(me): Extension<CurrentMember>,
     Path(id): Path<String>,
 ) -> Result<Json<ExpenseResponse>, AppError> {
-    let row = state.expenses.fetch(&id).await?;
+    me.require_role(Role::Viewer)?;
+    let row = state.expenses.fetch(&me.group_id, &id).await?;
     Ok(Json(expense_response(row)))
 }
 
 pub async fn create_expense(
     State(state): State<AppState>,
+    Extension(me): Extension<CurrentMember>,
     Json(body): Json<ExpenseInput>,
 ) -> Result<(StatusCode, Json<ExpenseResponse>), AppError> {
+    me.require_role(Role::Editor)?;
     let write = validate_expense(&body)?;
     let id = Uuid::new_v4().to_string();
-    let row = state.expenses.insert(&id, write).await?;
+    let row = state.expenses.insert(&me.group_id, &id, write).await?;
     Ok((StatusCode::CREATED, Json(expense_response(row))))
 }
 
 pub async fn update_expense(
     State(state): State<AppState>,
+    Extension(me): Extension<CurrentMember>,
     Path(id): Path<String>,
     Json(body): Json<ExpenseInput>,
 ) -> Result<Json<ExpenseResponse>, AppError> {
+    me.require_role(Role::Editor)?;
     let write = validate_expense(&body)?;
-    let row = state.expenses.update(&id, write).await?;
+    let row = state.expenses.update(&me.group_id, &id, write).await?;
     Ok(Json(expense_response(row)))
 }
 
 pub async fn delete_expense(
     State(state): State<AppState>,
+    Extension(me): Extension<CurrentMember>,
     Path(id): Path<String>,
 ) -> Result<StatusCode, AppError> {
-    state.expenses.delete(&id).await?;
+    me.require_role(Role::Editor)?;
+    state.expenses.delete(&me.group_id, &id).await?;
     Ok(StatusCode::NO_CONTENT)
 }
 
@@ -254,52 +279,70 @@ pub async fn delete_expense(
 
 pub async fn list_recurring(
     State(state): State<AppState>,
+    Extension(me): Extension<CurrentMember>,
 ) -> Result<Json<Vec<RecurringExpenseResponse>>, AppError> {
-    let rows = state.recurring_expenses.list_all().await?;
+    me.require_role(Role::Viewer)?;
+    let rows = state.recurring_expenses.list_all(&me.group_id).await?;
     Ok(Json(rows.into_iter().map(recurring_response).collect()))
 }
 
 pub async fn get_recurring(
     State(state): State<AppState>,
+    Extension(me): Extension<CurrentMember>,
     Path(id): Path<String>,
 ) -> Result<Json<RecurringExpenseResponse>, AppError> {
-    let row = state.recurring_expenses.fetch(&id).await?;
+    me.require_role(Role::Viewer)?;
+    let row = state.recurring_expenses.fetch(&me.group_id, &id).await?;
     Ok(Json(recurring_response(row)))
 }
 
 pub async fn create_recurring(
     State(state): State<AppState>,
+    Extension(me): Extension<CurrentMember>,
     Json(body): Json<RecurringExpenseInput>,
 ) -> Result<(StatusCode, Json<RecurringExpenseResponse>), AppError> {
+    me.require_role(Role::Editor)?;
     let write = validate_recurring(&body)?;
     let id = Uuid::new_v4().to_string();
-    let row = state.recurring_expenses.insert(&id, write).await?;
+    let row = state
+        .recurring_expenses
+        .insert(&me.group_id, &id, write)
+        .await?;
     Ok((StatusCode::CREATED, Json(recurring_response(row))))
 }
 
 pub async fn update_recurring(
     State(state): State<AppState>,
+    Extension(me): Extension<CurrentMember>,
     Path(id): Path<String>,
     Json(body): Json<RecurringExpenseInput>,
 ) -> Result<Json<RecurringExpenseResponse>, AppError> {
+    me.require_role(Role::Editor)?;
     let write = validate_recurring(&body)?;
-    let row = state.recurring_expenses.update(&id, write).await?;
+    let row = state
+        .recurring_expenses
+        .update(&me.group_id, &id, write)
+        .await?;
     Ok(Json(recurring_response(row)))
 }
 
 pub async fn delete_recurring(
     State(state): State<AppState>,
+    Extension(me): Extension<CurrentMember>,
     Path(id): Path<String>,
 ) -> Result<StatusCode, AppError> {
-    state.recurring_expenses.delete(&id).await?;
+    me.require_role(Role::Editor)?;
+    state.recurring_expenses.delete(&me.group_id, &id).await?;
     Ok(StatusCode::NO_CONTENT)
 }
 
 pub async fn archive_recurring(
     State(state): State<AppState>,
+    Extension(me): Extension<CurrentMember>,
     Path(id): Path<String>,
 ) -> Result<StatusCode, AppError> {
-    state.recurring_expenses.archive(&id).await?;
+    me.require_role(Role::Editor)?;
+    state.recurring_expenses.archive(&me.group_id, &id).await?;
     Ok(StatusCode::NO_CONTENT)
 }
 
@@ -309,38 +352,46 @@ pub async fn archive_recurring(
 
 pub async fn list_budgets(
     State(state): State<AppState>,
+    Extension(me): Extension<CurrentMember>,
     Query(q): Query<MonthQuery>,
 ) -> Result<Json<Vec<BudgetResponse>>, AppError> {
+    me.require_role(Role::Viewer)?;
     parse_month(&q.month)?;
-    let rows = state.budgets.list_for_month(&q.month).await?;
+    let rows = state.budgets.list_for_month(&me.group_id, &q.month).await?;
     Ok(Json(rows.into_iter().map(budget_response).collect()))
 }
 
 pub async fn create_budget(
     State(state): State<AppState>,
+    Extension(me): Extension<CurrentMember>,
     Json(body): Json<BudgetInput>,
 ) -> Result<(StatusCode, Json<BudgetResponse>), AppError> {
+    me.require_role(Role::Editor)?;
     let write = validate_budget(&body)?;
     let id = Uuid::new_v4().to_string();
-    let row = state.budgets.insert(&id, write).await?;
+    let row = state.budgets.insert(&me.group_id, &id, write).await?;
     Ok((StatusCode::CREATED, Json(budget_response(row))))
 }
 
 pub async fn update_budget(
     State(state): State<AppState>,
+    Extension(me): Extension<CurrentMember>,
     Path(id): Path<String>,
     Json(body): Json<BudgetInput>,
 ) -> Result<Json<BudgetResponse>, AppError> {
+    me.require_role(Role::Editor)?;
     let write = validate_budget(&body)?;
-    let row = state.budgets.update(&id, write).await?;
+    let row = state.budgets.update(&me.group_id, &id, write).await?;
     Ok(Json(budget_response(row)))
 }
 
 pub async fn delete_budget(
     State(state): State<AppState>,
+    Extension(me): Extension<CurrentMember>,
     Path(id): Path<String>,
 ) -> Result<StatusCode, AppError> {
-    state.budgets.delete(&id).await?;
+    me.require_role(Role::Editor)?;
+    state.budgets.delete(&me.group_id, &id).await?;
     Ok(StatusCode::NO_CONTENT)
 }
 

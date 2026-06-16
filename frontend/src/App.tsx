@@ -1,9 +1,15 @@
 import { lazy, Suspense, useEffect, useState } from "react";
-import { Route, Routes } from "react-router-dom";
+import { Route, Routes, useLocation } from "react-router-dom";
 
+import RequireAuth from "./components/RequireAuth";
 import Sidebar from "./components/Sidebar";
+import { AuthProvider } from "./lib/auth";
 import Home from "./pages/Home";
+import Login from "./pages/Login";
 
+const Register              = lazy(() => import("./pages/Register"));
+const AcceptInvite          = lazy(() => import("./pages/AcceptInvite"));
+const Members               = lazy(() => import("./pages/Members"));
 const SubscriptionDetail    = lazy(() => import("./pages/SubscriptionDetail"));
 const SubscriptionEdit      = lazy(() => import("./pages/SubscriptionEdit"));
 const SubscriptionNew       = lazy(() => import("./pages/SubscriptionNew"));
@@ -25,11 +31,39 @@ function initialCollapsed(): boolean {
 }
 
 export default function App() {
+  return (
+    <AuthProvider>
+      <Shell />
+    </AuthProvider>
+  );
+}
+
+function Shell() {
   const [collapsed, setCollapsed] = useState<boolean>(initialCollapsed);
+  const location = useLocation();
+  const isAuthPage =
+    location.pathname === "/login" ||
+    location.pathname === "/register" ||
+    location.pathname.startsWith("/accept-invite");
 
   useEffect(() => {
     window.localStorage.setItem(STORAGE_KEY, collapsed ? "1" : "0");
   }, [collapsed]);
+
+  if (isAuthPage) {
+    // Standalone pages — no sidebar, full canvas.
+    return (
+      <div className="min-h-dvh bg-canvas px-6 py-12">
+        <Suspense fallback={<RouteFallback />}>
+          <Routes>
+            <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
+            <Route path="/accept-invite/:token" element={<AcceptInvite />} />
+          </Routes>
+        </Suspense>
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-dvh">
@@ -39,9 +73,6 @@ export default function App() {
       />
 
       <main className="flex min-h-dvh flex-1 flex-col">
-        {/* Mobile-only top bar: the sidebar is fully hidden when collapsed
-            on mobile, so we surface a menu button to reopen it. On desktop
-            the icon rail is always visible and carries its own toggle. */}
         {collapsed && (
           <div className="border-b border-hairline md:hidden">
             <div className="mx-auto flex max-w-5xl items-center justify-between gap-4 px-4 py-3 sm:px-6">
@@ -76,18 +107,21 @@ export default function App() {
 
         <div className="mx-auto w-full max-w-5xl flex-1 px-6 pt-8 pb-12 sm:px-8">
           <Suspense fallback={<RouteFallback />}>
-            <Routes>
-              <Route path="/"                                  element={<Home />} />
-              <Route path="/subscriptions/new"                 element={<SubscriptionNew />} />
-              <Route path="/subscriptions/:id"                 element={<SubscriptionDetail />} />
-              <Route path="/subscriptions/:id/edit"            element={<SubscriptionEdit />} />
-              <Route path="/calendar"                          element={<Calendar />} />
-              <Route path="/finance"                           element={<FinanceHome />} />
-              <Route path="/finance/expenses/new"              element={<ExpenseNew />} />
-              <Route path="/finance/expenses/:id/edit"         element={<ExpenseEdit />} />
-              <Route path="/finance/recurring-expenses/new"    element={<RecurringExpenseNew />} />
-              <Route path="/finance/recurring-expenses/:id/edit" element={<RecurringExpenseEdit />} />
-            </Routes>
+            <RequireAuth>
+              <Routes>
+                <Route path="/"                                  element={<Home />} />
+                <Route path="/subscriptions/new"                 element={<SubscriptionNew />} />
+                <Route path="/subscriptions/:id"                 element={<SubscriptionDetail />} />
+                <Route path="/subscriptions/:id/edit"            element={<SubscriptionEdit />} />
+                <Route path="/calendar"                          element={<Calendar />} />
+                <Route path="/finance"                           element={<FinanceHome />} />
+                <Route path="/finance/expenses/new"              element={<ExpenseNew />} />
+                <Route path="/finance/expenses/:id/edit"         element={<ExpenseEdit />} />
+                <Route path="/finance/recurring-expenses/new"    element={<RecurringExpenseNew />} />
+                <Route path="/finance/recurring-expenses/:id/edit" element={<RecurringExpenseEdit />} />
+                <Route path="/members"                           element={<Members />} />
+              </Routes>
+            </RequireAuth>
           </Suspense>
         </div>
       </main>

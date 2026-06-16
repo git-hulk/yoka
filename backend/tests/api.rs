@@ -3,6 +3,12 @@
 //! `sqlite::memory:` gives each connection its own database, so the pool is
 //! pinned to `max_connections(1)` here to share a single in-memory DB across
 //! every handler invocation in a test.
+//!
+//! Auth shim: every test boots with a fixed user/group/session via `setup()`,
+//! and `req_builder()` attaches the matching `yoka_session` cookie so handlers
+//! that live behind `require_auth` accept the request. SQL insert helpers
+//! default to the test group's id so existing tests don't have to know group
+//! ids exist.
 
 use std::str::FromStr;
 
@@ -20,6 +26,11 @@ use yoka::http::{router, AppState};
 // Test harness
 // ---------------------------------------------------------------------------
 
+const TEST_USER_ID:  &str = "test-user";
+const TEST_GROUP_ID: &str = "test-group";
+const TEST_TOKEN:    &str = "test-session-token";
+const TEST_COOKIE:   &str = "yoka_session=test-session-token";
+
 async fn make_pool() -> SqlitePool {
     let opts = SqliteConnectOptions::from_str("sqlite::memory:")
         .unwrap()
@@ -34,8 +45,53 @@ async fn make_pool() -> SqlitePool {
 async fn setup() -> (AppState, SqlitePool) {
     let pool = make_pool().await;
     yoka::db::sqlite::migrate(&pool).await.unwrap();
+
+    // Seed a single owner + group + open session with a known cookie token
+    // so every test request authenticates as the test owner.
+    sqlx::query(
+        r#"INSERT INTO users (id, email, password_hash)
+           VALUES (?1, 'test@example.com', '$argon2id$test')"#,
+    )
+    .bind(TEST_USER_ID)
+    .execute(&pool)
+    .await
+    .unwrap();
+    sqlx::query(r#"INSERT INTO groups (id, name) VALUES (?1, 'Test Group')"#)
+        .bind(TEST_GROUP_ID)
+        .execute(&pool)
+        .await
+        .unwrap();
+    sqlx::query(
+        r#"INSERT INTO group_members (id, group_id, user_id, role)
+           VALUES ('test-member', ?1, ?2, 'owner')"#,
+    )
+    .bind(TEST_GROUP_ID)
+    .bind(TEST_USER_ID)
+    .execute(&pool)
+    .await
+    .unwrap();
+    let expires = Utc::now() + Duration::days(30);
+    sqlx::query(
+        r#"INSERT INTO sessions (id, user_id, active_group_id, expires_at)
+           VALUES (?1, ?2, ?3, ?4)"#,
+    )
+    .bind(TEST_TOKEN)
+    .bind(TEST_USER_ID)
+    .bind(TEST_GROUP_ID)
+    .bind(expires)
+    .execute(&pool)
+    .await
+    .unwrap();
+
     let repos = yoka::db::sqlite::SqliteBackend { pool: pool.clone() }.into_repos();
     (AppState::from(repos), pool)
+}
+
+/// Request builder pre-loaded with the test session cookie. Drop-in
+/// replacement for the raw axum `Request::builder()` so existing tests pick
+/// up auth with no edits beyond a rename.
+fn req_builder() -> axum::http::request::Builder {
+    Request::builder().header("Cookie", TEST_COOKIE)
 }
 
 async fn body_json(resp: axum::response::Response) -> serde_json::Value {
@@ -48,8 +104,8 @@ async fn insert_subscription(pool: &SqlitePool, id: &str, quantity: f64, days_un
     let start_date = Utc::now().date_naive();
     sqlx::query(
         r#"
-        INSERT INTO subscriptions (id, name, quantity, tracking_mode, start_date, expires_at, currency)
-        VALUES (?1, ?2, ?3, 'hours', ?4, ?5, 'USD')
+        INSERT INTO subscriptions (id, name, quantity, tracking_mode, start_date, expires_at, currency, group_id)
+        VALUES (?1, ?2, ?3, 'hours', ?4, ?5, 'USD', ?6)
         "#,
     )
     .bind(id)
@@ -57,6 +113,7 @@ async fn insert_subscription(pool: &SqlitePool, id: &str, quantity: f64, days_un
     .bind(quantity)
     .bind(start_date)
     .bind(expires_at)
+    .bind(TEST_GROUP_ID)
     .execute(pool)
     .await
     .unwrap();
@@ -72,14 +129,15 @@ async fn insert_duration_subscription(
     let expires_at = (Utc::now() + Duration::days(days_until_end)).date_naive();
     sqlx::query(
         r#"
-        INSERT INTO subscriptions (id, name, tracking_mode, start_date, expires_at, currency)
-        VALUES (?1, ?2, 'duration', ?3, ?4, 'USD')
+        INSERT INTO subscriptions (id, name, tracking_mode, start_date, expires_at, currency, group_id)
+        VALUES (?1, ?2, 'duration', ?3, ?4, 'USD', ?5)
         "#,
     )
     .bind(id)
     .bind(format!("sub-{id}"))
     .bind(start_date)
     .bind(expires_at)
+    .bind(TEST_GROUP_ID)
     .execute(pool)
     .await
     .unwrap();
@@ -97,14 +155,15 @@ async fn insert_accepted_event(
     let ts = Utc::now() - Duration::hours(hours_ago);
     sqlx::query(
         r#"
-        INSERT INTO events (id, start_at, status, subscription_id, amount, created_at)
-        VALUES (?1, ?2, 'accepted', ?3, ?4, ?2)
+        INSERT INTO events (id, start_at, status, subscription_id, amount, created_at, group_id)
+        VALUES (?1, ?2, 'accepted', ?3, ?4, ?2, ?5)
         "#,
     )
     .bind(id)
     .bind(ts)
     .bind(subscription_id)
     .bind(amount)
+    .bind(TEST_GROUP_ID)
     .execute(pool)
     .await
     .unwrap();
@@ -136,7 +195,7 @@ async fn post_json(
     body: serde_json::Value,
 ) -> axum::response::Response {
     app.oneshot(
-        Request::builder()
+        req_builder()
             .method("POST")
             .uri(path)
             .header("content-type", "application/json")
@@ -153,7 +212,7 @@ async fn patch_json(
     body: serde_json::Value,
 ) -> axum::response::Response {
     app.oneshot(
-        Request::builder()
+        req_builder()
             .method("PATCH")
             .uri(path)
             .header("content-type", "application/json")
@@ -179,7 +238,7 @@ async fn get_subscription_404_when_missing() {
     let app = router(setup().await.0);
     let resp = app
         .oneshot(
-            Request::builder()
+            req_builder()
                 .uri("/subscriptions/nope")
                 .body(Body::empty())
                 .unwrap(),
@@ -199,7 +258,7 @@ async fn get_subscription_returns_derived_pace_fields() {
     let app = router(state);
     let resp = app
         .oneshot(
-            Request::builder()
+            req_builder()
                 .uri("/subscriptions/s1")
                 .body(Body::empty())
                 .unwrap(),
@@ -229,7 +288,7 @@ async fn list_subscription_events_returns_newest_first_and_404s_unknown_subscrip
     let resp = app
         .clone()
         .oneshot(
-            Request::builder()
+            req_builder()
                 .uri("/subscriptions/s1/events")
                 .body(Body::empty())
                 .unwrap(),
@@ -246,7 +305,7 @@ async fn list_subscription_events_returns_newest_first_and_404s_unknown_subscrip
 
     let resp = app
         .oneshot(
-            Request::builder()
+            req_builder()
                 .uri("/subscriptions/ghost/events")
                 .body(Body::empty())
                 .unwrap(),
@@ -297,7 +356,7 @@ async fn duration_subscription_mid_window_status_and_derivations() {
     let app = router(state);
     let resp = app
         .oneshot(
-            Request::builder()
+            req_builder()
                 .uri("/subscriptions/d1")
                 .body(Body::empty())
                 .unwrap(),
@@ -357,7 +416,7 @@ async fn pending_event_does_not_count_toward_pace() {
 
     let resp = app
         .oneshot(
-            Request::builder()
+            req_builder()
                 .uri("/subscriptions/s1")
                 .body(Body::empty())
                 .unwrap(),
@@ -393,7 +452,7 @@ async fn accepted_event_counts_toward_pace_and_decline_reverses_it() {
     let resp = app
         .clone()
         .oneshot(
-            Request::builder()
+            req_builder()
                 .uri("/subscriptions/s1")
                 .body(Body::empty())
                 .unwrap(),
@@ -415,7 +474,7 @@ async fn accepted_event_counts_toward_pace_and_decline_reverses_it() {
 
     let resp = app
         .oneshot(
-            Request::builder()
+            req_builder()
                 .uri("/subscriptions/s1")
                 .body(Body::empty())
                 .unwrap(),
@@ -457,7 +516,7 @@ async fn accept_endpoint_flips_status_and_burns_subscription() {
 
     let resp = app
         .oneshot(
-            Request::builder()
+            req_builder()
                 .uri("/subscriptions/s1")
                 .body(Body::empty())
                 .unwrap(),
@@ -616,7 +675,7 @@ async fn list_events_in_range_filters_and_joins_subscription_metadata() {
 
     let app = router(state);
     let resp = app
-        .oneshot(Request::builder().uri(&uri).body(Body::empty()).unwrap())
+        .oneshot(req_builder().uri(&uri).body(Body::empty()).unwrap())
         .await
         .unwrap();
     assert_eq!(resp.status(), StatusCode::OK);
@@ -640,7 +699,7 @@ async fn list_events_in_range_rejects_inverted_range() {
         url_encode_dt(&earlier)
     );
     let resp = app
-        .oneshot(Request::builder().uri(&uri).body(Body::empty()).unwrap())
+        .oneshot(req_builder().uri(&uri).body(Body::empty()).unwrap())
         .await
         .unwrap();
     assert_eq!(resp.status(), StatusCode::BAD_REQUEST);
@@ -672,7 +731,7 @@ async fn list_events_in_range_includes_standalone_events() {
         url_encode_dt(&to)
     );
     let resp = app
-        .oneshot(Request::builder().uri(&uri).body(Body::empty()).unwrap())
+        .oneshot(req_builder().uri(&uri).body(Body::empty()).unwrap())
         .await
         .unwrap();
     assert_eq!(resp.status(), StatusCode::OK);
@@ -774,7 +833,7 @@ async fn recurring_event_expands_in_range_with_composite_ids() {
 
     let resp = app
         .oneshot(
-            Request::builder()
+            req_builder()
                 .uri(format!("/events?from={from}&to={to}"))
                 .body(Body::empty())
                 .unwrap(),
@@ -821,7 +880,7 @@ async fn decline_instance_creates_exception_and_subtracts_from_pace() {
     let resp = app
         .clone()
         .oneshot(
-            Request::builder()
+            req_builder()
                 .uri("/subscriptions/s1")
                 .body(Body::empty())
                 .unwrap(),
@@ -847,7 +906,7 @@ async fn decline_instance_creates_exception_and_subtracts_from_pace() {
     // Consumed drops by 2.
     let resp = app
         .oneshot(
-            Request::builder()
+            req_builder()
                 .uri("/subscriptions/s1")
                 .body(Body::empty())
                 .unwrap(),
@@ -880,7 +939,7 @@ async fn per_instance_edit_and_delete_rejected() {
     let composite = format!("{root_id}:{}", start.date_naive());
 
     // PATCH on a composite id is rejected.
-    let req = Request::builder()
+    let req = req_builder()
         .method("PATCH")
         .uri(format!("/events/{composite}"))
         .header("content-type", "application/json")
@@ -899,7 +958,7 @@ async fn per_instance_edit_and_delete_rejected() {
     assert_eq!(body["error"], "per_instance_edit_not_supported");
 
     // DELETE on a composite id is rejected.
-    let req = Request::builder()
+    let req = req_builder()
         .method("DELETE")
         .uri(format!("/events/{composite}"))
         .body(Body::empty())
@@ -969,7 +1028,7 @@ async fn create_expense_then_fetch_and_list() {
     let resp = app
         .clone()
         .oneshot(
-            Request::builder()
+            req_builder()
                 .uri(format!("/finance/expenses/{id}"))
                 .body(Body::empty())
                 .unwrap(),
@@ -981,7 +1040,7 @@ async fn create_expense_then_fetch_and_list() {
     // List paginated.
     let resp = app
         .oneshot(
-            Request::builder()
+            req_builder()
                 .uri("/finance/expenses")
                 .body(Body::empty())
                 .unwrap(),
@@ -1086,14 +1145,15 @@ async fn ledger_includes_subscriptions_and_aggregates_into_bars() {
     sqlx::query(
         r#"
         INSERT INTO subscriptions (id, name, quantity, tracking_mode, start_date, expires_at,
-                                   categories, price_cents, currency, archived_at)
+                                   categories, price_cents, currency, archived_at, group_id)
         VALUES
           ('sub-A', 'Yoga 10x',    10.0, 'units', '2026-05-05', '2026-08-05',
-           '["Wellness"]', 18000, 'USD', NULL),
+           '["Wellness"]', 18000, 'USD', NULL, ?1),
           ('sub-B', 'Pilates 5x',   5.0, 'units', '2026-05-12', '2026-07-12',
-           '["Wellness"]',  9000, 'USD', '2026-05-20T00:00:00.000Z')
+           '["Wellness"]',  9000, 'USD', '2026-05-20T00:00:00.000Z', ?1)
         "#,
     )
+    .bind(TEST_GROUP_ID)
     .execute(&pool)
     .await
     .unwrap();
@@ -1145,7 +1205,7 @@ async fn ledger_includes_subscriptions_and_aggregates_into_bars() {
     // Fetch the ledger for May 2026.
     let resp = app
         .oneshot(
-            Request::builder()
+            req_builder()
                 .uri("/finance/ledger?month=2026-05")
                 .body(Body::empty())
                 .unwrap(),
@@ -1195,7 +1255,7 @@ async fn ledger_bar_with_budget_and_no_spend_still_shown() {
 
     let resp = app
         .oneshot(
-            Request::builder()
+            req_builder()
                 .uri("/finance/ledger?month=2026-05")
                 .body(Body::empty())
                 .unwrap(),
@@ -1227,7 +1287,7 @@ async fn ledger_bar_with_spend_and_no_budget_still_shown() {
 
     let resp = app
         .oneshot(
-            Request::builder()
+            req_builder()
                 .uri("/finance/ledger?month=2026-05")
                 .body(Body::empty())
                 .unwrap(),
@@ -1252,11 +1312,12 @@ async fn yearly_dashboard_includes_subscriptions_recurring_and_expense() {
     sqlx::query(
         r#"
         INSERT INTO subscriptions (id, name, quantity, tracking_mode, start_date, expires_at,
-                                   categories, price_cents, currency)
+                                   categories, price_cents, currency, group_id)
         VALUES ('sub-A', 'Yoga 10x', 10.0, 'units', '2026-05-05', '2026-08-05',
-                '["Wellness"]', 18000, 'USD')
+                '["Wellness"]', 18000, 'USD', ?1)
         "#,
     )
+    .bind(TEST_GROUP_ID)
     .execute(&pool)
     .await
     .unwrap();
@@ -1312,7 +1373,7 @@ async fn yearly_dashboard_includes_subscriptions_recurring_and_expense() {
     // Fetch the yearly dashboard.
     let resp = app
         .oneshot(
-            Request::builder()
+            req_builder()
                 .uri("/finance/yearly?year=2026")
                 .body(Body::empty())
                 .unwrap(),
@@ -1362,7 +1423,7 @@ async fn yearly_invalid_year_format_rejected() {
     let app = router(setup().await.0);
     let resp = app
         .oneshot(
-            Request::builder()
+            req_builder()
                 .uri("/finance/yearly?year=26")
                 .body(Body::empty())
                 .unwrap(),
@@ -1405,7 +1466,7 @@ async fn ledger_groups_currencies_separately() {
 
     let resp = app
         .oneshot(
-            Request::builder()
+            req_builder()
                 .uri("/finance/ledger?month=2026-05")
                 .body(Body::empty())
                 .unwrap(),

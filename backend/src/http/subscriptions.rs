@@ -7,12 +7,13 @@
 use axum::{
     extract::{Path, Query, State},
     http::StatusCode,
-    Json,
+    Extension, Json,
 };
 use chrono::Utc;
 use uuid::Uuid;
 
 use crate::{
+    auth::{CurrentMember, Role},
     db::{SubscriptionRow, SubscriptionWrite},
     domain::lifecycle::{self, TrackingMode, UsageInput},
     error::AppError,
@@ -29,8 +30,10 @@ const MAX_PER_PAGE: u32 = 100;
 
 pub async fn list(
     State(state): State<AppState>,
+    Extension(me): Extension<CurrentMember>,
     Query(q): Query<ListSubscriptionsQuery>,
 ) -> Result<Json<ListSubscriptionsResponse>, AppError> {
+    me.require_role(Role::Viewer)?;
     let page = q.page.unwrap_or(1).max(1);
     let per_page = q
         .per_page
@@ -40,14 +43,17 @@ pub async fn list(
 
     let (rows, total) = state
         .subscriptions
-        .list_active(i64::from(per_page), offset)
+        .list_active(&me.group_id, i64::from(per_page), offset)
         .await?;
 
     let items = if rows.is_empty() {
         Vec::new()
     } else {
         let ids: Vec<String> = rows.iter().map(|r| r.id.clone()).collect();
-        let by_sub = state.events.amounts_for_pace_many(&ids).await?;
+        let by_sub = state
+            .events
+            .amounts_for_pace_many(&me.group_id, &ids)
+            .await?;
         let now = Utc::now();
         rows.into_iter()
             .map(|row| {
@@ -65,70 +71,85 @@ pub async fn list(
     }))
 }
 
-pub async fn list_categories(State(state): State<AppState>) -> Result<Json<Vec<String>>, AppError> {
-    let categories = state.subscriptions.list_categories().await?;
+pub async fn list_categories(
+    State(state): State<AppState>,
+    Extension(me): Extension<CurrentMember>,
+) -> Result<Json<Vec<String>>, AppError> {
+    me.require_role(Role::Viewer)?;
+    let categories = state.subscriptions.list_categories(&me.group_id).await?;
     Ok(Json(categories))
 }
 
 pub async fn get_one(
     State(state): State<AppState>,
+    Extension(me): Extension<CurrentMember>,
     Path(id): Path<String>,
 ) -> Result<Json<SubscriptionResponse>, AppError> {
-    let row = state.subscriptions.fetch(&id).await?;
-    let usages = state.events.amounts_for_pace(&id).await?;
+    me.require_role(Role::Viewer)?;
+    let row = state.subscriptions.fetch(&me.group_id, &id).await?;
+    let usages = state.events.amounts_for_pace(&me.group_id, &id).await?;
     Ok(Json(to_response(row, &usages, Utc::now())))
 }
 
 pub async fn create(
     State(state): State<AppState>,
+    Extension(me): Extension<CurrentMember>,
     Json(body): Json<SubscriptionInput>,
 ) -> Result<(StatusCode, Json<SubscriptionResponse>), AppError> {
+    me.require_role(Role::Editor)?;
     let write = validate(&body)?;
     let id = Uuid::new_v4().to_string();
-    let row = state.subscriptions.insert(&id, write).await?;
+    let row = state
+        .subscriptions
+        .insert(&me.group_id, &id, write)
+        .await?;
     Ok((StatusCode::CREATED, Json(to_response(row, &[], Utc::now()))))
 }
 
 pub async fn update(
     State(state): State<AppState>,
+    Extension(me): Extension<CurrentMember>,
     Path(id): Path<String>,
     Json(body): Json<SubscriptionInput>,
 ) -> Result<Json<SubscriptionResponse>, AppError> {
+    me.require_role(Role::Editor)?;
     let write = validate(&body)?;
 
-    // Lock `tracking_mode` once any event has been recorded against the sub —
-    // flipping it would silently re-interpret historical amounts (units ↔
-    // hours), or strand events on a now-duration subscription.
-    let current = state.subscriptions.fetch(&id).await?;
+    let current = state.subscriptions.fetch(&me.group_id, &id).await?;
     if write.tracking_mode != current.tracking_mode
-        && state.events.any_for_subscription(&id).await?
+        && state
+            .events
+            .any_for_subscription(&me.group_id, &id)
+            .await?
     {
         return Err(AppError::BadRequest("tracking_mode_locked"));
     }
 
-    let row = state.subscriptions.update(&id, write).await?;
-    let usages = state.events.amounts_for_pace(&id).await?;
+    let row = state
+        .subscriptions
+        .update(&me.group_id, &id, write)
+        .await?;
+    let usages = state.events.amounts_for_pace(&me.group_id, &id).await?;
     Ok(Json(to_response(row, &usages, Utc::now())))
 }
 
-/// Hard-delete a subscription and all events linked to it. 204 on success.
 pub async fn delete(
     State(state): State<AppState>,
+    Extension(me): Extension<CurrentMember>,
     Path(id): Path<String>,
 ) -> Result<StatusCode, AppError> {
-    state.subscriptions.delete(&id).await?;
+    me.require_role(Role::Editor)?;
+    state.subscriptions.delete(&me.group_id, &id).await?;
     Ok(StatusCode::NO_CONTENT)
 }
 
-/// Soft-delete: stamp `archived_at`. The row and its events survive,
-/// but the subscription drops out of `list_active`. Idempotent on rows already
-/// archived — `archive` returns `NotFound` in that case, which is the
-/// right signal for the UI.
 pub async fn archive(
     State(state): State<AppState>,
+    Extension(me): Extension<CurrentMember>,
     Path(id): Path<String>,
 ) -> Result<StatusCode, AppError> {
-    state.subscriptions.archive(&id).await?;
+    me.require_role(Role::Editor)?;
+    state.subscriptions.archive(&me.group_id, &id).await?;
     Ok(StatusCode::NO_CONTENT)
 }
 

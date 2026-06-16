@@ -9,12 +9,13 @@
 use axum::{
     extract::{Path, Query, State},
     http::StatusCode,
-    Json,
+    Extension, Json,
 };
 use chrono::NaiveDate;
 use uuid::Uuid;
 
 use crate::{
+    auth::{CurrentMember, Role},
     db::repo::{EventRow, EventStatus, EventWithSubscriptionRow, EventWrite},
     domain::lifecycle::TrackingMode,
     domain::recurrence::validate as validate_recurrence,
@@ -25,107 +26,134 @@ use crate::{
 
 pub async fn list_in_range(
     State(state): State<AppState>,
+    Extension(me): Extension<CurrentMember>,
     Query(q): Query<EventRangeQuery>,
 ) -> Result<Json<Vec<EventInRangeResponse>>, AppError> {
+    me.require_role(Role::Viewer)?;
     if q.from >= q.to {
         return Err(AppError::BadRequest("range_invalid"));
     }
-    let rows = state.events.list_in_range(q.from, q.to).await?;
+    let rows = state.events.list_in_range(&me.group_id, q.from, q.to).await?;
     Ok(Json(rows.into_iter().map(in_range_response).collect()))
 }
 
 pub async fn list_for_subscription(
     State(state): State<AppState>,
+    Extension(me): Extension<CurrentMember>,
     Path(id): Path<String>,
 ) -> Result<Json<Vec<EventResponse>>, AppError> {
-    // 404 distinguishes "no such subscription" from "subscription exists but
-    // has no events" (which returns []).
-    if !state.subscriptions.exists(&id).await? {
+    me.require_role(Role::Viewer)?;
+    if !state.subscriptions.exists(&me.group_id, &id).await? {
         return Err(AppError::NotFound);
     }
-    let rows = state.events.list_for_subscription(&id).await?;
+    let rows = state.events.list_for_subscription(&me.group_id, &id).await?;
     Ok(Json(rows.into_iter().map(event_response).collect()))
 }
 
 pub async fn get_one(
     State(state): State<AppState>,
+    Extension(me): Extension<CurrentMember>,
     Path(id): Path<String>,
 ) -> Result<Json<EventResponse>, AppError> {
+    me.require_role(Role::Viewer)?;
     if let Some((parent_id, instance_date)) = parse_composite(&id) {
-        return fetch_virtual_instance(&state, parent_id, instance_date)
+        return fetch_virtual_instance(&state, &me, parent_id, instance_date)
             .await
             .map(|r| Json(event_response(r)));
     }
-    let row = state.events.fetch(&id).await?;
+    let row = state.events.fetch(&me.group_id, &id).await?;
     Ok(Json(event_response(row)))
 }
 
 pub async fn create(
     State(state): State<AppState>,
+    Extension(me): Extension<CurrentMember>,
     Json(body): Json<EventInput>,
 ) -> Result<(StatusCode, Json<EventResponse>), AppError> {
-    let write = validate(&state, &body).await?;
+    me.require_role(Role::Editor)?;
+    let write = validate(&state, &me, &body).await?;
     let id = Uuid::new_v4().to_string();
-    let row = state.events.insert(&id, write).await?;
+    let row = state.events.insert(&me.group_id, &id, write).await?;
     Ok((StatusCode::CREATED, Json(event_response(row))))
 }
 
 pub async fn update(
     State(state): State<AppState>,
+    Extension(me): Extension<CurrentMember>,
     Path(id): Path<String>,
     Json(body): Json<EventInput>,
 ) -> Result<Json<EventResponse>, AppError> {
+    me.require_role(Role::Editor)?;
     if parse_composite(&id).is_some() {
-        // Editing a single instance of a recurring series is out of scope for
-        // MVP. Users edit the entire series via the root id, or decline this
-        // specific instance.
         return Err(AppError::BadRequest("per_instance_edit_not_supported"));
     }
-    let write = validate(&state, &body).await?;
-    let row = state.events.update(&id, write).await?;
+    let write = validate(&state, &me, &body).await?;
+    let row = state.events.update(&me.group_id, &id, write).await?;
     Ok(Json(event_response(row)))
 }
 
 pub async fn delete(
     State(state): State<AppState>,
+    Extension(me): Extension<CurrentMember>,
     Path(id): Path<String>,
 ) -> Result<StatusCode, AppError> {
+    me.require_role(Role::Editor)?;
     if parse_composite(&id).is_some() {
         return Err(AppError::BadRequest("per_instance_delete_not_supported"));
     }
-    state.events.delete(&id).await?;
+    state.events.delete(&me.group_id, &id).await?;
     Ok(StatusCode::NO_CONTENT)
 }
 
 pub async fn accept(
     State(state): State<AppState>,
+    Extension(me): Extension<CurrentMember>,
     Path(id): Path<String>,
 ) -> Result<Json<EventResponse>, AppError> {
+    me.require_role(Role::Editor)?;
     if let Some((parent_id, instance_date)) = parse_composite(&id) {
-        return accept_or_decline_instance(&state, parent_id, instance_date, EventStatus::Accepted)
-            .await
-            .map(|r| Json(event_response(r)));
+        return accept_or_decline_instance(
+            &state,
+            &me,
+            parent_id,
+            instance_date,
+            EventStatus::Accepted,
+        )
+        .await
+        .map(|r| Json(event_response(r)));
     }
-    // Accepting requires a linked subscription — a standalone calendar event
-    // has nothing to burn, so "accepted" is meaningless for it.
-    let current = state.events.fetch(&id).await?;
+    let current = state.events.fetch(&me.group_id, &id).await?;
     if current.subscription_id.is_none() {
         return Err(AppError::BadRequest("accept_requires_subscription"));
     }
-    let row = state.events.set_status(&id, EventStatus::Accepted).await?;
+    let row = state
+        .events
+        .set_status(&me.group_id, &id, EventStatus::Accepted)
+        .await?;
     Ok(Json(event_response(row)))
 }
 
 pub async fn decline(
     State(state): State<AppState>,
+    Extension(me): Extension<CurrentMember>,
     Path(id): Path<String>,
 ) -> Result<Json<EventResponse>, AppError> {
+    me.require_role(Role::Editor)?;
     if let Some((parent_id, instance_date)) = parse_composite(&id) {
-        return accept_or_decline_instance(&state, parent_id, instance_date, EventStatus::Declined)
-            .await
-            .map(|r| Json(event_response(r)));
+        return accept_or_decline_instance(
+            &state,
+            &me,
+            parent_id,
+            instance_date,
+            EventStatus::Declined,
+        )
+        .await
+        .map(|r| Json(event_response(r)));
     }
-    let row = state.events.set_status(&id, EventStatus::Declined).await?;
+    let row = state
+        .events
+        .set_status(&me.group_id, &id, EventStatus::Declined)
+        .await?;
     Ok(Json(event_response(row)))
 }
 
@@ -133,35 +161,27 @@ pub async fn decline(
 // Composite id (recurring instance) helpers
 // ---------------------------------------------------------------------------
 
-/// Parse a virtual-instance id of the form `<parent_id>:YYYY-MM-DD`. Returns
-/// `None` for plain ids (which are UUIDs and never contain a colon).
 fn parse_composite(id: &str) -> Option<(&str, NaiveDate)> {
     let (parent, date) = id.rsplit_once(':')?;
     let date = NaiveDate::parse_from_str(date, "%Y-%m-%d").ok()?;
     Some((parent, date))
 }
 
-/// Build an `EventRow` projection of a virtual instance: the series root's
-/// metadata, the instance's start_at and (shifted) end_at, plus the effective
-/// status (exception overlay if present, otherwise the root's status). The
-/// returned id is the composite id so subsequent calls keep working.
 async fn fetch_virtual_instance(
     state: &AppState,
+    me: &CurrentMember,
     parent_id: &str,
     instance_date: NaiveDate,
 ) -> Result<EventRow, AppError> {
-    let parent = state.events.fetch(parent_id).await?;
+    let parent = state.events.fetch(&me.group_id, parent_id).await?;
     let rule = parent
         .recurrence_rule
         .as_ref()
         .ok_or(AppError::BadRequest("instance_requires_recurring_parent"))?;
-    // The instance's UTC datetime: same time-of-day as parent, on `instance_date`.
     let instance_start = chrono::TimeZone::from_utc_datetime(
         &chrono::Utc,
         &instance_date.and_time(parent.start_at.time()),
     );
-    // Cheap sanity check: the date must actually be in the series's expansion.
-    // Use a tight window to avoid expanding the whole series.
     let next_day = instance_start + chrono::Duration::days(1);
     let candidates =
         crate::domain::recurrence::expand_range(parent.start_at, &rule.0, instance_start, next_day);
@@ -170,7 +190,7 @@ async fn fetch_virtual_instance(
     }
     let exception = state
         .events
-        .fetch_exception(parent_id, instance_date)
+        .fetch_exception(&me.group_id, parent_id, instance_date)
         .await?;
     let status = exception.map(|e| e.status).unwrap_or(parent.status);
     let end_at = parent
@@ -185,53 +205,43 @@ async fn fetch_virtual_instance(
         subscription_id: parent.subscription_id,
         amount: parent.amount,
         notes: parent.notes,
-        // On the *detail* endpoint, surface the parent's rule so the UI can
-        // describe the series. (The list endpoint hides it so callers can
-        // tell virtual instances from series roots.)
         recurrence_rule: parent.recurrence_rule,
         created_at: parent.created_at,
         updated_at: parent.updated_at,
     })
 }
 
-/// Apply an accept/decline to a single virtual instance via the exceptions
-/// table. Returns the fresh virtual instance row.
 async fn accept_or_decline_instance(
     state: &AppState,
+    me: &CurrentMember,
     parent_id: &str,
     instance_date: NaiveDate,
     new_status: EventStatus,
 ) -> Result<EventRow, AppError> {
-    let parent = state.events.fetch(parent_id).await?;
+    let parent = state.events.fetch(&me.group_id, parent_id).await?;
     if matches!(new_status, EventStatus::Accepted) && parent.subscription_id.is_none() {
         return Err(AppError::BadRequest("accept_requires_subscription"));
     }
     state
         .events
-        .upsert_exception(parent_id, instance_date, new_status)
+        .upsert_exception(&me.group_id, parent_id, instance_date, new_status)
         .await?;
-    fetch_virtual_instance(state, parent_id, instance_date).await
+    fetch_virtual_instance(state, me, parent_id, instance_date).await
 }
 
 // ---------------------------------------------------------------------------
 
-/// Validate an event input and project it into the db-layer write shape.
-///
-/// The invariants:
-///   * `(subscription_id, amount)` agree: both present or both absent.
-///   * `amount > 0` when present.
-///   * `end_at > start_at` when both present.
-///   * If linked, the subscription exists and is not in `duration` mode.
-///
-/// `status` defaults to `pending` when the client doesn't supply one.
-async fn validate<'a>(state: &AppState, body: &'a EventInput) -> Result<EventWrite<'a>, AppError> {
-    // (subscription_id, amount) must agree.
+async fn validate<'a>(
+    state: &AppState,
+    me: &CurrentMember,
+    body: &'a EventInput,
+) -> Result<EventWrite<'a>, AppError> {
     let (subscription_id, amount) = match (body.subscription_id.as_deref(), body.amount) {
         (Some(sid), Some(a)) => {
             if !a.is_finite() || a <= 0.0 {
                 return Err(AppError::BadRequest("amount_must_be_positive"));
             }
-            let sub = state.subscriptions.fetch(sid).await?;
+            let sub = state.subscriptions.fetch(&me.group_id, sid).await?;
             if sub.tracking_mode == TrackingMode::Duration {
                 return Err(AppError::BadRequest("events_forbidden_for_duration"));
             }

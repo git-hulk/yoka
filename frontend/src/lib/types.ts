@@ -1,6 +1,63 @@
 // Mirror of the Rust wire types in src/schema/.
 // Kept hand-written (no codegen) — small surface, churn is rare.
 
+// ---------------------------------------------------------------------------
+// Auth, users, groups
+// ---------------------------------------------------------------------------
+
+export type Role = "viewer" | "editor" | "admin" | "owner";
+
+export interface User {
+  id:         string;
+  email:      string;
+  created_at: string;
+}
+
+export interface Group {
+  id:   string;
+  name: string;
+  role: Role;
+}
+
+/** Shape of `GET /me`. */
+export interface Me {
+  user:         User;
+  active_group: Group;
+  role:         Role;
+  groups:       Group[];
+}
+
+export interface Member {
+  user_id:    string;
+  email:      string;
+  role:       Role;
+  created_at: string;
+}
+
+export interface Invitation {
+  id:          string;
+  group_id:    string;
+  email:       string;
+  role:        Role;
+  token:       string;
+  invite_url:  string;
+  expires_at:  string;
+  accepted_at: string | null;
+  revoked_at:  string | null;
+  created_at:  string;
+}
+
+export type InviteStatus = "pending" | "accepted" | "revoked" | "expired";
+
+/** Returned by the public `GET /invites/:token`. */
+export interface InvitePreview {
+  group_name: string;
+  email:      string;
+  role:       Role;
+  expires_at: string;
+  status:     InviteStatus;
+}
+
 export type Status = "active" | "not_start" | "done" | "expired";
 
 export type TrackingMode = "units" | "hours" | "duration";

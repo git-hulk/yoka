@@ -1,6 +1,9 @@
 import { Link, useLocation } from "react-router-dom";
 import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
 
+import GroupSwitcher from "./GroupSwitcher";
+import { useAuth } from "../lib/auth";
+
 interface Props {
   collapsed: boolean;
   onToggle: () => void;
@@ -81,6 +84,24 @@ const CalendarIcon = (
   </svg>
 );
 
+const MembersIcon = (
+  <svg
+    viewBox="0 0 16 16"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.5"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className="size-4"
+    aria-hidden="true"
+  >
+    <circle cx="6" cy="6" r="2.25" />
+    <circle cx="11.25" cy="7" r="1.75" />
+    <path d="M2 13c.5-2.25 2.25-3.5 4-3.5s3.5 1.25 4 3.5" />
+    <path d="M9.75 13c.5-1.75 1.75-2.75 2.75-2.75 1.25 0 2.25 1 2.5 2.75" />
+  </svg>
+);
+
 const NAV: NavEntry[] = [
   {
     to:      "/",
@@ -100,12 +121,17 @@ const NAV: NavEntry[] = [
     matches: (p) => p.startsWith("/calendar"),
     icon:    CalendarIcon,
   },
-  // Future: Members, Settings — append here. The page-level routes get
-  // registered in App.tsx; the sidebar only needs the link.
+  {
+    to:      "/members",
+    label:   "Members",
+    matches: (p) => p.startsWith("/members"),
+    icon:    MembersIcon,
+  },
 ];
 
 export default function Sidebar({ collapsed, onToggle }: Props) {
   const location = useLocation();
+  const { me, logout } = useAuth();
   const [width, setWidth]           = useState<number>(initialWidth);
   const [isResizing, setIsResizing] = useState(false);
 
@@ -168,13 +194,17 @@ export default function Sidebar({ collapsed, onToggle }: Props) {
       >
         {collapsed ? (
           <div className="flex flex-col items-center gap-1 px-2 pt-4 pb-4">
-            <Link
-              to="/"
-              aria-label="yoka — home"
-              className="flex h-8 w-8 items-center justify-center rounded-md text-sm font-semibold text-accent transition hover:bg-subtle"
-            >
-              Y
-            </Link>
+            {me ? (
+              <GroupSwitcher collapsed />
+            ) : (
+              <Link
+                to="/"
+                aria-label="yoka — home"
+                className="flex h-8 w-8 items-center justify-center rounded-md text-sm font-semibold text-accent transition hover:bg-subtle"
+              >
+                Y
+              </Link>
+            )}
             <button
               type="button"
               onClick={onToggle}
@@ -186,27 +216,31 @@ export default function Sidebar({ collapsed, onToggle }: Props) {
             </button>
           </div>
         ) : (
-          <div className="flex items-center justify-between gap-3 px-3 pt-4 pb-4">
-            <Link
-              to="/"
-              aria-label="yoka — home"
-              className="rounded-md px-1.5 py-1 text-sm font-semibold tracking-tight text-accent transition hover:bg-subtle"
-            >
-              YOKA
-            </Link>
+          <div className="flex items-center justify-between gap-3 px-3 pt-4 pb-2">
+            {me ? (
+              <GroupSwitcher collapsed={false} />
+            ) : (
+              <Link
+                to="/"
+                aria-label="yoka — home"
+                className="rounded-md px-1.5 py-1 text-sm font-semibold tracking-tight text-accent transition hover:bg-subtle"
+              >
+                YOKA
+              </Link>
+            )}
             <button
               type="button"
               onClick={onToggle}
               aria-label="Hide sidebar"
               title="Hide sidebar"
-              className="rounded-md p-1.5 text-ink-faint transition hover:bg-subtle hover:text-ink"
+              className="shrink-0 rounded-md p-1.5 text-ink-faint transition hover:bg-subtle hover:text-ink"
             >
               <PanelToggleIcon open={true} />
             </button>
           </div>
         )}
 
-        <nav className={collapsed ? "flex-1 px-2" : "flex-1 px-2"}>
+        <nav className={collapsed ? "flex-1 px-2 pt-2" : "flex-1 px-2 pt-2"}>
           <ul className="space-y-0.5">
             {NAV.map((entry) => (
               <li key={entry.to}>
@@ -220,6 +254,18 @@ export default function Sidebar({ collapsed, onToggle }: Props) {
           </ul>
         </nav>
 
+        {me && !collapsed && (
+          <div className="border-t border-hairline px-3 py-3">
+            <div className="truncate text-xs text-ink-faint">{me.user.email}</div>
+            <button
+              type="button"
+              onClick={() => void logout()}
+              className="mt-1 text-xs font-medium text-ink-dim transition hover:text-ink"
+            >
+              Sign out
+            </button>
+          </div>
+        )}
       </aside>
 
       {/* Drag handle on the sidebar's right edge — desktop only, expanded only.

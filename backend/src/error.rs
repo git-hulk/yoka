@@ -20,6 +20,15 @@ pub enum AppError {
     #[error("bad request: {0}")]
     BadRequest(&'static str),
 
+    #[error("unauthorized")]
+    Unauthorized,
+
+    #[error("forbidden")]
+    Forbidden,
+
+    #[error("conflict: {0}")]
+    Conflict(&'static str),
+
     #[error("database error: {0}")]
     Database(#[from] sqlx::Error),
 
@@ -33,6 +42,9 @@ impl IntoResponse for AppError {
         let (status, code) = match &self {
             AppError::NotFound => (StatusCode::NOT_FOUND, "not_found"),
             AppError::BadRequest(code) => (StatusCode::BAD_REQUEST, *code),
+            AppError::Unauthorized => (StatusCode::UNAUTHORIZED, "unauthorized"),
+            AppError::Forbidden => (StatusCode::FORBIDDEN, "forbidden"),
+            AppError::Conflict(code) => (StatusCode::CONFLICT, *code),
             AppError::Database(_) => (StatusCode::INTERNAL_SERVER_ERROR, "database_error"),
             AppError::Internal(_) => (StatusCode::INTERNAL_SERVER_ERROR, "internal_error"),
         };

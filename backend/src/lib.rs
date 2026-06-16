@@ -4,6 +4,7 @@
 //! running application: the modules, the router constructor, and a
 //! storage-engine factory keyed off `DATABASE_URL`.
 
+pub mod auth;
 pub mod db;
 pub mod domain;
 pub mod error;

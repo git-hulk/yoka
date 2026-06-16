@@ -6,18 +6,25 @@
 use std::sync::Arc;
 
 use axum::{
+    http::{HeaderValue, Method},
+    middleware,
     routing::{get, post},
     Router,
 };
-use tower_http::cors::{Any, CorsLayer};
+use tower_http::cors::{AllowOrigin, CorsLayer};
 use tower_http::trace::TraceLayer;
 
 use crate::db::{
-    BudgetRepo, EventRepo, ExpenseRepo, RecurringExpenseRepo, Repos, SubscriptionRepo,
+    BudgetRepo, EventRepo, ExpenseRepo, GroupRepo, InvitationRepo, RecurringExpenseRepo, Repos,
+    SessionRepo, SubscriptionRepo, UserRepo,
 };
 
+pub mod auth;
 pub mod events;
 pub mod finance;
+pub mod groups;
+pub mod invites;
+pub mod me;
 pub mod subscriptions;
 
 /// Shared state passed to every handler.
@@ -32,6 +39,10 @@ pub struct AppState {
     pub expenses: Arc<dyn ExpenseRepo>,
     pub recurring_expenses: Arc<dyn RecurringExpenseRepo>,
     pub budgets: Arc<dyn BudgetRepo>,
+    pub users: Arc<dyn UserRepo>,
+    pub groups: Arc<dyn GroupRepo>,
+    pub invitations: Arc<dyn InvitationRepo>,
+    pub sessions: Arc<dyn SessionRepo>,
 }
 
 impl From<Repos> for AppState {
@@ -42,19 +53,79 @@ impl From<Repos> for AppState {
             expenses: repos.expenses,
             recurring_expenses: repos.recurring_expenses,
             budgets: repos.budgets,
+            users: repos.users,
+            groups: repos.groups,
+            invitations: repos.invitations,
+            sessions: repos.sessions,
         }
     }
 }
 
 pub fn router(state: AppState) -> Router {
-    // Permissive CORS in v1 — single-user, served on localhost alongside the
-    // frontend dev server. Tighten before exposing externally.
+    // CORS is credential-bearing now (the session cookie is HttpOnly and must
+    // be sent on cross-origin requests from the dev frontend). `allow_origin`
+    // can't be `Any` when credentials are allowed — browsers reject the
+    // response — so we hardcode `http://localhost:5173` in dev and let prod
+    // override via env.
+    let frontend = std::env::var("YOKA_FRONTEND_ORIGIN")
+        .unwrap_or_else(|_| "http://localhost:5173".to_string());
     let cors = CorsLayer::new()
-        .allow_origin(Any)
-        .allow_methods(Any)
-        .allow_headers(Any);
+        .allow_origin(AllowOrigin::exact(
+            HeaderValue::from_str(&frontend).expect("YOKA_FRONTEND_ORIGIN must be a valid origin"),
+        ))
+        .allow_credentials(true)
+        .allow_methods([
+            Method::GET,
+            Method::POST,
+            Method::PATCH,
+            Method::PUT,
+            Method::DELETE,
+            Method::OPTIONS,
+        ])
+        .allow_headers([
+            axum::http::header::CONTENT_TYPE,
+            axum::http::header::ACCEPT,
+        ]);
 
-    Router::new()
+    // Public routes — no auth required. Login + accept-invite issue cookies
+    // themselves; the invite preview is unauthenticated so the page can render
+    // before the user has an account.
+    let public = Router::new()
+        .route("/auth/login", post(auth::login))
+        .route("/auth/register", post(auth::register))
+        .route("/auth/accept-invite", post(auth::accept_invite))
+        .route("/invites/:token", get(invites::show));
+
+    // Protected routes — `require_auth` wraps everything below.
+    let protected = Router::new()
+        // Identity
+        .route("/auth/logout", post(auth::logout))
+        .route("/me", get(me::show))
+        .route("/me/active-group", post(me::set_active_group))
+        // Groups + members
+        .route("/groups", post(groups::create))
+        .route(
+            "/groups/:id",
+            axum::routing::patch(groups::rename).delete(groups::delete),
+        )
+        .route("/groups/:id/members", get(groups::list_members))
+        .route(
+            "/groups/:id/members/:user_id",
+            axum::routing::patch(groups::update_member_role).delete(groups::remove_member),
+        )
+        .route(
+            "/groups/:id/transfer-ownership",
+            post(groups::transfer_ownership),
+        )
+        .route(
+            "/groups/:id/invitations",
+            get(groups::list_invitations).post(groups::create_invitation),
+        )
+        .route(
+            "/groups/:id/invitations/:invite_id",
+            axum::routing::delete(groups::revoke_invitation),
+        )
+        // Resources — existing
         .route("/categories", get(subscriptions::list_categories))
         .route(
             "/subscriptions",
@@ -80,7 +151,6 @@ pub fn router(state: AppState) -> Router {
         )
         .route("/events/:id/accept", post(events::accept))
         .route("/events/:id/decline", post(events::decline))
-        // Finance --------------------------------------------------------
         .route("/finance/ledger", get(finance::monthly_ledger))
         .route("/finance/yearly", get(finance::yearly_ledger))
         .route(
@@ -115,6 +185,14 @@ pub fn router(state: AppState) -> Router {
             "/finance/budgets/:id",
             axum::routing::put(finance::update_budget).delete(finance::delete_budget),
         )
+        .route_layer(middleware::from_fn_with_state(
+            state.clone(),
+            crate::auth::middleware::require_auth,
+        ));
+
+    Router::new()
+        .merge(public)
+        .merge(protected)
         .with_state(state)
         .layer(cors)
         .layer(TraceLayer::new_for_http())

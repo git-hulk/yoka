@@ -13,8 +13,14 @@ import type {
   EventStatus,
   Expense,
   ExpensesPage,
+  Group,
+  Invitation,
+  InvitePreview,
+  Me,
+  Member,
   MonthlyLedger,
   RecurringExpense,
+  Role,
   Subscription,
   SubscriptionsPage,
   TrackingMode,
@@ -22,6 +28,10 @@ import type {
 } from "./types";
 
 const BASE = (import.meta.env.VITE_API_BASE as string | undefined) ?? "";
+
+/** Dispatched by the API client when a 401 is observed. The AuthProvider
+ *  listens for this to clear cached `me` and redirect to `/login`. */
+export const UNAUTHORIZED_EVENT = "yoka:unauthorized";
 
 export class ApiError extends Error {
   constructor(
@@ -43,6 +53,9 @@ async function request<T>(path: string, opts: RequestOpts = {}): Promise<T> {
   const { method = "GET", body } = opts;
   const res = await fetch(`${BASE}/api${path}`, {
     method,
+    // Send the session cookie cross-origin (Vite dev proxy is same-origin but
+    // a prod deploy may not be). Required for the auth perimeter.
+    credentials: "include",
     headers: {
       accept: "application/json",
       ...(body !== undefined ? { "content-type": "application/json" } : {}),
@@ -56,6 +69,10 @@ async function request<T>(path: string, opts: RequestOpts = {}): Promise<T> {
       if (errBody.error) code = errBody.error;
     } catch {
       // body wasn't JSON; keep generic code
+    }
+    if (res.status === 401 && typeof window !== "undefined") {
+      // Global signal — AuthProvider listens and routes to /login.
+      window.dispatchEvent(new CustomEvent(UNAUTHORIZED_EVENT));
     }
     throw new ApiError(res.status, code, `${res.status} ${code}`);
   }
@@ -95,6 +112,86 @@ export interface EventInput {
 }
 
 export const api = {
+  // ---------- auth + identity ---------------------------------------------
+
+  login: (email: string, password: string) =>
+    request<Me>("/auth/login", { method: "POST", body: { email, password } }),
+
+  /** Self-signup. Creates a user + their own "Personal" group + a session in
+   *  one round-trip; the caller is logged in on success. */
+  register: (email: string, password: string) =>
+    request<Me>("/auth/register", { method: "POST", body: { email, password } }),
+
+  logout: () =>
+    request<void>("/auth/logout", { method: "POST" }),
+
+  acceptInvite: (token: string, password: string) =>
+    request<Me>("/auth/accept-invite", {
+      method: "POST",
+      body:   { token, password },
+    }),
+
+  showInvite: (token: string) =>
+    request<InvitePreview>(`/invites/${encodeURIComponent(token)}`),
+
+  me: () =>
+    request<Me>("/me"),
+
+  setActiveGroup: (group_id: string) =>
+    request<void>("/me/active-group", { method: "POST", body: { group_id } }),
+
+  // ---------- groups, members, invitations --------------------------------
+
+  createGroup: (name: string) =>
+    request<Group>("/groups", { method: "POST", body: { name } }),
+
+  renameGroup: (id: string, name: string) =>
+    request<Group>(`/groups/${encodeURIComponent(id)}`, {
+      method: "PATCH",
+      body:   { name },
+    }),
+
+  deleteGroup: (id: string) =>
+    request<void>(`/groups/${encodeURIComponent(id)}`, { method: "DELETE" }),
+
+  listMembers: (group_id: string) =>
+    request<Member[]>(`/groups/${encodeURIComponent(group_id)}/members`),
+
+  updateMemberRole: (group_id: string, user_id: string, role: Role) =>
+    request<void>(
+      `/groups/${encodeURIComponent(group_id)}/members/${encodeURIComponent(user_id)}`,
+      { method: "PATCH", body: { role } },
+    ),
+
+  removeMember: (group_id: string, user_id: string) =>
+    request<void>(
+      `/groups/${encodeURIComponent(group_id)}/members/${encodeURIComponent(user_id)}`,
+      { method: "DELETE" },
+    ),
+
+  transferOwnership: (group_id: string, user_id: string) =>
+    request<void>(`/groups/${encodeURIComponent(group_id)}/transfer-ownership`, {
+      method: "POST",
+      body:   { user_id },
+    }),
+
+  listInvitations: (group_id: string) =>
+    request<Invitation[]>(`/groups/${encodeURIComponent(group_id)}/invitations`),
+
+  createInvitation: (group_id: string, email: string, role: Role) =>
+    request<Invitation>(`/groups/${encodeURIComponent(group_id)}/invitations`, {
+      method: "POST",
+      body:   { email, role },
+    }),
+
+  revokeInvitation: (group_id: string, invite_id: string) =>
+    request<void>(
+      `/groups/${encodeURIComponent(group_id)}/invitations/${encodeURIComponent(invite_id)}`,
+      { method: "DELETE" },
+    ),
+
+  // ---------- subscriptions -----------------------------------------------
+
   /** Paginated list. Server defaults: `page = 1`, `per_page = 10`
    *  (max 100). Returns the items plus a `total` count for the page UI. */
   listSubscriptions: (params: { page?: number; perPage?: number } = {}) => {

@@ -227,24 +227,21 @@ function Header({
   onNext:  () => void;
 }) {
   return (
-    <header className="space-y-4 border-b border-hairline pb-4">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <p className="text-xs text-ink-faint">
-            Calendar · <span className="num tabular-nums">{yearLabel(anchor, view)}</span>
-          </p>
-          <h1 className="mt-0.5 text-2xl font-semibold tracking-tight text-ink">
-            {primaryLabel(anchor, view)}
-          </h1>
-        </div>
-        <ViewSwitcher view={view} onChange={onView} />
-      </div>
+    <header className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3 pb-2">
+      <h1 className="flex items-baseline gap-2.5 text-3xl font-semibold tracking-tight text-ink">
+        <span>{primaryLabel(anchor, view)}</span>
+        <span className="num text-2xl font-light tabular-nums text-ink-faint">
+          {yearLabel(anchor, view)}
+        </span>
+      </h1>
 
       <div className="flex items-center gap-2">
+        <ViewSwitcher view={view} onChange={onView} />
+        <span aria-hidden="true" className="mx-0.5 h-5 w-px bg-hairline" />
         <button
           type="button"
           onClick={onToday}
-          className="inline-flex h-8 items-center rounded-md border border-hairline bg-white px-3 text-sm font-medium text-ink transition hover:bg-subtle"
+          className="inline-flex h-8 items-center rounded-md px-2.5 text-sm font-medium text-ink-dim transition hover:bg-subtle hover:text-ink"
         >
           Today
         </button>
@@ -296,7 +293,7 @@ function ViewSwitcher({ view, onChange }: { view: View; onChange: (v: View) => v
     <div
       role="tablist"
       aria-label="calendar view"
-      className="inline-flex h-8 rounded-md border border-hairline bg-white p-0.5"
+      className="inline-flex h-8 gap-0.5 rounded-md bg-subtle p-0.5"
     >
       {opts.map((opt) => {
         const active = opt.value === view;
@@ -308,10 +305,10 @@ function ViewSwitcher({ view, onChange }: { view: View; onChange: (v: View) => v
             aria-selected={active}
             onClick={() => onChange(opt.value)}
             className={
-              "inline-flex items-center rounded-[5px] px-2.5 text-sm font-medium transition " +
+              "inline-flex items-center rounded-[5px] px-3 text-sm font-medium transition " +
               (active
-                ? "bg-accent-soft text-accent"
-                : "text-ink-dim hover:bg-subtle hover:text-ink")
+                ? "bg-white text-ink shadow-page"
+                : "text-ink-dim hover:text-ink")
             }
           >
             {opt.label}
@@ -342,12 +339,15 @@ function MonthGrid({
   const anchorMonth = anchor.getMonth();
 
   return (
-    <div className="animate-gridIn">
-      <div className="grid grid-cols-7 border-b border-hairline pb-2">
-        {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((d) => (
+    <div className="animate-gridIn overflow-hidden rounded-lg border border-hairline">
+      <div className="grid grid-cols-7 bg-white">
+        {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((d, i) => (
           <div
             key={d}
-            className="px-2 text-center text-xs font-medium text-ink-dim"
+            className={
+              "border-b border-hairline px-3 py-2.5 text-[10px] font-medium uppercase tracking-micro text-ink-faint " +
+              (i < 6 ? "border-r border-hairline" : "")
+            }
           >
             {d}
           </div>
@@ -366,37 +366,13 @@ function MonthGrid({
               onClick={() => onPickDay(d)}
               aria-label={`add event on ${key}`}
               className={
-                "group relative flex min-h-[7rem] flex-col items-stretch gap-1.5 bg-white px-2.5 py-2.5 text-left " +
-                "transition-colors duration-200 ease-out"
+                "group relative flex min-h-[7.5rem] flex-col items-stretch gap-1.5 px-2 pb-2 pt-1.5 text-left " +
+                "transition-colors duration-150 ease-out " +
+                (inMonth ? "bg-white hover:bg-accent-soft" : "bg-[#FAF8F2] hover:bg-subtle")
               }
             >
-              <div className="flex items-center justify-between">
-                <span className="inline-flex flex-col items-start leading-none">
-                  <span
-                    className={
-                      "num text-[12px] tabular-nums transition-colors duration-200 " +
-                      (isToday
-                        ? "font-semibold text-accent"
-                        : inMonth
-                          ? "text-ink-dim"
-                          : "text-ink-faint")
-                    }
-                  >
-                    {d.getDate()}
-                  </span>
-                  {isToday && (
-                    <span
-                      aria-hidden="true"
-                      className="mt-1 block h-px w-3 bg-accent"
-                    />
-                  )}
-                </span>
-                <span
-                  aria-hidden="true"
-                  className="text-[13px] leading-none text-ink-faint opacity-0 translate-y-0.5 transition-all duration-200 ease-out group-hover:translate-y-0 group-hover:opacity-100"
-                >
-                  ＋
-                </span>
+              <div className="flex items-center justify-end">
+                <DayNumber date={d} isToday={isToday} inMonth={inMonth} />
               </div>
               <CellChips
                 events={dayEvents}
@@ -412,6 +388,31 @@ function MonthGrid({
         })}
       </div>
     </div>
+  );
+}
+
+function DayNumber({
+  date, isToday, inMonth,
+}: { date: Date; isToday: boolean; inMonth: boolean }) {
+  if (isToday) {
+    return (
+      <span
+        aria-label="today"
+        className="num inline-flex h-6 min-w-6 items-center justify-center rounded-full bg-accent px-1 text-[12px] font-semibold tabular-nums text-white"
+      >
+        {date.getDate()}
+      </span>
+    );
+  }
+  return (
+    <span
+      className={
+        "num text-[12px] tabular-nums leading-6 " +
+        (inMonth ? "text-ink-dim" : "text-ink-faint")
+      }
+    >
+      {date.getDate()}
+    </span>
   );
 }
 
@@ -443,7 +444,7 @@ function CellChips({
         <button
           type="button"
           onClick={onMore}
-          className="self-start rounded px-1 text-xs font-medium text-ink-faint transition hover:text-accent"
+          className="self-start rounded px-1 py-px text-[11px] font-medium text-ink-faint transition hover:text-accent"
         >
           +{extra} more
         </button>
@@ -479,7 +480,7 @@ function WeekView({
   const nowTop   = (now.getHours() + now.getMinutes() / 60) * HOUR_PX;
 
   return (
-    <div className="animate-gridIn border-b border-hairline">
+    <div className="animate-gridIn overflow-hidden rounded-lg border border-hairline bg-white">
       <DayHeaderRow days={days} todayKey={todayKey} />
 
       <div
@@ -512,7 +513,7 @@ function WeekView({
             );
           })}
 
-          {todayIdx >= 0 && <NowLine top={nowTop} todayIdx={todayIdx} columns={7} />}
+          {todayIdx >= 0 && <NowLine top={nowTop} todayIdx={todayIdx} columns={7} now={now} />}
         </div>
       </div>
     </div>
@@ -544,7 +545,7 @@ function DayView({
   }, []);
 
   return (
-    <div className="animate-gridIn border-b border-hairline">
+    <div className="animate-gridIn overflow-hidden rounded-lg border border-hairline bg-white">
       <DayHeaderRow days={[anchor]} todayKey={ymd(now)} />
 
       <div
@@ -569,7 +570,7 @@ function DayView({
             onPickEvent={onPickEvent}
             density="roomy"
           />
-          {isToday && <NowLine top={nowTop} todayIdx={0} columns={1} />}
+          {isToday && <NowLine top={nowTop} todayIdx={0} columns={1} now={now} />}
         </div>
       </div>
     </div>
@@ -583,7 +584,7 @@ function DayView({
 function DayHeaderRow({ days, todayKey }: { days: Date[]; todayKey: string }) {
   return (
     <div
-      className="grid border-b border-hairline"
+      className="grid border-b border-hairline bg-white"
       style={{
         gridTemplateColumns: `${GUTTER_REM}rem repeat(${days.length}, minmax(0, 1fr))`,
       }}
@@ -596,32 +597,30 @@ function DayHeaderRow({ days, todayKey }: { days: Date[]; todayKey: string }) {
           <div
             key={ymd(d)}
             className={
-              "flex flex-col items-center justify-center gap-1.5 px-2 py-3.5 " +
-              (last ? "" : "border-r border-hairline ") +
-              (isToday ? "bg-accent/[0.05]" : "")
+              "flex items-center gap-2.5 px-3 py-3 " +
+              (last ? "" : "border-r border-hairline")
             }
           >
-            <p
+            <span
               className={
-                "text-xs font-medium " +
-                (isToday ? "text-accent" : "text-ink-dim")
+                "text-[10px] font-medium uppercase tracking-micro " +
+                (isToday ? "text-accent" : "text-ink-faint")
               }
             >
               {d.toLocaleDateString(undefined, { weekday: "short" })}
-            </p>
-            <div className="flex flex-col items-center gap-1 leading-none">
-              <p
-                className={
-                  "num text-xl tabular-nums leading-none " +
-                  (isToday ? "font-semibold text-accent" : "text-ink-dim")
-                }
+            </span>
+            {isToday ? (
+              <span
+                aria-label="today"
+                className="num inline-flex h-7 min-w-7 items-center justify-center rounded-full bg-accent px-1.5 text-sm font-semibold tabular-nums leading-none text-white"
               >
                 {d.getDate()}
-              </p>
-              {isToday && (
-                <span aria-hidden="true" className="block h-px w-4 bg-accent" />
-              )}
-            </div>
+              </span>
+            ) : (
+              <span className="num text-xl font-semibold tabular-nums leading-none text-ink">
+                {d.getDate()}
+              </span>
+            )}
           </div>
         );
       })}
@@ -635,11 +634,11 @@ function DayHeaderRow({ days, todayKey }: { days: Date[]; todayKey: string }) {
 
 function HourGutter() {
   return (
-    <div className="relative border-r border-hairline">
+    <div className="relative border-r border-hairline bg-white">
       {Array.from({ length: TOTAL_HOURS }, (_, h) => (
         <div
           key={h}
-          className="num absolute right-2 -translate-y-1/2 tabular-nums text-[10px] text-ink-faint"
+          className="num absolute right-2 -translate-y-1/2 tabular-nums text-[10px] font-medium text-ink-faint"
           style={{ top: h * HOUR_PX }}
         >
           {h === 0 ? "" : hourLabel(h)}
@@ -676,17 +675,22 @@ function DayColumn({
       onClick={handleClick}
       className={
         "relative cursor-pointer border-r border-hairline last:border-r-0 " +
-        "transition-colors duration-200 ease-out " +
-        (isToday ? "bg-accent/[0.04]" : "hover:bg-ink/[0.015]")
+        "transition-colors duration-150 ease-out " +
+        (isToday ? "bg-accent/[0.035]" : "hover:bg-subtle/60")
       }
       style={{
-        // Hairline gridline at the bottom of each hour row.
+        // Hairline gridline at the bottom of each hour row, with a fainter
+        // tick at the half-hour for finer time reading.
         backgroundImage: `repeating-linear-gradient(
           to bottom,
           transparent 0,
+          transparent ${HOUR_PX / 2 - 1}px,
+          rgb(217 210 191 / 0.22) ${HOUR_PX / 2 - 1}px,
+          rgb(217 210 191 / 0.22) ${HOUR_PX / 2}px,
+          transparent ${HOUR_PX / 2}px,
           transparent ${HOUR_PX - 1}px,
-          rgb(217 210 191 / 0.55) ${HOUR_PX - 1}px,
-          rgb(217 210 191 / 0.55) ${HOUR_PX}px
+          rgb(217 210 191 / 0.5) ${HOUR_PX - 1}px,
+          rgb(217 210 191 / 0.5) ${HOUR_PX}px
         )`,
       }}
     >
@@ -717,8 +721,10 @@ function DayColumn({
 // ---------------------------------------------------------------------------
 
 function NowLine({
-  top, todayIdx, columns,
-}: { top: number; todayIdx: number; columns: number }) {
+  top, todayIdx, columns, now,
+}: { top: number; todayIdx: number; columns: number; now: Date }) {
+  // 24h `HH:MM` for compactness and unambiguous reading inside the gutter.
+  const timeLabel = `${pad(now.getHours())}:${pad(now.getMinutes())}`;
   return (
     <div
       className="pointer-events-none absolute left-0 right-0 z-10"
@@ -729,9 +735,9 @@ function NowLine({
         className="grid items-center"
         style={{ gridTemplateColumns: `${GUTTER_REM}rem repeat(${columns}, minmax(0, 1fr))` }}
       >
-        <div className="flex justify-end pr-2">
-          <span className="num bg-canvas px-1 text-[10px] font-semibold text-accent">
-            Now
+        <div className="flex justify-end pr-1.5">
+          <span className="num rounded-sm bg-accent px-1.5 py-[1px] text-[10px] font-semibold tabular-nums leading-tight text-white">
+            {timeLabel}
           </span>
         </div>
         {Array.from({ length: columns }, (_, i) => {
@@ -740,11 +746,11 @@ function NowLine({
             <div key={i} className="relative">
               {isToday && (
                 <span
-                  className="absolute -left-[3px] top-1/2 size-1.5 -translate-y-1/2 rounded-full bg-accent"
+                  className="absolute -left-[3px] top-1/2 block size-1.5 -translate-y-1/2 rounded-full bg-accent ring-2 ring-white"
                   aria-hidden="true"
                 />
               )}
-              <div className={"h-px w-full " + (isToday ? "bg-accent" : "bg-accent/25")} />
+              <div className={"h-px w-full " + (isToday ? "bg-accent" : "bg-accent/20")} />
             </div>
           );
         })}
@@ -756,6 +762,33 @@ function NowLine({
 // ---------------------------------------------------------------------------
 // Chips
 // ---------------------------------------------------------------------------
+
+/** Status dot used as the leading anchor of every chip. Filled for accepted,
+ *  a ring for pending (the event isn't committed yet), muted for declined. */
+function StatusDot({ status }: { status: EventStatus }) {
+  if (status === "accepted") {
+    return (
+      <span
+        aria-hidden="true"
+        className="block size-1.5 shrink-0 rounded-full bg-accent"
+      />
+    );
+  }
+  if (status === "pending") {
+    return (
+      <span
+        aria-hidden="true"
+        className="block size-1.5 shrink-0 rounded-full ring-[1.25px] ring-inset ring-accent/70"
+      />
+    );
+  }
+  return (
+    <span
+      aria-hidden="true"
+      className="block size-1.5 shrink-0 rounded-full bg-ink-faint/70"
+    />
+  );
+}
 
 /** Block chip used in the month grid. */
 function EventChip({
@@ -776,8 +809,8 @@ function EventChip({
       onClick={onClick}
       title={chipTitle(event)}
       className={
-        "flex min-w-0 items-baseline gap-1.5 rounded-md px-1.5 py-0.5 text-[11px] leading-tight " +
-        "transition-colors duration-200 ease-out hover:bg-[var(--chip-bg-hover)] " +
+        "flex min-w-0 items-center gap-1.5 rounded px-1.5 py-[3px] text-[11px] leading-tight " +
+        "transition-colors duration-150 ease-out hover:bg-[var(--chip-bg-hover)] " +
         s.textClass + " " +
         (isNew ? "animate-chipIn" : "")
       }
@@ -788,9 +821,10 @@ function EventChip({
         ...(s.border ? { boxShadow: `inset 0 0 0 1px ${s.border}` } : {}),
       }}
     >
+      <StatusDot status={event.status} />
       <span className="min-w-0 truncate font-medium">{label}</span>
       {amountStr && (
-        <span className="num shrink-0 tabular-nums text-[10px] opacity-65">{amountStr}</span>
+        <span className="num ml-auto shrink-0 tabular-nums text-[10px] opacity-70">{amountStr}</span>
       )}
     </button>
   );
@@ -814,15 +848,20 @@ function TimedEventChip({
   const amountStr = event.amount !== null ? `${formatAmount(event.amount)}${unit}` : null;
   const s = chipStyle(event);
 
+  // boxShadow composes the chip's inset border with a hover lift. The lift
+  // is gated on a CSS var so we can chain it without clobbering the border.
+  const baseShadow  = s.border ? `inset 0 0 0 1px ${s.border}` : null;
+  const hoverShadow = "0 4px 12px -6px rgba(26, 24, 20, 0.18)";
+
   return (
     <button
       type="button"
       onClick={onClick}
       title={chipTitle(event)}
       className={
-        "absolute z-[1] flex min-w-0 flex-col gap-0.5 overflow-hidden rounded-md px-1.5 py-1 " +
-        "text-left text-[11px] leading-tight transition-shadow duration-200 ease-out " +
-        "hover:z-[2] hover:shadow-page hover:brightness-95 " +
+        "absolute z-[1] flex min-w-0 flex-col gap-0.5 overflow-hidden rounded-md px-2 py-1 " +
+        "text-left text-[11px] leading-tight transition-[box-shadow,background-color] duration-150 ease-out " +
+        "hover:z-[2] hover:bg-[var(--chip-bg-hover)] hover:shadow-[var(--chip-shadow-hover)] " +
         s.textClass + " " +
         (isNew ? "animate-chipIn " : "")
       }
@@ -830,22 +869,28 @@ function TimedEventChip({
         ...style,
         backgroundColor: s.bg,
         color:           s.fg,
-        ...(s.border ? { boxShadow: `inset 0 0 0 1px ${s.border}` } : {}),
+        ["--chip-bg-hover" as string]: s.hoverBg,
+        ["--chip-shadow-hover" as string]: baseShadow
+          ? `${baseShadow}, ${hoverShadow}`
+          : hoverShadow,
+        ...(baseShadow ? { boxShadow: baseShadow } : {}),
       }}
     >
       {density === "dense" ? (
-        <span className="flex min-w-0 items-baseline gap-1.5">
+        <span className="flex min-w-0 items-center gap-1.5">
+          <StatusDot status={event.status} />
           <span className="min-w-0 truncate font-medium">{label}</span>
           {amountStr && (
-            <span className="num shrink-0 tabular-nums text-[10px] opacity-65">{amountStr}</span>
+            <span className="num ml-auto shrink-0 tabular-nums text-[10px] opacity-70">{amountStr}</span>
           )}
         </span>
       ) : (
         <>
-          <span className="flex items-baseline justify-between gap-2">
+          <span className="flex items-center gap-1.5">
+            <StatusDot status={event.status} />
             <span className="num shrink-0 tabular-nums text-[10px] opacity-75">{when}</span>
             {amountStr && (
-              <span className="num shrink-0 tabular-nums font-semibold">{amountStr}</span>
+              <span className="num ml-auto shrink-0 tabular-nums font-semibold">{amountStr}</span>
             )}
           </span>
           <span className="min-w-0 truncate font-medium">
@@ -858,9 +903,10 @@ function TimedEventChip({
   );
 }
 
-// Resolved colors for a chip in its current status. The identity color
-// (`id`) is the per-subscription color; accepted events override it with a
-// pure green + ink text so confirmation reads at a glance.
+// Resolved colors for a chip in its current status. Accepted = soft green
+// wash + deep green text (committed, but legible at small sizes). Pending =
+// white + green ring (open, awaiting confirmation). Declined = paper wash +
+// faint strikethrough.
 interface ChipStyle {
   bg:        string;
   fg:        string;
@@ -869,34 +915,38 @@ interface ChipStyle {
   textClass: string;
 }
 
-const ACCEPTED_GREEN       = "#22C55E"; // pure green for confirmed/committed
-const ACCEPTED_GREEN_HOVER = "#16A34A"; // ~one step darker on hover
-const INK                  = "#1A1814"; // warm near-black, the codebase's "ink"
+const ACCENT          = "#15803D"; // brand green; matches tailwind accent.DEFAULT
+const ACCEPTED_BG     = "#15803D14"; // ~8% wash
+const ACCEPTED_HOVER  = "#15803D29"; // ~16%
+const ACCEPTED_TEXT   = "#0F5A2B";   // deeper green for contrast on wash
+const PENDING_HOVER   = "#15803D0F"; // ~6%
+const DECLINED_BG     = "#F6F4EE";   // matches `subtle` token
+const DECLINED_HOVER  = "#EDE9DC";
 
 function chipStyle(event: EventInRange): ChipStyle {
   switch (event.status) {
     case "accepted":
       return {
-        bg:        ACCEPTED_GREEN,
-        fg:        INK,
-        hoverBg:   ACCEPTED_GREEN_HOVER,
+        bg:        ACCEPTED_BG,
+        fg:        ACCEPTED_TEXT,
+        hoverBg:   ACCEPTED_HOVER,
         border:    null,
         textClass: "",
       };
     case "pending":
       return {
         bg:        "#FFFFFF",
-        fg:        ACCEPTED_GREEN,
-        hoverBg:   ACCEPTED_GREEN + "14", // very light green wash on hover
-        border:    ACCEPTED_GREEN,
+        fg:        "#1A1814",
+        hoverBg:   PENDING_HOVER,
+        border:    ACCENT + "5C", // ~36% green hairline
         textClass: "",
       };
     case "declined":
       return {
-        bg:        "#FFFFFF",
-        fg:        ACCEPTED_GREEN,
-        hoverBg:   ACCEPTED_GREEN + "14",
-        border:    ACCEPTED_GREEN,
+        bg:        DECLINED_BG,
+        fg:        "#8E8675",
+        hoverBg:   DECLINED_HOVER,
+        border:    null,
         textClass: "line-through",
       };
   }
@@ -1484,9 +1534,9 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
 
 function StatusBadge({ status }: { status: EventStatus }) {
   const styles: Record<EventStatus, string> = {
-    pending:  "border-hairline bg-subtle text-ink-dim",
-    accepted: "border-pace-green/30 bg-pace-green/10 text-pace-green",
-    declined: "border-pace-red/30   bg-pace-red/10   text-pace-red",
+    pending:  "border-accent/30 bg-white       text-ink-dim",
+    accepted: "border-transparent bg-accent/10 text-accent",
+    declined: "border-hairline    bg-subtle    text-ink-faint",
   };
   const labels: Record<EventStatus, string> = {
     pending: "Pending", accepted: "Accepted", declined: "Declined",
@@ -1494,10 +1544,11 @@ function StatusBadge({ status }: { status: EventStatus }) {
   return (
     <span
       className={
-        "inline-flex shrink-0 items-center rounded-full border px-2 py-0.5 text-xs font-medium " +
+        "inline-flex shrink-0 items-center gap-1.5 rounded-full border px-2 py-0.5 text-xs font-medium " +
         styles[status]
       }
     >
+      <StatusDot status={status} />
       {labels[status]}
     </span>
   );

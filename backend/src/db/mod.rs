@@ -13,8 +13,10 @@ pub mod sqlite;
 
 pub use repo::{
     BudgetRepo, BudgetRow, BudgetWrite, EventRepo, EventRow, EventStatus, EventWithSubscriptionRow,
-    EventWrite, ExpenseRepo, ExpenseRow, ExpenseWrite, RecurringExpenseRepo, RecurringExpenseRow,
-    RecurringExpenseWrite, SubscriptionRepo, SubscriptionRow, SubscriptionWrite,
+    EventWrite, ExpenseRepo, ExpenseRow, ExpenseWrite, GroupForUserRow, GroupRepo, GroupRow,
+    InvitationRepo, InvitationRow, InvitationWrite, MemberRow, RecurringExpenseRepo,
+    RecurringExpenseRow, RecurringExpenseWrite, SessionMember, SessionRepo, SubscriptionRepo,
+    SubscriptionRow, SubscriptionWrite, UserRepo, UserRow,
 };
 
 /// Bundle of repository handles shared by HTTP handlers via `AppState`.
@@ -29,4 +31,8 @@ pub struct Repos {
     pub expenses: Arc<dyn ExpenseRepo>,
     pub recurring_expenses: Arc<dyn RecurringExpenseRepo>,
     pub budgets: Arc<dyn BudgetRepo>,
+    pub users: Arc<dyn UserRepo>,
+    pub groups: Arc<dyn GroupRepo>,
+    pub invitations: Arc<dyn InvitationRepo>,
+    pub sessions: Arc<dyn SessionRepo>,
 }
