@@ -23,6 +23,7 @@ import type {
   Role,
   Subscription,
   SubscriptionsPage,
+  TimelineEvent,
   TrackingMode,
   YearlyLedger,
 } from "./types";
@@ -109,6 +110,13 @@ export interface EventInput {
   amount:          number | null;
   notes:           string | null;
   recurrence_rule?: import("./types").RecurrenceRule | null;
+}
+
+/** Fields the user can set on a timeline event. */
+export interface TimelineEventInput {
+  title:       string;
+  occurred_on: string;           // "YYYY-MM-DD"
+  notes:       string | null;
 }
 
 export const api = {
@@ -297,6 +305,23 @@ export const api = {
 
   deleteExpense: (id: string) =>
     request<void>(`/finance/expenses/${encodeURIComponent(id)}`, { method: "DELETE" }),
+
+  // ---------- timeline events ---------------------------------------------
+
+  listTimelineEvents: (year: string) =>
+    request<TimelineEvent[]>(`/timeline-events?year=${encodeURIComponent(year)}`),
+
+  createTimelineEvent: (input: TimelineEventInput) =>
+    request<TimelineEvent>("/timeline-events", { method: "POST", body: input }),
+
+  updateTimelineEvent: (id: string, input: TimelineEventInput) =>
+    request<TimelineEvent>(`/timeline-events/${encodeURIComponent(id)}`, {
+      method: "PATCH",
+      body:   input,
+    }),
+
+  deleteTimelineEvent: (id: string) =>
+    request<void>(`/timeline-events/${encodeURIComponent(id)}`, { method: "DELETE" }),
 
   listRecurringExpenses: () =>
     request<RecurringExpense[]>("/finance/recurring-expenses"),

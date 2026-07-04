@@ -1484,3 +1484,124 @@ async fn ledger_groups_currencies_separately() {
     assert!(codes.contains(&"USD".to_string()));
     assert_eq!(codes.len(), 2);
 }
+
+// ---------------------------------------------------------------------------
+// Timeline events
+// ---------------------------------------------------------------------------
+
+#[tokio::test]
+async fn timeline_event_crud_and_year_window() {
+    let (state, _pool) = setup().await;
+
+    // Create.
+    let resp = router(state.clone())
+        .oneshot(
+            req_builder()
+                .method("POST")
+                .uri("/timeline-events")
+                .header("content-type", "application/json")
+                .body(Body::from(
+                    serde_json::json!({
+                        "title": "  Moved apartments  ",
+                        "occurred_on": "2026-03-15",
+                        "notes": "  "
+                    })
+                    .to_string(),
+                ))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(resp.status(), StatusCode::CREATED);
+    let created = body_json(resp).await;
+    assert_eq!(created["title"], "Moved apartments"); // trimmed
+    assert!(created["notes"].is_null()); // blank collapses to null
+    let id = created["id"].as_str().unwrap().to_string();
+
+    // Listed inside its year, absent outside it.
+    let resp = router(state.clone())
+        .oneshot(
+            req_builder()
+                .uri("/timeline-events?year=2026")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    let listed = body_json(resp).await;
+    assert_eq!(listed.as_array().unwrap().len(), 1);
+    let resp = router(state.clone())
+        .oneshot(
+            req_builder()
+                .uri("/timeline-events?year=2025")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(body_json(resp).await.as_array().unwrap().len(), 0);
+
+    // Update.
+    let resp = router(state.clone())
+        .oneshot(
+            req_builder()
+                .method("PATCH")
+                .uri(format!("/timeline-events/{id}"))
+                .header("content-type", "application/json")
+                .body(Body::from(
+                    serde_json::json!({
+                        "title": "Moved to the new place",
+                        "occurred_on": "2026-04-01",
+                        "notes": "big milestone"
+                    })
+                    .to_string(),
+                ))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(resp.status(), StatusCode::OK);
+    let updated = body_json(resp).await;
+    assert_eq!(updated["occurred_on"], "2026-04-01");
+    assert_eq!(updated["notes"], "big milestone");
+
+    // Blank title rejected with the stable code.
+    let resp = router(state.clone())
+        .oneshot(
+            req_builder()
+                .method("POST")
+                .uri("/timeline-events")
+                .header("content-type", "application/json")
+                .body(Body::from(
+                    serde_json::json!({"title": "   ", "occurred_on": "2026-01-01"}).to_string(),
+                ))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(resp.status(), StatusCode::BAD_REQUEST);
+    assert_eq!(body_json(resp).await["error"], "title_required");
+
+    // Delete, then the year window is empty again.
+    let resp = router(state.clone())
+        .oneshot(
+            req_builder()
+                .method("DELETE")
+                .uri(format!("/timeline-events/{id}"))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(resp.status(), StatusCode::NO_CONTENT);
+    let resp = router(state)
+        .oneshot(
+            req_builder()
+                .uri("/timeline-events?year=2026")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(body_json(resp).await.as_array().unwrap().len(), 0);
+}

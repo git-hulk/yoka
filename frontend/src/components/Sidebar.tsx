@@ -63,6 +63,15 @@ const CalendarIcon = (
   </svg>
 );
 
+const TimelineIcon = (
+  <svg viewBox="0 0 16 16" fill="currentColor" className="size-4" aria-hidden="true">
+    {/* timeline — staggered gantt bars */}
+    <rect x="2" y="3" width="8" height="2.5" rx="1.25" />
+    <rect x="5" y="6.75" width="9" height="2.5" rx="1.25" />
+    <rect x="3.5" y="10.5" width="6" height="2.5" rx="1.25" />
+  </svg>
+);
+
 const MembersIcon = (
   <svg viewBox="0 0 16 16" fill="currentColor" className="size-4" aria-hidden="true">
     {/* users — lead silhouette with a trailing partial figure */}
@@ -91,6 +100,12 @@ const NAV: NavEntry[] = [
     label:   "Calendar",
     matches: (p) => p.startsWith("/calendar"),
     icon:    CalendarIcon,
+  },
+  {
+    to:      "/timeline",
+    label:   "Timeline",
+    matches: (p) => p.startsWith("/timeline"),
+    icon:    TimelineIcon,
   },
   {
     to:      "/members",

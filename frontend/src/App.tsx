@@ -14,6 +14,7 @@ const SubscriptionDetail    = lazy(() => import("./pages/SubscriptionDetail"));
 const SubscriptionEdit      = lazy(() => import("./pages/SubscriptionEdit"));
 const SubscriptionNew       = lazy(() => import("./pages/SubscriptionNew"));
 const Calendar              = lazy(() => import("./pages/Calendar"));
+const Timeline              = lazy(() => import("./pages/Timeline"));
 const FinanceHome           = lazy(() => import("./pages/finance/FinanceHome"));
 const ExpenseNew            = lazy(() => import("./pages/finance/ExpenseNew"));
 const ExpenseEdit           = lazy(() => import("./pages/finance/ExpenseEdit"));
@@ -114,6 +115,7 @@ function Shell() {
                 <Route path="/subscriptions/:id"                 element={<SubscriptionDetail />} />
                 <Route path="/subscriptions/:id/edit"            element={<SubscriptionEdit />} />
                 <Route path="/calendar"                          element={<Calendar />} />
+                <Route path="/timeline"                          element={<Timeline />} />
                 <Route path="/finance"                           element={<FinanceHome />} />
                 <Route path="/finance/expenses/new"              element={<ExpenseNew />} />
                 <Route path="/finance/expenses/:id/edit"         element={<ExpenseEdit />} />

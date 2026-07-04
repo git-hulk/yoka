@@ -313,3 +313,13 @@ export interface YearlyLedger {
   monthly_totals: MonthlyTotal[];
   currencies: Currency[];
 }
+
+/** User-authored timeline event. Mirror of the Rust `TimelineEventResponse`. */
+export interface TimelineEvent {
+  id: string;
+  title: string;
+  occurred_on: string;           // "YYYY-MM-DD"
+  notes: string | null;
+  created_at: string;            // ISO-8601 UTC
+  updated_at: string;            // ISO-8601 UTC
+}

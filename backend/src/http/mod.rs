@@ -16,7 +16,7 @@ use tower_http::trace::TraceLayer;
 
 use crate::db::{
     BudgetRepo, EventRepo, ExpenseRepo, GroupRepo, InvitationRepo, RecurringExpenseRepo, Repos,
-    SessionRepo, SubscriptionRepo, UserRepo,
+    SessionRepo, SubscriptionRepo, TimelineEventRepo, UserRepo,
 };
 
 pub mod auth;
@@ -26,6 +26,7 @@ pub mod groups;
 pub mod invites;
 pub mod me;
 pub mod subscriptions;
+pub mod timeline_events;
 
 /// Shared state passed to every handler.
 ///
@@ -39,6 +40,7 @@ pub struct AppState {
     pub expenses: Arc<dyn ExpenseRepo>,
     pub recurring_expenses: Arc<dyn RecurringExpenseRepo>,
     pub budgets: Arc<dyn BudgetRepo>,
+    pub timeline_events: Arc<dyn TimelineEventRepo>,
     pub users: Arc<dyn UserRepo>,
     pub groups: Arc<dyn GroupRepo>,
     pub invitations: Arc<dyn InvitationRepo>,
@@ -53,6 +55,7 @@ impl From<Repos> for AppState {
             expenses: repos.expenses,
             recurring_expenses: repos.recurring_expenses,
             budgets: repos.budgets,
+            timeline_events: repos.timeline_events,
             users: repos.users,
             groups: repos.groups,
             invitations: repos.invitations,
@@ -162,6 +165,14 @@ pub fn router(state: AppState) -> Router {
             get(finance::get_expense)
                 .patch(finance::update_expense)
                 .delete(finance::delete_expense),
+        )
+        .route(
+            "/timeline-events",
+            get(timeline_events::list).post(timeline_events::create),
+        )
+        .route(
+            "/timeline-events/:id",
+            axum::routing::patch(timeline_events::update).delete(timeline_events::delete),
         )
         .route(
             "/finance/recurring-expenses",

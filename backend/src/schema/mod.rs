@@ -8,3 +8,4 @@ pub mod events;
 pub mod finance;
 pub mod groups;
 pub mod subscriptions;
+pub mod timeline;

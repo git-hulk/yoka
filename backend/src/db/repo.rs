@@ -421,6 +421,52 @@ pub trait RecurringExpenseRepo: Send + Sync + 'static {
     async fn list_all(&self, group_id: &str) -> Result<Vec<RecurringExpenseRow>, AppError>;
 }
 
+// ---------------------------------------------------------------------------
+// Timeline events
+// ---------------------------------------------------------------------------
+
+/// Stored row for a user-authored timeline event.
+#[derive(Debug, Clone, sqlx::FromRow)]
+pub struct TimelineEventRow {
+    pub id: String,
+    pub title: String,
+    pub occurred_on: NaiveDate,
+    pub notes: Option<String>,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
+
+pub struct TimelineEventWrite<'a> {
+    pub title: &'a str,
+    pub occurred_on: NaiveDate,
+    pub notes: Option<&'a str>,
+}
+
+#[async_trait]
+pub trait TimelineEventRepo: Send + Sync + 'static {
+    async fn fetch(&self, group_id: &str, id: &str) -> Result<TimelineEventRow, AppError>;
+    async fn insert(
+        &self,
+        group_id: &str,
+        id: &str,
+        input: TimelineEventWrite<'_>,
+    ) -> Result<TimelineEventRow, AppError>;
+    async fn update(
+        &self,
+        group_id: &str,
+        id: &str,
+        input: TimelineEventWrite<'_>,
+    ) -> Result<TimelineEventRow, AppError>;
+    async fn delete(&self, group_id: &str, id: &str) -> Result<(), AppError>;
+    /// All events with `occurred_on` inside `[first_day, last_day]`, date-ascending.
+    async fn list_in_range(
+        &self,
+        group_id: &str,
+        first_day: NaiveDate,
+        last_day: NaiveDate,
+    ) -> Result<Vec<TimelineEventRow>, AppError>;
+}
+
 #[async_trait]
 pub trait BudgetRepo: Send + Sync + 'static {
     async fn fetch(&self, group_id: &str, id: &str) -> Result<BudgetRow, AppError>;

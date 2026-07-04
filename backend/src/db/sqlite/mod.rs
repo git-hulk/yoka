@@ -18,6 +18,7 @@ pub mod groups;
 pub mod invitations;
 pub mod sessions;
 pub mod subscriptions;
+pub mod timeline;
 pub mod users;
 
 pub use events::SqliteEventRepo;
@@ -26,6 +27,7 @@ pub use groups::SqliteGroupRepo;
 pub use invitations::SqliteInvitationRepo;
 pub use sessions::SqliteSessionRepo;
 pub use subscriptions::SqliteSubscriptionRepo;
+pub use timeline::SqliteTimelineEventRepo;
 pub use users::SqliteUserRepo;
 
 /// SQLite migrations, applied in order on startup.
@@ -81,6 +83,10 @@ const MIGRATIONS: &[(&str, &str)] = &[
     (
         "20260614_000001_users_and_groups",
         include_str!("../../../migrations/sqlite/20260614_000001_users_and_groups.sql"),
+    ),
+    (
+        "20260704_000001_timeline_events",
+        include_str!("../../../migrations/sqlite/20260704_000001_timeline_events.sql"),
     ),
 ];
 
@@ -139,6 +145,8 @@ impl SqliteBackend {
             Arc::new(SqliteRecurringExpenseRepo::new(self.pool.clone()));
         let budgets: Arc<dyn crate::db::BudgetRepo> =
             Arc::new(SqliteBudgetRepo::new(self.pool.clone()));
+        let timeline_events: Arc<dyn crate::db::TimelineEventRepo> =
+            Arc::new(SqliteTimelineEventRepo::new(self.pool.clone()));
         let users: Arc<dyn crate::db::UserRepo> =
             Arc::new(SqliteUserRepo::new(self.pool.clone()));
         let groups: Arc<dyn crate::db::GroupRepo> =
@@ -153,6 +161,7 @@ impl SqliteBackend {
             expenses,
             recurring_expenses,
             budgets,
+            timeline_events,
             users,
             groups,
             invitations,

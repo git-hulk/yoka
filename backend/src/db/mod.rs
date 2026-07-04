@@ -16,7 +16,8 @@ pub use repo::{
     EventWrite, ExpenseRepo, ExpenseRow, ExpenseWrite, GroupForUserRow, GroupRepo, GroupRow,
     InvitationRepo, InvitationRow, InvitationWrite, MemberRow, RecurringExpenseRepo,
     RecurringExpenseRow, RecurringExpenseWrite, SessionMember, SessionRepo, SubscriptionRepo,
-    SubscriptionRow, SubscriptionWrite, UserRepo, UserRow,
+    SubscriptionRow, SubscriptionWrite, TimelineEventRepo, TimelineEventRow,
+    TimelineEventWrite, UserRepo, UserRow,
 };
 
 /// Bundle of repository handles shared by HTTP handlers via `AppState`.
@@ -31,6 +32,7 @@ pub struct Repos {
     pub expenses: Arc<dyn ExpenseRepo>,
     pub recurring_expenses: Arc<dyn RecurringExpenseRepo>,
     pub budgets: Arc<dyn BudgetRepo>,
+    pub timeline_events: Arc<dyn TimelineEventRepo>,
     pub users: Arc<dyn UserRepo>,
     pub groups: Arc<dyn GroupRepo>,
     pub invitations: Arc<dyn InvitationRepo>,
