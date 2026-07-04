@@ -43,6 +43,7 @@ export default function Register() {
 
   return (
     <div className="mx-auto mt-16 max-w-sm">
+      <p className="mb-6 text-sm font-medium tracking-tight text-accent">YOKA</p>
       <h1 className="text-2xl font-medium tracking-tight text-ink">Create account</h1>
       <p className="mt-1 text-sm text-ink-dim">
         You’ll get a personal group to start with. You can invite others or join their groups later.
@@ -57,7 +58,7 @@ export default function Register() {
             required
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="mt-1 block w-full rounded-md border border-hairline bg-white px-3 py-2 text-sm text-ink focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/30"
+            className="mt-1 block h-9 w-full rounded-md border border-hairline bg-white px-3 text-sm text-ink transition hover:border-ink-faint focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent-soft"
           />
         </label>
         <label className="block">
@@ -69,7 +70,7 @@ export default function Register() {
             minLength={MIN_PASSWORD_LEN}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className="mt-1 block w-full rounded-md border border-hairline bg-white px-3 py-2 text-sm text-ink focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/30"
+            className="mt-1 block h-9 w-full rounded-md border border-hairline bg-white px-3 text-sm text-ink transition hover:border-ink-faint focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent-soft"
           />
           <span className="mt-1 block text-xs text-ink-faint">
             At least {MIN_PASSWORD_LEN} characters.
@@ -77,7 +78,7 @@ export default function Register() {
         </label>
 
         {error && (
-          <div className="rounded-md border border-pace-red/30 bg-pace-red/5 px-3 py-2 text-sm text-pace-red">
+          <div className="rounded-lg border border-pace-red/30 bg-pace-red/5 px-3 py-2 text-sm text-pace-red">
             {error}
           </div>
         )}
@@ -85,7 +86,7 @@ export default function Register() {
         <button
           type="submit"
           disabled={submitting}
-          className="inline-flex h-10 w-full items-center justify-center rounded-md bg-accent px-4 text-sm font-medium text-white shadow-sm transition hover:bg-accent-deep disabled:opacity-60"
+          className="inline-flex h-9 w-full items-center justify-center rounded-md bg-accent px-4 text-sm font-medium text-white transition hover:bg-accent-deep disabled:opacity-60"
         >
           {submitting ? "Creating…" : "Create account"}
         </button>

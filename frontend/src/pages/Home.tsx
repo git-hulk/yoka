@@ -93,7 +93,7 @@ function PageHeading({ count }: { count: number | null }) {
 
 function ColumnHeader() {
   return (
-    <div className="grid grid-cols-[minmax(0,1.4fr)_minmax(110px,1.3fr)_5.5rem_5rem] gap-5 border-b border-hairline bg-subtle/60 px-4 py-2 text-xs font-medium text-ink-dim sm:grid-cols-[minmax(0,1.4fr)_minmax(140px,1.4fr)_5.5rem_5rem_5rem]">
+    <div className="grid grid-cols-[minmax(0,1.4fr)_minmax(110px,1.3fr)_5.5rem_5rem] gap-5 border-b border-hairline bg-subtle/60 px-4 py-2 text-2xs font-medium uppercase tracking-micro text-ink-faint sm:grid-cols-[minmax(0,1.4fr)_minmax(140px,1.4fr)_5.5rem_5rem_5rem]">
       <span>Name</span>
       <span>Usage</span>
       <span>Status</span>
@@ -114,9 +114,9 @@ function Skeleton() {
             className="grid grid-cols-[minmax(0,1.4fr)_minmax(110px,1.3fr)_5.5rem_5rem] items-center gap-5 px-4 py-3 sm:grid-cols-[minmax(0,1.4fr)_minmax(140px,1.4fr)_5.5rem_5rem_5rem]"
           >
             <div className="h-4 w-40 animate-pulse rounded-sm bg-ink/5" />
-            <div className="space-y-2">
-              <div className="h-2 w-8 animate-pulse rounded-sm bg-ink/5" />
-              <div className="h-2.5 animate-pulse rounded-sm bg-ink/5" />
+            <div className="flex items-center gap-2.5">
+              <div className="h-3 w-11 shrink-0 animate-pulse rounded-sm bg-ink/5" />
+              <div className="h-1.5 flex-1 animate-pulse rounded-sm bg-ink/5" />
             </div>
             <div className="h-3 w-14 animate-pulse rounded-sm bg-ink/5" />
             <div className="hidden h-4 animate-pulse rounded-sm bg-ink/5 sm:block" />

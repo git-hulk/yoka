@@ -29,7 +29,7 @@ export function paceColor(sub: Subscription): PaceColor {
 export function statusLabel(status: Status): string {
   switch (status) {
     case "active":    return "active";
-    case "not_start": return "inactive";
+    case "not_start": return "upcoming";
     case "done":      return "done";
     case "expired":   return "expired";
   }

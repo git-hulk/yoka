@@ -22,7 +22,7 @@ export default function SubscriptionCard({ sub }: Props) {
   return (
     <Link
       to={`/subscriptions/${sub.id}`}
-      className="group grid grid-cols-[minmax(0,1.4fr)_minmax(110px,1.3fr)_5.5rem_5rem] items-center gap-5 px-4 py-3 transition hover:bg-subtle focus:outline-none sm:grid-cols-[minmax(0,1.4fr)_minmax(140px,1.4fr)_5.5rem_5rem_5rem]"
+      className="group grid grid-cols-[minmax(0,1.4fr)_minmax(110px,1.3fr)_5.5rem_5rem] items-center gap-5 px-4 py-3 transition hover:bg-subtle focus-visible:bg-subtle sm:grid-cols-[minmax(0,1.4fr)_minmax(140px,1.4fr)_5.5rem_5rem_5rem]"
     >
       <div className="flex min-w-0 items-center gap-2">
         <span
@@ -35,15 +35,20 @@ export default function SubscriptionCard({ sub }: Props) {
         </h2>
       </div>
 
-      <div className="space-y-1.5">
-        <div className="num text-2xs tabular-nums text-ink-faint">
+      {/* Ratio and bar share one line so the cell centers on the same
+          optical line as the other columns; the fixed-width label keeps
+          bars edge-aligned across rows. */}
+      <div className="flex items-center gap-2.5">
+        <span className="num w-11 shrink-0 text-2xs tabular-nums text-ink-faint">
           {usageRatioLabel(sub)}
+        </span>
+        <div className="min-w-0 flex-1">
+          <TrackBand
+            color={color}
+            filled={filledFraction(sub)}
+            size="md"
+          />
         </div>
-        <TrackBand
-          color={color}
-          filled={filledFraction(sub)}
-          size="lg"
-        />
       </div>
 
       <StatusPill status={sub.status} color={color} label={statusLabel(sub.status)} />

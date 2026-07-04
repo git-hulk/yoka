@@ -306,7 +306,7 @@ function PayRow({ sub, past }: { sub: Subscription; past: boolean }) {
           >
             {sub.name}
           </Link>
-          <span className="shrink-0 text-sm text-ink-dim">{past ? "paid" : "pays"}</span>
+          <span className="shrink-0 text-sm text-ink-dim">{past ? "paid" : "due"}</span>
         </span>
         <span className="num ml-auto shrink-0 text-xs tabular-nums text-ink-faint">
           {payMeta(sub)}
@@ -366,10 +366,10 @@ function TodayRule({ date }: { date: string }) {
         <span className="z-[1] size-[7px] rounded-full bg-accent ring-2 ring-white" />
       </span>
       <span className="flex items-center gap-2 py-1.5" aria-hidden="true">
-        <span className="h-px flex-1 bg-accent/40" />
         <span className="text-2xs font-medium uppercase tracking-micro text-accent">
           Today
         </span>
+        <span className="h-px flex-1 bg-accent/40" />
       </span>
     </div>
   );
