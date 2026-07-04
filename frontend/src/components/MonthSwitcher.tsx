@@ -32,7 +32,7 @@ export default function MonthSwitcher({ month, onChange }: Props) {
           <span aria-hidden="true">←</span>
         </button>
         <span aria-hidden="true" className="w-px bg-hairline" />
-        <span className="inline-flex h-full min-w-[8rem] items-center justify-center px-3 text-sm font-semibold text-ink">
+        <span className="inline-flex h-full min-w-[8rem] items-center justify-center px-3 text-sm font-medium text-ink">
           {label}
         </span>
         <span aria-hidden="true" className="w-px bg-hairline" />

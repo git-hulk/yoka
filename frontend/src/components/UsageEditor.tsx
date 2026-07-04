@@ -86,7 +86,7 @@ export default function UsageEditor({ subscriptionId, timeKnown, onChange }: Pro
   return (
     <section>
       <div className="flex items-baseline justify-between border-b border-hairline pb-2">
-        <h2 className="text-base font-semibold text-ink">Usage</h2>
+        <h2 className="text-base font-medium text-ink">Usage</h2>
         {items && items.length > 0 && (
           <span className="num text-xs text-ink-faint">
             {items.length} {items.length === 1 ? "entry" : "entries"}
@@ -99,8 +99,8 @@ export default function UsageEditor({ subscriptionId, timeKnown, onChange }: Pro
       )}
 
       {loadError && (
-        <div className="mt-3 rounded-md border border-pace-red/40 bg-pace-red/5 px-4 py-3">
-          <p className="text-sm font-semibold text-pace-red">
+        <div className="mt-3 rounded-lg border border-pace-red/40 bg-pace-red/5 px-4 py-3">
+          <p className="text-sm font-medium text-pace-red">
             Couldn't load usage history
           </p>
           <p className="mt-0.5 text-xs text-ink-dim">{loadError}</p>
@@ -183,7 +183,7 @@ function Row({
       <span className="truncate text-sm text-ink-dim">
         {composeDetail(usage)}
       </span>
-      <span className="num text-sm font-semibold tabular-nums text-ink">
+      <span className="num text-sm font-medium tabular-nums text-ink">
         {formatAmount(usage.amount)}{timeKnown ? "h" : ""}
       </span>
       <button
@@ -282,7 +282,7 @@ function EditRow({
       <button
         type="submit"
         disabled={!canSave}
-        className="inline-flex h-8 items-center rounded-md border border-accent bg-accent px-2.5 text-xs font-medium text-white transition hover:bg-accent/90 disabled:cursor-not-allowed disabled:border-ink-faint disabled:bg-ink-faint"
+        className="inline-flex h-8 items-center rounded-md border border-accent bg-accent px-2.5 text-xs font-medium text-white transition hover:bg-accent-deep disabled:cursor-not-allowed disabled:border-ink-faint disabled:bg-ink-faint"
       >
         {saving ? "Saving…" : "Save"}
       </button>
@@ -331,7 +331,7 @@ function AddForm({
   return (
     <form
       onSubmit={handleSubmit}
-      className="mt-4 rounded-md border border-hairline bg-subtle/40 p-3"
+      className="mt-4 rounded-lg border border-hairline bg-subtle/40 p-3"
     >
       <p className="text-xs font-medium text-ink-dim">Add usage</p>
       <div className="mt-2 grid grid-cols-[6rem_1fr_auto] items-center gap-2">
@@ -357,7 +357,7 @@ function AddForm({
         <button
           type="submit"
           disabled={!canSubmit}
-          className="inline-flex h-8 items-center rounded-md border border-accent bg-accent px-3 text-sm font-medium text-white transition hover:bg-accent/90 disabled:cursor-not-allowed disabled:border-ink-faint disabled:bg-ink-faint"
+          className="inline-flex h-8 items-center rounded-md border border-accent bg-accent px-3 text-sm font-medium text-white transition hover:bg-accent-deep disabled:cursor-not-allowed disabled:border-ink-faint disabled:bg-ink-faint"
         >
           {submitting ? "Adding…" : "Add"}
         </button>

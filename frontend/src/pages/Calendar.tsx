@@ -228,7 +228,7 @@ function Header({
 }) {
   return (
     <header className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3 pb-2">
-      <h1 className="flex items-baseline gap-2.5 text-3xl font-semibold tracking-tight text-ink">
+      <h1 className="flex items-baseline gap-2.5 text-3xl font-medium tracking-tight text-ink">
         <span>{primaryLabel(anchor, view)}</span>
         <span className="num text-2xl font-light tabular-nums text-ink-faint">
           {yearLabel(anchor, view)}
@@ -368,7 +368,7 @@ function MonthGrid({
               className={
                 "group relative flex min-h-[7.5rem] flex-col items-stretch gap-1.5 px-2 pb-2 pt-1.5 text-left " +
                 "transition-colors duration-150 ease-out " +
-                (inMonth ? "bg-white hover:bg-accent-soft" : "bg-[#FAF8F2] hover:bg-subtle")
+                (inMonth ? "bg-white hover:bg-accent-soft" : "bg-canvas hover:bg-subtle")
               }
             >
               <div className="flex items-center justify-end">
@@ -398,7 +398,7 @@ function DayNumber({
     return (
       <span
         aria-label="today"
-        className="num inline-flex h-6 min-w-6 items-center justify-center rounded-full bg-accent px-1 text-[12px] font-semibold tabular-nums text-white"
+        className="num inline-flex h-6 min-w-6 items-center justify-center rounded-full bg-accent px-1 text-[12px] font-medium tabular-nums text-white"
       >
         {date.getDate()}
       </span>
@@ -444,7 +444,7 @@ function CellChips({
         <button
           type="button"
           onClick={onMore}
-          className="self-start rounded px-1 py-px text-[11px] font-medium text-ink-faint transition hover:text-accent"
+          className="self-start rounded px-1 py-px text-2xs font-medium text-ink-faint transition hover:text-accent"
         >
           +{extra} more
         </button>
@@ -612,12 +612,12 @@ function DayHeaderRow({ days, todayKey }: { days: Date[]; todayKey: string }) {
             {isToday ? (
               <span
                 aria-label="today"
-                className="num inline-flex h-7 min-w-7 items-center justify-center rounded-full bg-accent px-1.5 text-sm font-semibold tabular-nums leading-none text-white"
+                className="num inline-flex h-7 min-w-7 items-center justify-center rounded-full bg-accent px-1.5 text-sm font-medium tabular-nums leading-none text-white"
               >
                 {d.getDate()}
               </span>
             ) : (
-              <span className="num text-xl font-semibold tabular-nums leading-none text-ink">
+              <span className="num text-xl font-medium tabular-nums leading-none text-ink">
                 {d.getDate()}
               </span>
             )}
@@ -685,12 +685,12 @@ function DayColumn({
           to bottom,
           transparent 0,
           transparent ${HOUR_PX / 2 - 1}px,
-          rgb(217 210 191 / 0.22) ${HOUR_PX / 2 - 1}px,
-          rgb(217 210 191 / 0.22) ${HOUR_PX / 2}px,
+          rgb(228 231 229 / 0.45) ${HOUR_PX / 2 - 1}px,
+          rgb(228 231 229 / 0.45) ${HOUR_PX / 2}px,
           transparent ${HOUR_PX / 2}px,
           transparent ${HOUR_PX - 1}px,
-          rgb(217 210 191 / 0.5) ${HOUR_PX - 1}px,
-          rgb(217 210 191 / 0.5) ${HOUR_PX}px
+          rgb(228 231 229) ${HOUR_PX - 1}px,
+          rgb(228 231 229) ${HOUR_PX}px
         )`,
       }}
     >
@@ -736,7 +736,7 @@ function NowLine({
         style={{ gridTemplateColumns: `${GUTTER_REM}rem repeat(${columns}, minmax(0, 1fr))` }}
       >
         <div className="flex justify-end pr-1.5">
-          <span className="num rounded-sm bg-accent px-1.5 py-[1px] text-[10px] font-semibold tabular-nums leading-tight text-white">
+          <span className="num rounded-sm bg-accent px-1.5 py-[1px] text-[10px] font-medium tabular-nums leading-tight text-white">
             {timeLabel}
           </span>
         </div>
@@ -809,7 +809,7 @@ function EventChip({
       onClick={onClick}
       title={chipTitle(event)}
       className={
-        "flex min-w-0 items-center gap-1.5 rounded px-1.5 py-[3px] text-[11px] leading-tight " +
+        "flex min-w-0 items-center gap-1.5 rounded px-1.5 py-[3px] text-2xs leading-tight " +
         "transition-colors duration-150 ease-out hover:bg-[var(--chip-bg-hover)] " +
         s.textClass + " " +
         (isNew ? "animate-chipIn" : "")
@@ -851,7 +851,7 @@ function TimedEventChip({
   // boxShadow composes the chip's inset border with a hover lift. The lift
   // is gated on a CSS var so we can chain it without clobbering the border.
   const baseShadow  = s.border ? `inset 0 0 0 1px ${s.border}` : null;
-  const hoverShadow = "0 4px 12px -6px rgba(26, 24, 20, 0.18)";
+  const hoverShadow = "0 4px 12px -6px rgba(20, 24, 22, 0.16)";
 
   return (
     <button
@@ -860,7 +860,7 @@ function TimedEventChip({
       title={chipTitle(event)}
       className={
         "absolute z-[1] flex min-w-0 flex-col gap-0.5 overflow-hidden rounded-md px-2 py-1 " +
-        "text-left text-[11px] leading-tight transition-[box-shadow,background-color] duration-150 ease-out " +
+        "text-left text-2xs leading-tight transition-[box-shadow,background-color] duration-150 ease-out " +
         "hover:z-[2] hover:bg-[var(--chip-bg-hover)] hover:shadow-[var(--chip-shadow-hover)] " +
         s.textClass + " " +
         (isNew ? "animate-chipIn " : "")
@@ -890,7 +890,7 @@ function TimedEventChip({
             <StatusDot status={event.status} />
             <span className="num shrink-0 tabular-nums text-[10px] opacity-75">{when}</span>
             {amountStr && (
-              <span className="num ml-auto shrink-0 tabular-nums font-semibold">{amountStr}</span>
+              <span className="num ml-auto shrink-0 tabular-nums font-medium">{amountStr}</span>
             )}
           </span>
           <span className="min-w-0 truncate font-medium">
@@ -920,8 +920,8 @@ const ACCEPTED_BG     = "#15803D14"; // ~8% wash
 const ACCEPTED_HOVER  = "#15803D29"; // ~16%
 const ACCEPTED_TEXT   = "#0F5A2B";   // deeper green for contrast on wash
 const PENDING_HOVER   = "#15803D0F"; // ~6%
-const DECLINED_BG     = "#F6F4EE";   // matches `subtle` token
-const DECLINED_HOVER  = "#EDE9DC";
+const DECLINED_BG     = "#F2F4F3";   // matches `subtle` token
+const DECLINED_HOVER  = "#E8EBE9";
 
 function chipStyle(event: EventInRange): ChipStyle {
   switch (event.status) {
@@ -936,7 +936,7 @@ function chipStyle(event: EventInRange): ChipStyle {
     case "pending":
       return {
         bg:        "#FFFFFF",
-        fg:        "#1A1814",
+        fg:        "#232826",
         hoverBg:   PENDING_HOVER,
         border:    ACCENT + "5C", // ~36% green hairline
         textClass: "",
@@ -944,7 +944,7 @@ function chipStyle(event: EventInRange): ChipStyle {
     case "declined":
       return {
         bg:        DECLINED_BG,
-        fg:        "#8E8675",
+        fg:        "#8B968F",
         hoverBg:   DECLINED_HOVER,
         border:    null,
         textClass: "line-through",
@@ -1085,10 +1085,10 @@ function NewEventModal({
       <form
         onSubmit={handleSubmit}
         onClick={(e) => e.stopPropagation()}
-        className="animate-modalIn w-full max-w-md rounded-md border border-hairline bg-white px-5 py-4 shadow-[0_16px_40px_-16px_rgba(26,24,20,0.25)]"
+        className="animate-modalIn w-full max-w-md rounded-lg border border-hairline bg-white px-5 py-4 shadow-modal"
       >
         <div className="flex items-baseline justify-between border-b border-hairline pb-3">
-          <h2 className="text-base font-semibold text-ink">New event</h2>
+          <h2 className="text-base font-medium text-ink">New event</h2>
           <p className="num text-xs text-ink-faint">
             {date.toLocaleDateString(undefined, {
               weekday: "short", month: "short", day: "numeric",
@@ -1163,7 +1163,7 @@ function NewEventModal({
             </Field>
           </div>
           {!endValid && (
-            <p className="text-[11px] text-pace-red">
+            <p className="text-2xs text-pace-red">
               End time must be after start time.
             </p>
           )}
@@ -1203,7 +1203,7 @@ function NewEventModal({
                       onClick={() => toggleWeekday(code)}
                       aria-pressed={active}
                       className={
-                        "h-8 min-w-8 rounded-md px-2 text-xs font-semibold transition " +
+                        "h-8 min-w-8 rounded-md px-2 text-xs font-medium transition " +
                         (active
                           ? "bg-accent text-white"
                           : "border border-hairline bg-white text-ink-dim hover:bg-subtle hover:text-ink")
@@ -1294,7 +1294,7 @@ function NewEventModal({
           <button
             type="submit"
             disabled={!canSubmit}
-            className="inline-flex h-8 items-center rounded-md border border-accent bg-accent px-3 text-sm font-medium text-white transition hover:bg-accent/90 disabled:cursor-not-allowed disabled:border-ink-faint disabled:bg-ink-faint"
+            className="inline-flex h-8 items-center rounded-md border border-accent bg-accent px-3 text-sm font-medium text-white transition hover:bg-accent-deep disabled:cursor-not-allowed disabled:border-ink-faint disabled:bg-ink-faint"
           >
             {submitting ? "Saving…" : "Save"}
           </button>
@@ -1410,7 +1410,7 @@ function EventDetailModal({
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="animate-modalIn w-full max-w-md rounded-md border border-hairline bg-white px-5 py-4 shadow-[0_16px_40px_-16px_rgba(26,24,20,0.25)]"
+        className="animate-modalIn w-full max-w-md rounded-lg border border-hairline bg-white px-5 py-4 shadow-modal"
       >
         {event === null && !loadError && (
           <p className="py-6 text-center text-sm text-ink-faint">Loading…</p>
@@ -1424,7 +1424,7 @@ function EventDetailModal({
           <>
             <div className="flex items-start justify-between gap-3 border-b border-hairline pb-3">
               <div className="min-w-0">
-                <h2 className="text-base font-semibold text-ink">
+                <h2 className="text-base font-medium text-ink">
                   {event.title?.trim() || sub?.name || "(no title)"}
                 </h2>
                 <p className="mt-0.5 text-xs text-ink-faint">
@@ -1500,7 +1500,7 @@ function EventDetailModal({
                     type="button"
                     onClick={() => runAction(() => api.acceptEvent(eventId))}
                     disabled={busy}
-                    className="inline-flex h-8 items-center rounded-md border border-accent bg-accent px-3 text-sm font-medium text-white transition hover:bg-accent/90 disabled:cursor-not-allowed disabled:border-ink-faint disabled:bg-ink-faint"
+                    className="inline-flex h-8 items-center rounded-md border border-accent bg-accent px-3 text-sm font-medium text-white transition hover:bg-accent-deep disabled:cursor-not-allowed disabled:border-ink-faint disabled:bg-ink-faint"
                   >
                     Accept
                   </button>
@@ -1575,7 +1575,7 @@ const inputClass =
 function ErrorBox({ title, detail }: { title: string; detail: string }) {
   return (
     <div className="rounded-md border border-pace-red/40 bg-pace-red/5 px-4 py-3">
-      <p className="text-sm font-semibold text-pace-red">{title}</p>
+      <p className="text-sm font-medium text-pace-red">{title}</p>
       <p className="mt-0.5 text-xs text-ink-dim">{detail}</p>
     </div>
   );

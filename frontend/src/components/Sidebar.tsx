@@ -30,75 +30,46 @@ interface NavEntry {
   icon:    ReactNode;
 }
 
+// Nav icons follow the Linear Design System's 16px icon language: solid
+// filled silhouettes with soft corners, not hairline strokes. Named after
+// their counterparts in the Figma file's "Icons - 16px" inventory
+// (box / bar-chart / calendar-empty / users).
+
 const SubscriptionIcon = (
-  <svg
-    viewBox="0 0 16 16"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="1.5"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    className="size-4"
-    aria-hidden="true"
-  >
-    <path d="M2.5 5 L8 2.25 L13.5 5 L8 7.75 Z" />
-    <path d="M2.5 5 V11 L8 13.75 L13.5 11 V5" />
-    <line x1="8" y1="7.75" x2="8" y2="13.75" />
+  <svg viewBox="0 0 16 16" fill="currentColor" className="size-4" aria-hidden="true">
+    {/* box — isometric cube, three faces split by grooves */}
+    <path d="M8.36 1.7 13.1 4.16a.4.4 0 0 1 0 .71L8.36 7.33a.78.78 0 0 1-.72 0L2.9 4.87a.4.4 0 0 1 0-.7L7.64 1.7a.78.78 0 0 1 .72 0Z" />
+    <path d="M2.25 6.1a.4.4 0 0 1 .58-.36l4.2 2.18c.26.13.42.4.42.69v4.8a.4.4 0 0 1-.58.36l-3.78-1.96a1.53 1.53 0 0 1-.84-1.37V6.1Z" />
+    <path d="M13.75 6.1a.4.4 0 0 0-.58-.36l-4.2 2.18a.78.78 0 0 0-.42.69v4.8c0 .3.31.49.58.36l3.78-1.96c.52-.27.84-.8.84-1.37V6.1Z" />
   </svg>
 );
 
 const FinanceIcon = (
-  <svg
-    viewBox="0 0 16 16"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="1.5"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    className="size-4"
-    aria-hidden="true"
-  >
-    {/* A trio of bars climbing left-to-right — the "budget vs. spent" shape. */}
-    <line x1="3.25"  y1="13"   x2="3.25"  y2="9.5" />
-    <line x1="8"     y1="13"   x2="8"     y2="6.5" />
-    <line x1="12.75" y1="13"   x2="12.75" y2="3.5" />
-    <line x1="2"     y1="13.5" x2="14"    y2="13.5" />
+  <svg viewBox="0 0 16 16" fill="currentColor" className="size-4" aria-hidden="true">
+    {/* bar-chart — three rounded bars climbing left-to-right */}
+    <rect x="2" y="8.5" width="3.25" height="5.5" rx="1" />
+    <rect x="6.375" y="5" width="3.25" height="9" rx="1" />
+    <rect x="10.75" y="2" width="3.25" height="12" rx="1" />
   </svg>
 );
 
 const CalendarIcon = (
-  <svg
-    viewBox="0 0 16 16"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="1.5"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    className="size-4"
-    aria-hidden="true"
-  >
-    <rect x="2.25" y="3.5" width="11.5" height="10" rx="1.25" />
-    <line x1="2.25" y1="6.25" x2="13.75" y2="6.25" />
-    <line x1="5.25" y1="2.25" x2="5.25" y2="4.5"  />
-    <line x1="10.75" y1="2.25" x2="10.75" y2="4.5" />
+  <svg viewBox="0 0 16 16" fill="currentColor" className="size-4" aria-hidden="true">
+    {/* calendar-empty — filled frame, binding posts, open date area */}
+    <path
+      fillRule="evenodd"
+      d="M5 1.75a.75.75 0 0 1 .75.75V3h4.5v-.5a.75.75 0 0 1 1.5 0V3h.5A1.75 1.75 0 0 1 14 4.75v7.5A1.75 1.75 0 0 1 12.25 14h-8.5A1.75 1.75 0 0 1 2 12.25v-7.5A1.75 1.75 0 0 1 3.75 3h.5v-.5A.75.75 0 0 1 5 1.75ZM12.5 6.75h-9v5.5c0 .14.11.25.25.25h8.5c.14 0 .25-.11.25-.25v-5.5Z"
+    />
   </svg>
 );
 
 const MembersIcon = (
-  <svg
-    viewBox="0 0 16 16"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="1.5"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    className="size-4"
-    aria-hidden="true"
-  >
-    <circle cx="6" cy="6" r="2.25" />
-    <circle cx="11.25" cy="7" r="1.75" />
-    <path d="M2 13c.5-2.25 2.25-3.5 4-3.5s3.5 1.25 4 3.5" />
-    <path d="M9.75 13c.5-1.75 1.75-2.75 2.75-2.75 1.25 0 2.25 1 2.5 2.75" />
+  <svg viewBox="0 0 16 16" fill="currentColor" className="size-4" aria-hidden="true">
+    {/* users — lead silhouette with a trailing partial figure */}
+    <circle cx="6" cy="4.75" r="2.75" />
+    <path d="M6 8.75c-2.2 0-4.13 1.53-4.56 3.72-.08.42.26.78.68.78h7.76c.42 0 .76-.36.68-.78C10.13 10.28 8.2 8.75 6 8.75Z" />
+    <circle cx="11.6" cy="5.25" r="2.1" />
+    <path d="M11.6 8.9c-.34 0-.67.05-.99.13.71.75 1.23 1.7 1.44 2.77.06.3.05.61-.02.9h2.14c.42 0 .76-.36.67-.77-.36-1.72-1.66-3.03-3.24-3.03Z" />
   </svg>
 );
 
@@ -184,7 +155,7 @@ export default function Sidebar({ collapsed, onToggle }: Props) {
       <aside
         style={collapsed ? undefined : ({ "--sidebar-w": `${width}px` } as CSSProperties)}
         className={
-          "flex-col border-r border-hairline bg-white " +
+          "flex-col border-r border-hairline bg-canvas " +
           "md:static md:z-auto md:flex md:shrink-0 " +
           (isResizing ? "" : "md:transition-[width] md:duration-200 md:ease-out ") +
           (collapsed
@@ -200,7 +171,7 @@ export default function Sidebar({ collapsed, onToggle }: Props) {
               <Link
                 to="/"
                 aria-label="yoka — home"
-                className="flex h-8 w-8 items-center justify-center rounded-md text-sm font-semibold text-accent transition hover:bg-subtle"
+                className="flex h-8 w-8 items-center justify-center rounded-md text-sm font-medium text-accent transition hover:bg-subtle"
               >
                 Y
               </Link>
@@ -223,7 +194,7 @@ export default function Sidebar({ collapsed, onToggle }: Props) {
               <Link
                 to="/"
                 aria-label="yoka — home"
-                className="rounded-md px-1.5 py-1 text-sm font-semibold tracking-tight text-accent transition hover:bg-subtle"
+                className="rounded-md px-1.5 py-1 text-sm font-medium tracking-tight text-accent transition hover:bg-subtle"
               >
                 YOKA
               </Link>
@@ -356,7 +327,7 @@ function NavItem({
       className={
         "flex h-8 items-center gap-2 rounded-md px-2 text-sm transition " +
         (active
-          ? "bg-accent-soft font-semibold text-accent"
+          ? "bg-accent-soft font-medium text-accent"
           : "font-medium text-ink-dim hover:bg-subtle hover:text-ink")
       }
     >
@@ -368,29 +339,26 @@ function NavItem({
   );
 }
 
-// Panel icon with a chevron pointing the direction the rail will move.
-// `open=true` shows ◁ (rail will collapse left); `open=false` shows ▷
-// (rail will expand right). The vertical divider mirrors the rail itself,
-// so the icon reads as "this is the sidebar, here is where it's going".
+// Panel toggle in the Linear icon language: a soft frame with the sidebar
+// rail on the left. Rail filled = sidebar showing (click hides it); rail
+// hollow with just the divider = sidebar hidden (click brings it back).
 function PanelToggleIcon({ open }: { open: boolean }) {
+  if (open) {
+    return (
+      <svg viewBox="0 0 16 16" fill="currentColor" className="size-4" aria-hidden="true">
+        <path
+          fillRule="evenodd"
+          d="M4.25 2A2.25 2.25 0 0 0 2 4.25v7.5A2.25 2.25 0 0 0 4.25 14h7.5A2.25 2.25 0 0 0 14 11.75v-7.5A2.25 2.25 0 0 0 11.75 2h-7.5Zm2.25 1.5h5.25c.41 0 .75.34.75.75v7.5c0 .41-.34.75-.75.75H6.5v-9Z"
+        />
+      </svg>
+    );
+  }
   return (
-    <svg
-      viewBox="0 0 16 16"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.5"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className="size-4"
-      aria-hidden="true"
-    >
-      <rect x="2" y="3" width="12" height="10" rx="1.5" />
-      <line x1="6.5" y1="3" x2="6.5" y2="13" />
-      {open ? (
-        <polyline points="11.25 6 9.25 8 11.25 10" />
-      ) : (
-        <polyline points="9.25 6 11.25 8 9.25 10" />
-      )}
+    <svg viewBox="0 0 16 16" fill="currentColor" className="size-4" aria-hidden="true">
+      <path
+        fillRule="evenodd"
+        d="M4.25 2A2.25 2.25 0 0 0 2 4.25v7.5A2.25 2.25 0 0 0 4.25 14h7.5A2.25 2.25 0 0 0 14 11.75v-7.5A2.25 2.25 0 0 0 11.75 2h-7.5Zm-.75 2.25c0-.41.34-.75.75-.75H5v9h-.75a.75.75 0 0 1-.75-.75v-7.5Zm3 8.25h5.25c.41 0 .75-.34.75-.75v-7.5a.75.75 0 0 0-.75-.75H6.5v9Z"
+      />
     </svg>
   );
 }

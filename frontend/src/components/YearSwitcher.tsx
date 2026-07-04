@@ -26,7 +26,7 @@ export default function YearSwitcher({ year, onChange }: Props) {
           <span aria-hidden="true">←</span>
         </button>
         <span aria-hidden="true" className="w-px bg-hairline" />
-        <span className="num inline-flex h-full min-w-[4.5rem] items-center justify-center px-3 text-sm font-semibold tabular-nums text-ink">
+        <span className="num inline-flex h-full min-w-[4.5rem] items-center justify-center px-3 text-sm font-medium tabular-nums text-ink">
           {year}
         </span>
         <span aria-hidden="true" className="w-px bg-hairline" />

@@ -32,14 +32,14 @@ const MONTH_LABELS = [
   "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
 ];
 
-// One identity color per currency. CNY's forest green deliberately differs
-// from the brand accent (#15803D, brighter / more saturated) so the
-// "current month" override still pops out against a CNY chart.
+// One identity color per currency, drawn from the categorical palette
+// (see src/lib/colors.ts). Green is deliberately absent so the brand
+// accent's "current month" override still pops out against every chart.
 const CURRENCY_BAR: Record<Currency, string> = {
-  CNY: "#2E6F4F", // green
-  USD: "#C48A28", // yellow / honey gold
-  SGD: "#7C4FAE", // purple
-  JPY: "#9E3527", // red / oxblood
+  CNY: "#0D9488", // teal
+  USD: "#B45309", // amber
+  SGD: "#7C3AED", // violet
+  JPY: "#BE123C", // rose
 };
 
 export default function MonthlyTrendChart({ currency, totals, year }: Props) {

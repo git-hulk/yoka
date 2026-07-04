@@ -20,6 +20,9 @@
   }
   body {
     @apply bg-white text-ink font-sans antialiased;
+    /* Linear-style optical tightening for Inter at UI sizes. Headings add
+     * `tracking-tight` on top of this. */
+    letter-spacing: -0.01em;
   }
   .num {
     font-variant-numeric: tabular-nums;

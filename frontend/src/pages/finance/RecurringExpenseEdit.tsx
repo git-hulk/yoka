@@ -19,7 +19,7 @@ export default function RecurringExpenseEdit() {
     const notFound = state.error instanceof ApiError && state.error.status === 404;
     return (
       <div className="space-y-3">
-        <h1 className="text-xl font-semibold tracking-tight text-ink">
+        <h1 className="text-xl font-medium tracking-tight text-ink">
           {notFound ? "Recurring expense not found." : "Couldn't load."}
         </h1>
         <p className="text-sm text-ink-dim">{state.error.message}</p>
@@ -61,7 +61,7 @@ export default function RecurringExpenseEdit() {
       <div className="flex flex-wrap items-end justify-between gap-3 border-b border-hairline pb-4">
         <div>
           <span className="text-xs text-ink-faint">Edit rule</span>
-          <h1 className="mt-1 text-xl font-semibold tracking-tight text-ink">
+          <h1 className="mt-1 text-xl font-medium tracking-tight text-ink">
             Tune the cadence
           </h1>
         </div>

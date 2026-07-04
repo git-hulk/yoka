@@ -46,7 +46,7 @@ export default function GroupSwitcher({ collapsed }: Props) {
           onClick={() => setOpen((v) => !v)}
           title={me.active_group.name}
           aria-label={`Group: ${me.active_group.name}`}
-          className="flex h-8 w-8 items-center justify-center rounded-md text-sm font-semibold text-accent transition hover:bg-subtle"
+          className="flex h-8 w-8 items-center justify-center rounded-md text-sm font-medium text-accent transition hover:bg-subtle"
         >
           {me.active_group.name.charAt(0).toUpperCase()}
         </button>
@@ -60,7 +60,7 @@ export default function GroupSwitcher({ collapsed }: Props) {
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-center justify-between gap-2 rounded-md px-2 py-1.5 text-left text-sm font-semibold tracking-tight text-accent transition hover:bg-subtle"
+        className="flex w-full items-center justify-between gap-2 rounded-md px-2 py-1.5 text-left text-sm font-medium tracking-tight text-accent transition hover:bg-subtle"
       >
         <span className="truncate">{me.active_group.name}</span>
         <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="size-3.5 shrink-0 text-ink-faint" aria-hidden="true">
@@ -85,7 +85,7 @@ function Menu({
 }) {
   if (!me) return null;
   return (
-    <div className="absolute left-0 top-full z-50 mt-1 w-56 rounded-md border border-hairline bg-white py-1 shadow-sm">
+    <div className="absolute left-0 top-full z-50 mt-1 w-56 rounded-lg border border-hairline bg-white py-1 shadow-pop">
       <div className="px-3 pb-1 pt-1 text-[10px] font-medium uppercase tracking-wider text-ink-faint">
         Groups
       </div>

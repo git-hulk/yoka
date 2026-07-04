@@ -98,7 +98,7 @@ function Shell() {
                 </svg>
                 Menu
               </button>
-              <span className="text-sm font-semibold tracking-tight text-accent">
+              <span className="text-sm font-medium tracking-tight text-accent">
                 YOKA
               </span>
             </div>

@@ -38,7 +38,7 @@ export default function Home() {
         state.data.total === 0 ? (
           <Empty />
         ) : (
-          <div className="overflow-hidden rounded-md border border-hairline">
+          <div className="overflow-hidden rounded-lg border border-hairline">
             <ColumnHeader />
             <ul className="divide-y divide-hairline">
               {state.data.items.map((s) => (
@@ -71,7 +71,7 @@ function PageHeading({ count }: { count: number | null }) {
   return (
     <div className="flex flex-wrap items-end justify-between gap-3 border-b border-hairline pb-4">
       <div>
-        <h1 className="text-xl font-semibold tracking-tight text-ink">
+        <h1 className="text-xl font-medium tracking-tight text-ink">
           Subscriptions
         </h1>
         {count !== null && (
@@ -82,7 +82,7 @@ function PageHeading({ count }: { count: number | null }) {
       </div>
       <Link
         to="/subscriptions/new"
-        className="inline-flex h-8 items-center gap-1 rounded-md border border-accent bg-accent px-3 text-sm font-medium text-white transition hover:bg-accent/90"
+        className="inline-flex h-8 items-center gap-1 rounded-md border border-accent bg-accent px-3 text-sm font-medium text-white transition hover:bg-accent-deep"
       >
         <span aria-hidden="true" className="text-base leading-none">＋</span>
         New subscription
@@ -105,7 +105,7 @@ function ColumnHeader() {
 
 function Skeleton() {
   return (
-    <div aria-busy="true" className="overflow-hidden rounded-md border border-hairline">
+    <div aria-busy="true" className="overflow-hidden rounded-lg border border-hairline">
       <ColumnHeader />
       <ul className="divide-y divide-hairline">
         {[0, 1, 2, 3].map((i) => (
@@ -130,15 +130,15 @@ function Skeleton() {
 
 function Empty() {
   return (
-    <div className="rounded-md border border-dashed border-hairline bg-subtle/40 px-6 py-12 text-center">
-      <p className="text-base font-semibold text-ink">No subscriptions yet.</p>
+    <div className="rounded-lg border border-dashed border-hairline bg-subtle/40 px-6 py-12 text-center">
+      <p className="text-base font-medium text-ink">No subscriptions yet.</p>
       <p className="mx-auto mt-1.5 max-w-sm text-sm text-ink-dim">
         Add a prepaid subscription and it'll show up here, with its pace as it
         burns down.
       </p>
       <Link
         to="/subscriptions/new"
-        className="mt-5 inline-flex h-8 items-center gap-1 rounded-md border border-accent bg-accent px-3 text-sm font-medium text-white transition hover:bg-accent/90"
+        className="mt-5 inline-flex h-8 items-center gap-1 rounded-md border border-accent bg-accent px-3 text-sm font-medium text-white transition hover:bg-accent-deep"
       >
         <span aria-hidden="true">＋</span>
         Add the first one
@@ -149,8 +149,8 @@ function Empty() {
 
 function ErrorBox({ title, detail }: { title: string; detail: string }) {
   return (
-    <div className="rounded-md border border-pace-red/40 bg-pace-red/5 px-4 py-3">
-      <p className="text-sm font-semibold text-pace-red">{title}</p>
+    <div className="rounded-lg border border-pace-red/40 bg-pace-red/5 px-4 py-3">
+      <p className="text-sm font-medium text-pace-red">{title}</p>
       <p className="mt-0.5 text-xs text-ink-dim">{detail}</p>
     </div>
   );

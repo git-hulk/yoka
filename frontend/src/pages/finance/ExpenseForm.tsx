@@ -133,8 +133,8 @@ export default function ExpenseForm({
       </div>
 
       {error && (
-        <div className="rounded-md border border-pace-red/40 bg-pace-red/5 px-4 py-3">
-          <p className="text-sm font-semibold text-pace-red">{error}</p>
+        <div className="rounded-lg border border-pace-red/40 bg-pace-red/5 px-4 py-3">
+          <p className="text-sm font-medium text-pace-red">{error}</p>
         </div>
       )}
 
@@ -150,7 +150,7 @@ export default function ExpenseForm({
         <button
           type="submit"
           disabled={!canSubmit}
-          className="inline-flex h-8 items-center rounded-md border border-accent bg-accent px-3 text-sm font-medium text-white transition hover:bg-accent/90 disabled:cursor-not-allowed disabled:border-ink-faint disabled:bg-ink-faint"
+          className="inline-flex h-8 items-center rounded-md border border-accent bg-accent px-3 text-sm font-medium text-white transition hover:bg-accent-deep disabled:cursor-not-allowed disabled:border-ink-faint disabled:bg-ink-faint"
         >
           {submitting ? "Saving…" : submitLabel}
         </button>

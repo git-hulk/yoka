@@ -206,7 +206,7 @@ export default function CategoriesPicker({
           role="listbox"
           className="
             absolute left-0 right-0 top-full z-20 mt-1 max-h-64 overflow-y-auto
-            rounded-md border border-hairline bg-white py-1 shadow-[0_8px_24px_-8px_rgba(26,24,20,0.18)]
+            rounded-lg border border-hairline bg-white py-1 shadow-pop
           "
         >
           {filtered.map((opt, i) => {
@@ -282,7 +282,7 @@ function Highlighted({ text, query }: { text: string; query: string }) {
   return (
     <>
       {text.slice(0, start)}
-      <span className="font-semibold text-ink">{text.slice(start, end)}</span>
+      <span className="font-medium text-ink">{text.slice(start, end)}</span>
       {text.slice(end)}
     </>
   );

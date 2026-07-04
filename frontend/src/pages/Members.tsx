@@ -34,7 +34,7 @@ export default function Members() {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="serif text-2xl font-semibold tracking-tight text-ink">Members</h1>
+        <h1 className="text-2xl font-medium tracking-tight text-ink">Members</h1>
         <p className="mt-1 text-sm text-ink-dim">
           People with access to <span className="font-medium text-ink">{me?.active_group.name}</span>.
         </p>
@@ -45,7 +45,7 @@ export default function Members() {
           <button
             type="button"
             onClick={() => setInviting(true)}
-            className="inline-flex h-9 items-center rounded-md bg-accent px-3 text-sm font-semibold text-white shadow-sm transition hover:bg-accent/90"
+            className="inline-flex h-8 items-center rounded-md bg-accent px-3 text-sm font-medium text-white shadow-sm transition hover:bg-accent-deep"
           >
             Invite member
           </button>
@@ -57,12 +57,12 @@ export default function Members() {
           <div className="h-10 animate-pulse rounded bg-ink/5" />
         )}
         {members.status === "error" && (
-          <div className="rounded-md border border-pace-red/30 bg-pace-red/5 px-3 py-2 text-sm text-pace-red">
+          <div className="rounded-lg border border-pace-red/30 bg-pace-red/5 px-3 py-2 text-sm text-pace-red">
             Couldn’t load members.
           </div>
         )}
         {members.status === "ok" && (
-          <ul className="divide-y divide-hairline rounded-md border border-hairline bg-white">
+          <ul className="divide-y divide-hairline rounded-lg border border-hairline bg-white">
             {members.data.map((m) => (
               <MemberRow key={m.user_id} member={m} canManage={canManage} onChange={reload} />
             ))}
@@ -72,8 +72,8 @@ export default function Members() {
 
       {canManage && invites.status === "ok" && invites.data.length > 0 && (
         <section>
-          <h2 className="serif text-lg font-semibold tracking-tight text-ink">Pending invites</h2>
-          <ul className="mt-3 divide-y divide-hairline rounded-md border border-hairline bg-white">
+          <h2 className="text-lg font-medium tracking-tight text-ink">Pending invites</h2>
+          <ul className="mt-3 divide-y divide-hairline rounded-lg border border-hairline bg-white">
             {invites.data.map((inv) => (
               <InviteRow key={inv.id} invite={inv} onRevoked={reload} />
             ))}
@@ -243,7 +243,7 @@ function InviteModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/40 px-4">
       <div className="w-full max-w-md rounded-lg border border-hairline bg-white p-6 shadow-lg">
-        <h2 className="serif text-xl font-semibold tracking-tight text-ink">Invite member</h2>
+        <h2 className="text-xl font-medium tracking-tight text-ink">Invite member</h2>
 
         {created ? (
           <div className="mt-4 space-y-3">
@@ -260,7 +260,7 @@ function InviteModal({
               <button
                 type="button"
                 onClick={() => navigator.clipboard.writeText(created.invite_url)}
-                className="inline-flex h-9 shrink-0 items-center rounded-md bg-accent px-3 text-sm font-semibold text-white"
+                className="inline-flex h-8 shrink-0 items-center rounded-md bg-accent px-3 text-sm font-medium text-white"
               >
                 Copy
               </button>
@@ -305,7 +305,7 @@ function InviteModal({
               </select>
             </label>
             {error && (
-              <div className="rounded-md border border-pace-red/30 bg-pace-red/5 px-3 py-2 text-sm text-pace-red">
+              <div className="rounded-lg border border-pace-red/30 bg-pace-red/5 px-3 py-2 text-sm text-pace-red">
                 {error}
               </div>
             )}
@@ -320,7 +320,7 @@ function InviteModal({
               <button
                 type="submit"
                 disabled={submitting}
-                className="inline-flex h-9 items-center rounded-md bg-accent px-3 text-sm font-semibold text-white shadow-sm disabled:opacity-60"
+                className="inline-flex h-8 items-center rounded-md bg-accent px-3 text-sm font-medium text-white shadow-sm disabled:opacity-60"
               >
                 {submitting ? "Creating…" : "Create invite"}
               </button>

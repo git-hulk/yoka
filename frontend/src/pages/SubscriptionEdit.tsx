@@ -51,7 +51,7 @@ export default function SubscriptionEdit() {
     <div className="space-y-8">
       <div className="border-b border-hairline pb-4">
         <span className="text-xs text-ink-faint">Editing</span>
-        <h1 className="mt-1 text-xl font-semibold tracking-tight text-ink">
+        <h1 className="mt-1 text-xl font-medium tracking-tight text-ink">
           {sub.name}
         </h1>
       </div>
@@ -95,8 +95,8 @@ function Skeleton() {
 
 function NotFound({ id }: { id: string }) {
   return (
-    <div className="rounded-md border border-hairline bg-subtle/40 py-12 text-center">
-      <p className="text-base font-semibold text-ink">No such subscription.</p>
+    <div className="rounded-lg border border-hairline bg-subtle/40 py-12 text-center">
+      <p className="text-base font-medium text-ink">No such subscription.</p>
       <p className="mt-1 text-sm text-ink-dim">
         <span className="num">{id}</span> may have been archived or deleted.
       </p>
@@ -106,8 +106,8 @@ function NotFound({ id }: { id: string }) {
 
 function ErrorBox({ title, detail }: { title: string; detail: string }) {
   return (
-    <div className="rounded-md border border-pace-red/40 bg-pace-red/5 px-4 py-3">
-      <p className="text-sm font-semibold text-pace-red">{title}</p>
+    <div className="rounded-lg border border-pace-red/40 bg-pace-red/5 px-4 py-3">
+      <p className="text-sm font-medium text-pace-red">{title}</p>
       <p className="mt-0.5 text-xs text-ink-dim">{detail}</p>
     </div>
   );

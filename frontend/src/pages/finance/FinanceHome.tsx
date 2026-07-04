@@ -71,7 +71,7 @@ function Heading() {
   return (
     <div className="flex flex-wrap items-end justify-between gap-3 border-b border-hairline pb-4">
       <div>
-        <h1 className="text-xl font-semibold tracking-tight text-ink">Finance</h1>
+        <h1 className="text-xl font-medium tracking-tight text-ink">Finance</h1>
         <p className="mt-1 text-xs text-ink-faint">
           Spend, budgets, and the trail behind them.
         </p>
@@ -85,7 +85,7 @@ function Heading() {
         </Link>
         <Link
           to="/finance/expenses/new"
-          className="inline-flex h-8 items-center gap-1 rounded-md border border-accent bg-accent px-3 text-sm font-medium text-white transition hover:bg-accent/90"
+          className="inline-flex h-8 items-center gap-1 rounded-md border border-accent bg-accent px-3 text-sm font-medium text-white transition hover:bg-accent-deep"
         >
           <span aria-hidden="true" className="text-base leading-none">＋</span>
           New expense
@@ -171,7 +171,7 @@ function CurrencySection({
   return (
     <section className="space-y-4">
       <header className="flex flex-wrap items-baseline justify-between gap-2 border-b border-hairline pb-2">
-        <h3 className="text-base font-semibold text-ink">{currency}</h3>
+        <h3 className="text-base font-medium text-ink">{currency}</h3>
         <p className="num text-sm tabular-nums text-ink-dim">
           {formatPrice(totalSpent, currency)} this year
           {anyOver && (
@@ -202,8 +202,8 @@ function Skeleton() {
 
 function Empty() {
   return (
-    <div className="rounded-md border border-dashed border-hairline bg-subtle/40 px-6 py-12 text-center">
-      <p className="text-base font-semibold text-ink">Nothing tracked this year.</p>
+    <div className="rounded-lg border border-dashed border-hairline bg-subtle/40 px-6 py-12 text-center">
+      <p className="text-base font-medium text-ink">Nothing tracked this year.</p>
       <p className="mx-auto mt-1.5 max-w-md text-sm text-ink-dim">
         Add a one-off expense, define a recurring bill, or set a budget. Anything
         you add will show up here.
@@ -211,7 +211,7 @@ function Empty() {
       <div className="mt-5 flex items-center justify-center gap-2">
         <Link
           to="/finance/expenses/new"
-          className="inline-flex h-8 items-center gap-1 rounded-md border border-accent bg-accent px-3 text-sm font-medium text-white transition hover:bg-accent/90"
+          className="inline-flex h-8 items-center gap-1 rounded-md border border-accent bg-accent px-3 text-sm font-medium text-white transition hover:bg-accent-deep"
         >
           <span aria-hidden="true">＋</span>
           Add an expense
@@ -229,8 +229,8 @@ function Empty() {
 
 function ErrorBox({ title, detail }: { title: string; detail: string }) {
   return (
-    <div className="rounded-md border border-pace-red/40 bg-pace-red/5 px-4 py-3">
-      <p className="text-sm font-semibold text-pace-red">{title}</p>
+    <div className="rounded-lg border border-pace-red/40 bg-pace-red/5 px-4 py-3">
+      <p className="text-sm font-medium text-pace-red">{title}</p>
       <p className="mt-0.5 text-xs text-ink-dim">{detail}</p>
     </div>
   );

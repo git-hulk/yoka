@@ -36,7 +36,7 @@ export default function SubscriptionCard({ sub }: Props) {
       </div>
 
       <div className="space-y-1.5">
-        <div className="num text-[11px] tabular-nums text-ink-faint">
+        <div className="num text-2xs tabular-nums text-ink-faint">
           {usageRatioLabel(sub)}
         </div>
         <TrackBand

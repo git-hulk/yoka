@@ -43,7 +43,7 @@ export default function Register() {
 
   return (
     <div className="mx-auto mt-16 max-w-sm">
-      <h1 className="serif text-2xl font-semibold tracking-tight text-ink">Create account</h1>
+      <h1 className="text-2xl font-medium tracking-tight text-ink">Create account</h1>
       <p className="mt-1 text-sm text-ink-dim">
         You’ll get a personal group to start with. You can invite others or join their groups later.
       </p>
@@ -85,7 +85,7 @@ export default function Register() {
         <button
           type="submit"
           disabled={submitting}
-          className="inline-flex h-10 w-full items-center justify-center rounded-md bg-accent px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-accent/90 disabled:opacity-60"
+          className="inline-flex h-10 w-full items-center justify-center rounded-md bg-accent px-4 text-sm font-medium text-white shadow-sm transition hover:bg-accent-deep disabled:opacity-60"
         >
           {submitting ? "Creating…" : "Create account"}
         </button>

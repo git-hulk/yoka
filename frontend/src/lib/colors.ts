@@ -1,16 +1,15 @@
-// Editorial identity palette. Six tinted ink colors, balanced cool/warm,
-// used to mark each subscription with a consistent color across the app
-// (Home rows, Detail header, Cadence sparkline). This palette is purely
-// categorical wayfinding — not the brand accent (which is green, see
-// tailwind.config.js). Navy lives here because it's a useful distinct hue
-// for subscriptions, not because the app is "branded navy".
+// Categorical identity palette. Six cool mid-dark hues used to mark each
+// subscription with a consistent color across the app (Home rows, Detail
+// header, Cadence sparkline). Purely wayfinding — not the brand accent
+// (which is green, see tailwind.config.js), so green is deliberately
+// absent here. All hold up as small text on white.
 export const SUBSCRIPTION_COLORS = [
-  "#1E3A5F", // deep ink navy
-  "#2E6F4F", // forest
-  "#9C6B16", // gold
-  "#9E3527", // oxblood
-  "#5C544A", // slate
-  "#5C7A52", // sage
+  "#2563EB", // blue
+  "#0D9488", // teal
+  "#7C3AED", // violet
+  "#B45309", // amber
+  "#BE123C", // rose
+  "#64748B", // slate
 ] as const;
 
 export function subscriptionColor(id: string): string {

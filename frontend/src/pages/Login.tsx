@@ -38,7 +38,7 @@ export default function Login() {
 
   return (
     <div className="mx-auto mt-16 max-w-sm">
-      <h1 className="serif text-2xl font-semibold tracking-tight text-ink">Sign in</h1>
+      <h1 className="text-2xl font-medium tracking-tight text-ink">Sign in</h1>
       <p className="mt-1 text-sm text-ink-dim">Welcome back. Sign in to continue.</p>
 
       <form onSubmit={onSubmit} className="mt-8 space-y-4">
@@ -74,7 +74,7 @@ export default function Login() {
         <button
           type="submit"
           disabled={submitting}
-          className="inline-flex h-10 w-full items-center justify-center rounded-md bg-accent px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-accent/90 disabled:opacity-60"
+          className="inline-flex h-10 w-full items-center justify-center rounded-md bg-accent px-4 text-sm font-medium text-white shadow-sm transition hover:bg-accent-deep disabled:opacity-60"
         >
           {submitting ? "Signing in…" : "Sign in"}
         </button>

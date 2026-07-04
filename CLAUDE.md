@@ -78,4 +78,4 @@ SQLite specifics worth knowing:
 
 ### Frontend design tokens
 
-`tailwind.config.js` defines an editorial palette (`pace.{green,amber,red}` for status, `ink.{DEFAULT,dim,faint}` for text, `canvas`/`surface`/`hairline` for paper, `accent` for the brand action). Stick to these tokens — don't introduce ad-hoc hex codes. Fonts are Inter (sans) and Source Serif 4 (serif, used for headings via the `serif` utility class).
+The UI system follows Linear's design language (light theme, cool green-tinted neutrals, crisp hairlines, compact controls) — full spec in `DESIGN.md`. `tailwind.config.js` defines the tokens: `pace.{green,amber,red}` for burndown status, `ink.{DEFAULT,dim,faint}` for text, `canvas`/`surface`/`subtle`/`hairline` for layering, `accent` (+ `accent-deep` hover, `accent-soft` wash) for the brand action, and `shadow-{page,pop,modal}` for depth. Stick to these tokens — don't introduce ad-hoc hex codes. One font family only: Inter. Radii: `rounded-md` (6px) on controls, `rounded-lg` (8px) on containers/popovers/modals. No italics anywhere.

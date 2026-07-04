@@ -108,7 +108,7 @@ function Hero({
         <StatusPill status={sub.status} color={color} label={statusLabel(sub.status)} />
       </div>
 
-      <h1 className="mt-4 text-2xl font-semibold tracking-tight text-ink">
+      <h1 className="mt-4 text-2xl font-medium tracking-tight text-ink">
         {sub.name}
       </h1>
 
@@ -125,7 +125,7 @@ function Hero({
       )}
 
       <div className="mt-8 flex flex-wrap items-baseline gap-x-2">
-        <span className="num text-2xl font-semibold leading-none text-ink">
+        <span className="num text-2xl font-medium leading-none text-ink">
           {remainingLabel(sub)}
         </span>
         <span className="text-sm leading-tight text-ink-dim">
@@ -283,7 +283,7 @@ function HeroActions({
       </div>
       <Link
         to={`/subscriptions/${id}/edit`}
-        className="inline-flex h-8 items-center rounded-md border border-accent bg-accent px-3 text-sm font-medium text-white transition hover:bg-accent/90"
+        className="inline-flex h-8 items-center rounded-md border border-accent bg-accent px-3 text-sm font-medium text-white transition hover:bg-accent-deep"
       >
         Edit subscription
       </Link>
@@ -312,14 +312,14 @@ function ConfirmPanel({
       : "border-ink bg-ink text-white hover:bg-ink/90 disabled:bg-ink-faint disabled:border-ink-faint";
 
   return (
-    <div className="mt-6 rounded-md border border-hairline bg-subtle/60 p-4">
-      <p className="text-sm font-semibold text-ink">{title}</p>
+    <div className="mt-6 rounded-lg border border-hairline bg-subtle/60 p-4">
+      <p className="text-sm font-medium text-ink">{title}</p>
       {body && (
         <p className="mt-1 text-sm text-ink-dim">{body}</p>
       )}
 
       {error && (
-        <p className="mt-2 text-sm font-semibold text-pace-red">{error}</p>
+        <p className="mt-2 text-sm font-medium text-pace-red">{error}</p>
       )}
 
       <div className="mt-3 flex items-center gap-2">
@@ -380,7 +380,7 @@ function Cadence({ sub, usages }: { sub: Subscription; usages: Usage[] }) {
   return (
     <section>
       <div className="flex items-baseline justify-between border-b border-hairline pb-2">
-        <h2 className="text-base font-semibold text-ink">Cadence</h2>
+        <h2 className="text-base font-medium text-ink">Cadence</h2>
         <span className="num text-xs text-ink-faint">
           Last {CADENCE_DAYS} days
         </span>
@@ -435,7 +435,7 @@ function UsageHistory({
   return (
     <section>
       <div className="flex items-baseline justify-between border-b border-hairline pb-2">
-        <h2 className="text-base font-semibold text-ink">History</h2>
+        <h2 className="text-base font-medium text-ink">History</h2>
         {usages.length > 0 && (
           <span className="num text-xs text-ink-faint">
             {usages.length} {usages.length === 1 ? "entry" : "entries"}
@@ -446,8 +446,8 @@ function UsageHistory({
       {loading && <EmptyRow text="Loading…" />}
 
       {error && (
-        <div className="mt-3 rounded-md border border-pace-red/40 bg-pace-red/5 px-4 py-3">
-          <p className="text-sm font-semibold text-pace-red">
+        <div className="mt-3 rounded-lg border border-pace-red/40 bg-pace-red/5 px-4 py-3">
+          <p className="text-sm font-medium text-pace-red">
             Couldn't load history
           </p>
           <p className="mt-0.5 text-xs text-ink-dim">{error.message}</p>
@@ -486,7 +486,7 @@ function LedgerRow({
     <div className="grid grid-cols-[auto_1fr_auto] items-baseline gap-4 py-2.5">
       <span className="num text-sm tabular-nums text-ink-dim">{date}</span>
       <span className="truncate text-sm text-ink-dim">{detail ?? ""}</span>
-      <span className="num text-sm font-semibold tabular-nums text-ink">
+      <span className="num text-sm font-medium tabular-nums text-ink">
         {amount}
       </span>
     </div>
@@ -527,8 +527,8 @@ function Skeleton() {
 
 function NotFound({ id }: { id: string }) {
   return (
-    <div className="rounded-md border border-hairline bg-subtle/40 py-12 text-center">
-      <p className="text-base font-semibold text-ink">No such subscription.</p>
+    <div className="rounded-lg border border-hairline bg-subtle/40 py-12 text-center">
+      <p className="text-base font-medium text-ink">No such subscription.</p>
       <p className="mt-1 text-sm text-ink-dim">
         <span className="num">{id}</span> may have been archived or deleted.
       </p>
@@ -538,8 +538,8 @@ function NotFound({ id }: { id: string }) {
 
 function ErrorBox({ title, detail }: { title: string; detail: string }) {
   return (
-    <div className="rounded-md border border-pace-red/40 bg-pace-red/5 px-4 py-3">
-      <p className="text-sm font-semibold text-pace-red">{title}</p>
+    <div className="rounded-lg border border-pace-red/40 bg-pace-red/5 px-4 py-3">
+      <p className="text-sm font-medium text-pace-red">{title}</p>
       <p className="mt-0.5 text-xs text-ink-dim">{detail}</p>
     </div>
   );

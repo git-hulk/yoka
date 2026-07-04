@@ -4,39 +4,42 @@ export default {
   theme: {
     extend: {
       colors: {
-        // Editorial pace palette — forest, antique gold, oxblood.
-        // Quieter than retina-green/amber/red; reads as ink with hue.
+        // Semantic pace palette — burndown health, not brand. Crisp, cool
+        // hues tuned to hold AA contrast as small text on white.
         pace: {
-          green: "#2E6F4F",
-          amber: "#9C6B16",
-          red:   "#9E3527",
+          green: "#15803D",
+          amber: "#A16207",
+          red:   "#C22F2F",
         },
         // Soft washes used for fill backgrounds and status pills.
         track: {
-          green:   "#2E6F4F14",
-          amber:   "#9C6B1614",
-          red:     "#9E352714",
-          neutral: "#1A18140F",
+          green:   "#15803D14",
+          amber:   "#A1620714",
+          red:     "#C22F2F14",
+          neutral: "#2328260F",
         },
+        // Neutrals carry a whisper of the brand green hue — never pure
+        // gray, never pure black.
         ink: {
-          DEFAULT: "#1A1814",
-          dim:     "#5C544A",
-          faint:   "#8E8675",
+          DEFAULT: "#232826",
+          dim:     "#5F6B65",
+          faint:   "#8B968F",
         },
-        // Warm paper system. canvas = desk, surface = the page.
-        // subtle is the GH-style "canvas.subtle" wash — used for hover,
-        // zebra rows, code blocks. Warm tint, not the cool gray Primer uses.
-        canvas:   "#FFFFFF",
+        // Two-layer light system: canvas = app chrome (sidebar, auth
+        // pages, out-of-month cells), surface = content panels. subtle is
+        // the hover/zebra/table-header wash; hairline draws every 1px
+        // border.
+        canvas:   "#F9FAF9",
         surface:  "#FFFFFF",
-        subtle:   "#F6F4EE",
-        hairline: "#D9D2BF",
+        subtle:   "#F2F4F3",
+        hairline: "#E4E7E5",
         // Brand color: green. Used on primary action, brand mark, focus,
         // hover, active states. Pace-status colors (pace.{green,amber,red})
-        // stay semantic — those encode burn-down health, not brand. The
-        // darker green-700 hue keeps text legible at small sizes; chips and
-        // fills use a brighter pure green via inline color (see Calendar.tsx).
+        // stay semantic — those encode burn-down health, not brand.
         accent: {
           DEFAULT: "#15803D",
+          // Hover shade for solid-accent controls — darker, never lighter.
+          deep:    "#0F6A32",
           soft:    "#15803D14",
         },
       },
@@ -52,9 +55,26 @@ export default {
           "sans-serif",
         ],
       },
+      // Type ramp lifted from the Linear Design System Figma file
+      // (see DESIGN.md). 13px is the UI base; weights stop at 500 —
+      // Linear never uses semibold/bold in product UI.
+      fontSize: {
+        "2xs": ["11px", "12px"],
+        xs:    ["12px", "15px"],
+        sm:    ["13px", "16px"],
+        base:  ["15px", "22px"],
+        lg:    ["18px", "22px"],
+        xl:    ["20px", "24px"],
+        "2xl": ["22px", "27px"],
+        "3xl": ["24px", "29px"],
+        "4xl": ["36px", "44px"],
+      },
       boxShadow: {
-        // Editorial: surfaces sit on the page, they don't float.
-        page: "0 1px 0 rgba(26, 24, 20, 0.04)",
+        // Layered, low-alpha, cool. Borders define edges; shadows only
+        // add lift. Three steps: resting panel → popover → dialog.
+        page:  "0 1px 2px rgba(20, 24, 22, 0.05)",
+        pop:   "0 2px 4px rgba(20, 24, 22, 0.04), 0 8px 24px -4px rgba(20, 24, 22, 0.10)",
+        modal: "0 4px 8px rgba(20, 24, 22, 0.04), 0 20px 48px -12px rgba(20, 24, 22, 0.18)",
       },
       letterSpacing: {
         micro: "0.14em",
