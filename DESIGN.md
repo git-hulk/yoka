@@ -2,7 +2,7 @@
 
 Linear-language light UI: cool green-tinted neutrals, crisp 1px hairlines,
 compact controls, a single sans family, layered low-alpha shadows. All colors
-live in `frontend/tailwind.config.js`; never introduce ad-hoc hex codes in
+live in `web/tailwind.config.js`; never introduce ad-hoc hex codes in
 components.
 
 Reference: the community "Linear Design System" Figma file
@@ -12,7 +12,7 @@ purple, ours green), a three-step text ramp (their #EEEFFC/#B0B5C0/#858699 →
 our ink/ink-dim/ink-faint), low-delta hairline dividers, a brand ramp with
 core/hover/soft-wash steps, and a categorical "decoration" palette separate
 from the brand color (their teal/blue/purple/orange/red/grey → our identity
-palette in `src/lib/colors.ts`, darkened for AA text on white).
+palette in `web/src/lib/colors.ts`, darkened for AA text on white).
 
 ## Theme
 
@@ -42,7 +42,7 @@ gray or pure black.
 | `track-*` | 8% washes | Pill and bar fills for each pace color |
 
 Pace colors are semantic (burndown health), not brand. Categorical identity
-colors (per-subscription dots, currency bars) come from `src/lib/colors.ts`
+colors (per-subscription dots, currency bars) come from `web/src/lib/colors.ts`
 and the chart palettes: cool mid-dark hues (blue, teal, violet, amber, rose,
 slate), all legible as text on white.
 
@@ -67,7 +67,7 @@ slate), all legible as text on white.
 
 ## Components
 
-- `frontend/src/components/ui/` is the enforcement layer: `Button` /
+- `web/src/components/ui/` is the enforcement layer: `Button` /
   `ButtonLink` / `buttonClass` (primary, secondary, ghost, danger,
   dangerGhost; 32/28/36px sizes), `Input` + `inputClass` /
   `textareaClass` / `selectClass`, and the `ToastProvider`. New controls

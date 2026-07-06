@@ -4,23 +4,23 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Repo shape
 
-Two-tier app for tracking burndown of prepaid packages (yoga classes, coaching hours, etc.). Monorepo with no top-level tooling — each tier has its own toolchain.
+Two-tier app for tracking burndown of prepaid packages (yoga classes, coaching hours, etc.). The Rust server lives at the repo root; the UI lives in `web/`.
 
-- `backend/` — Rust + axum + sqlx + SQLite. Binary name `yoka`, library crate `yoka`.
-- `frontend/` — React 18 + Vite + TypeScript + Tailwind, talks to the backend over `/api`.
+- Repo root — the Rust backend (axum + sqlx + SQLite): `Cargo.toml`, `src/`, `tests/`, `migrations/`. Binary name `yoka`, library crate `yoka`.
+- `web/` — React 18 + Vite + TypeScript + Tailwind, talks to the backend over `/api`.
 
 ## Commands
 
 ### One-server deploy (repo root)
 
 ```bash
-make build           # frontend dist (built with base /web/) + release binary
+make build           # web/dist (built with base /web/) + release binary
 make run             # build the UI, then cargo run — everything on :3000
 ```
 
-The server mounts `frontend/dist` at `/web` when it exists (`WEB_DIST` overrides the path, default `../frontend/dist` relative to `backend/`), with an index.html fallback for SPA deep links; `/` redirects there. The API answers both on bare paths (dev proxy, tests) and under `/api` (the built UI's same-origin fetches).
+The server mounts `web/dist` at `/web` when it exists (`WEB_DIST` overrides the path, default `web/dist` relative to the server's cwd), with an index.html fallback for SPA deep links; `/` redirects there. The API answers both on bare paths (dev proxy, tests) and under `/api` (the built UI's same-origin fetches).
 
-### Backend (`cd backend`)
+### Backend (repo root)
 
 ```bash
 cargo run                    # serve on 127.0.0.1:3000; auto-creates ./tracker.db
@@ -33,7 +33,7 @@ cargo fmt                    # format
 
 Env overrides: `DATABASE_URL` (default `sqlite://tracker.db?mode=rwc`), `BIND_ADDR` (default `127.0.0.1:3000`), `RUST_LOG` (default `yoka=debug,tower_http=info,info`).
 
-### Frontend (`cd frontend`)
+### Frontend (`cd web`)
 
 ```bash
 npm run dev          # vite on :5173, proxies /api → 127.0.0.1:3000
@@ -75,7 +75,7 @@ SQLite specifics worth knowing:
 
 ### Integration tests
 
-`backend/tests/api.rs` runs handlers against `sqlite::memory:` with `max_connections(1)` (each connection to `:memory:` is a separate DB, so the pool must be pinned to one to share state across handler calls). Use the `setup()` / `insert_package()` / `insert_usage()` helpers; route requests through `router(state).oneshot(...)` from `tower::util::ServiceExt`.
+`tests/api.rs` runs handlers against `sqlite::memory:` with `max_connections(1)` (each connection to `:memory:` is a separate DB, so the pool must be pinned to one to share state across handler calls). Use the `setup()` / `insert_package()` / `insert_usage()` helpers; route requests through `router(state).oneshot(...)` from `tower::util::ServiceExt`.
 
 ### Frontend structure
 

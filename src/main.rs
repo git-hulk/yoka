@@ -40,7 +40,7 @@ async fn main() -> anyhow::Result<()> {
     // it). Unknown paths under /web fall back to index.html so the SPA's
     // client-side routes deep-link correctly.
     let web_dist = PathBuf::from(
-        env::var("WEB_DIST").unwrap_or_else(|_| "../frontend/dist".to_string()),
+        env::var("WEB_DIST").unwrap_or_else(|_| "web/dist".to_string()),
     );
     if web_dist.join("index.html").is_file() {
         let spa = ServeDir::new(&web_dist)

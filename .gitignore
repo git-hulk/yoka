@@ -14,21 +14,21 @@
 .env.*
 !.env.example
 
-# Rust (backend)
-backend/target/
+# Rust
+/target/
 **/*.rs.bk
 
 # Local SQLite database + WAL
-backend/tracker.db
-backend/tracker.db-shm
-backend/tracker.db-wal
+/tracker.db
+/tracker.db-shm
+/tracker.db-wal
 *.sqlite
 *.sqlite-shm
 *.sqlite-wal
 
-# Node / Vite (frontend)
-frontend/node_modules/
-frontend/dist/
-frontend/.vite/
-frontend/*.tsbuildinfo
-frontend/vite.config.ts.timestamp-*.mjs
+# Node / Vite (web)
+web/node_modules/
+web/dist/
+web/.vite/
+web/*.tsbuildinfo
+web/vite.config.ts.timestamp-*.mjs
