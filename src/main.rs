@@ -18,11 +18,21 @@ use yoka::http::{router, AppState};
 async fn main() -> anyhow::Result<()> {
     init_tracing();
 
-    let db_url =
-        env::var("DATABASE_URL").unwrap_or_else(|_| "sqlite://tracker.db?mode=rwc".to_string());
-    let addr: SocketAddr = env::var("BIND_ADDR")
-        .unwrap_or_else(|_| "127.0.0.1:3000".to_string())
-        .parse()?;
+    // config.yaml supplies port + data_dir (path movable via YOKA_CONFIG);
+    // the BIND_ADDR / DATABASE_URL env vars override it entirely.
+    let config_path =
+        PathBuf::from(env::var("YOKA_CONFIG").unwrap_or_else(|_| "config.yaml".to_string()));
+    let cfg = yoka::config::resolve(
+        yoka::config::FileConfig::load(&config_path)?,
+        env::var("BIND_ADDR").ok(),
+        env::var("DATABASE_URL").ok(),
+    )?;
+    if let Some(dir) = &cfg.data_dir {
+        std::fs::create_dir_all(dir)
+            .map_err(|e| anyhow::anyhow!("creating data_dir {}: {e}", dir.display()))?;
+    }
+    let db_url = cfg.database_url;
+    let addr: SocketAddr = cfg.bind_addr;
 
     tracing::info!(%db_url, "connecting to database");
     let repos = yoka::connect_and_migrate(&db_url).await?;

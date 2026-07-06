@@ -23,7 +23,7 @@ The server mounts `web/dist` at `/web` when it exists (`WEB_DIST` overrides the 
 ### Backend (repo root)
 
 ```bash
-cargo run                    # serve on 127.0.0.1:3000; auto-creates ./tracker.db
+cargo run                    # serve on 127.0.0.1:3000; auto-creates ./yoka.db
 cargo test                   # unit (in-crate) + integration (tests/api.rs)
 cargo test <name>            # single test, e.g. cargo test done_when_remaining_zero
 cargo test --test api        # only the integration suite
@@ -31,7 +31,7 @@ cargo clippy --all-targets   # lint
 cargo fmt                    # format
 ```
 
-Env overrides: `DATABASE_URL` (default `sqlite://tracker.db?mode=rwc`), `BIND_ADDR` (default `127.0.0.1:3000`), `RUST_LOG` (default `yoka=debug,tower_http=info,info`).
+Config: `config.yaml` at the repo root (optional; path movable via `YOKA_CONFIG`) sets `port` (host stays 127.0.0.1) and `data_dir` (directory for `yoka.db`, created at boot). Unknown keys are boot errors. Env vars override the file entirely: `DATABASE_URL` (default `sqlite://yoka.db?mode=rwc`), `BIND_ADDR` (default `127.0.0.1:3000`), `RUST_LOG` (default `yoka=debug,tower_http=info,info`). Resolution lives in `src/config.rs`.
 
 ### Frontend (`cd web`)
 

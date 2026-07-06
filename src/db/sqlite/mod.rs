@@ -105,7 +105,7 @@ impl SqliteBackend {
     /// Build a pool against the given SQLite URL, run migrations.
     ///
     /// `sqlite::memory:` is the convention for tests; a path like
-    /// `sqlite://tracker.db?mode=rwc` is used in production.
+    /// `sqlite://yoka.db?mode=rwc` is used in production.
     ///
     /// WAL + foreign keys are on. WAL gives concurrent readers during writes,
     /// which matters even for a single-user app once the frontend starts

@@ -1,0 +1,16 @@
+# yoka server configuration.
+#
+# This file is optional — delete it (or any key) and the defaults below
+# apply. Environment variables always win over this file:
+#   BIND_ADDR     full listen address, host + port (e.g. 0.0.0.0:8080)
+#   DATABASE_URL  full SQLite URL (e.g. sqlite:///srv/yoka/yoka.db?mode=rwc)
+#   YOKA_CONFIG   path to an alternative config file
+
+# TCP port the server listens on. The host stays 127.0.0.1; use BIND_ADDR
+# to bind elsewhere.
+port: 3000
+
+# Directory holding the SQLite database (yoka.db). Relative paths are
+# resolved from the server's working directory; the directory is created
+# at boot when missing.
+data_dir: .

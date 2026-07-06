@@ -19,9 +19,9 @@
 **/*.rs.bk
 
 # Local SQLite database + WAL
-/tracker.db
-/tracker.db-shm
-/tracker.db-wal
+/yoka.db
+/yoka.db-shm
+/yoka.db-wal
 *.sqlite
 *.sqlite-shm
 *.sqlite-wal
