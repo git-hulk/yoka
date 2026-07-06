@@ -11,6 +11,15 @@ Two-tier app for tracking burndown of prepaid packages (yoga classes, coaching h
 
 ## Commands
 
+### One-server deploy (repo root)
+
+```bash
+make build           # frontend dist (built with base /web/) + release binary
+make run             # build the UI, then cargo run — everything on :3000
+```
+
+The server mounts `frontend/dist` at `/web` when it exists (`WEB_DIST` overrides the path, default `../frontend/dist` relative to `backend/`), with an index.html fallback for SPA deep links; `/` redirects there. The API answers both on bare paths (dev proxy, tests) and under `/api` (the built UI's same-origin fetches).
+
 ### Backend (`cd backend`)
 
 ```bash
@@ -75,6 +84,7 @@ SQLite specifics worth knowing:
 - `src/lib/useFetch.ts` — tiny `react-query` replacement. Returns a discriminated `{ status: "loading" | "ok" | "error" }`. Pages `switch` on `state.status` rather than juggling `data`/`loading`/`error`.
 - `src/pages/` — route components (`Home`, `PackageDetail`, `PackageEdit`, `PackageNew`). Three of four are lazy-loaded in `App.tsx`.
 - `src/components/` — reusable UI (`PackageCard`, `PackageForm`, `StatusPill`, `TrackBand`, `UsageEditor`, `Sidebar`).
+- `src/components/ui/` — the control primitives (`Button`/`ButtonLink`/`buttonClass`, `Input` + form-control classes, `ToastProvider`/`useToast`). All buttons and form controls go through these; don't restate their class strings inline.
 
 ### Frontend design tokens
 

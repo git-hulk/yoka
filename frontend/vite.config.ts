@@ -2,10 +2,13 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 
 // Dev server proxies /api → Rust backend on :3000.
-// In production the same-origin assumption holds: serve the built bundle
-// behind the same host as the API, or set VITE_API_BASE at build time.
+// Production builds target the API server itself: `make build` emits the
+// bundle with a /web/ base and the Rust server mounts frontend/dist there,
+// so the app lives at http://127.0.0.1:3000/web (API calls stay same-origin
+// under /api). Set VITE_API_BASE at build time to point elsewhere.
 
-export default defineConfig({
+export default defineConfig(({ command }) => ({
+  base: command === "build" ? "/web/" : "/",
   plugins: [react()],
   server: {
     port: 5173,
@@ -21,4 +24,4 @@ export default defineConfig({
     outDir: "dist",
     sourcemap: true,
   },
-});
+}));

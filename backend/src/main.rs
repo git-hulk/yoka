@@ -5,7 +5,11 @@
 
 use std::env;
 use std::net::SocketAddr;
+use std::path::PathBuf;
 
+use axum::response::Redirect;
+use axum::routing::get;
+use tower_http::services::{ServeDir, ServeFile};
 use tracing_subscriber::EnvFilter;
 
 use yoka::http::{router, AppState};
@@ -23,7 +27,34 @@ async fn main() -> anyhow::Result<()> {
     tracing::info!(%db_url, "connecting to database");
     let repos = yoka::connect_and_migrate(&db_url).await?;
 
-    let app = router(AppState::from(repos));
+    let state = AppState::from(repos);
+
+    // The API answers on both the bare paths (used by the Vite dev proxy,
+    // which strips /api, and by the integration tests) and under /api (used
+    // by the built UI, whose fetches are same-origin `/api/...`).
+    let mut app = axum::Router::new()
+        .nest("/api", router(state.clone()))
+        .merge(router(state));
+
+    // Serve the built UI at /web when the dist exists (`make build` produces
+    // it). Unknown paths under /web fall back to index.html so the SPA's
+    // client-side routes deep-link correctly.
+    let web_dist = PathBuf::from(
+        env::var("WEB_DIST").unwrap_or_else(|_| "../frontend/dist".to_string()),
+    );
+    if web_dist.join("index.html").is_file() {
+        let spa = ServeDir::new(&web_dist)
+            .fallback(ServeFile::new(web_dist.join("index.html")));
+        app = app
+            .nest_service("/web", spa)
+            .route("/", get(|| async { Redirect::temporary("/web/") }));
+        tracing::info!(dist = %web_dist.display(), "serving UI at /web");
+    } else {
+        tracing::info!(
+            dist = %web_dist.display(),
+            "UI dist not found — /web disabled (run `make build`, or set WEB_DIST)"
+        );
+    }
 
     tracing::info!(%addr, "listening");
     let listener = tokio::net::TcpListener::bind(addr).await?;
