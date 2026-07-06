@@ -7,6 +7,7 @@ import { api, ApiError } from "../lib/api";
 import { useAuth } from "../lib/auth";
 import { useFetch } from "../lib/useFetch";
 import type { Invitation, Member, Role } from "../lib/types";
+import { buttonClass } from "../components/ui";
 
 const ROLES: Role[] = ["viewer", "editor", "admin"];
 
@@ -45,7 +46,7 @@ export default function Members() {
           <button
             type="button"
             onClick={() => setInviting(true)}
-            className="inline-flex h-8 items-center rounded-md bg-accent px-3 text-sm font-medium text-white shadow-sm transition hover:bg-accent-deep"
+            className={buttonClass("primary")}
           >
             Invite member
           </button>
@@ -260,7 +261,7 @@ function InviteModal({
               <button
                 type="button"
                 onClick={() => navigator.clipboard.writeText(created.invite_url)}
-                className="inline-flex h-8 shrink-0 items-center rounded-md bg-accent px-3 text-sm font-medium text-white"
+                className={buttonClass("primary")}
               >
                 Copy
               </button>
@@ -320,7 +321,7 @@ function InviteModal({
               <button
                 type="submit"
                 disabled={submitting}
-                className="inline-flex h-8 items-center rounded-md bg-accent px-3 text-sm font-medium text-white shadow-sm disabled:opacity-60"
+                className={buttonClass("primary")}
               >
                 {submitting ? "Creating…" : "Create invite"}
               </button>

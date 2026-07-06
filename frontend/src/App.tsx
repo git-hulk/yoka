@@ -4,6 +4,7 @@ import { Route, Routes, useLocation } from "react-router-dom";
 import RequireAuth from "./components/RequireAuth";
 import Sidebar from "./components/Sidebar";
 import { AuthProvider } from "./lib/auth";
+import { ToastProvider } from "./components/ui/Toast";
 import Home from "./pages/Home";
 import Login from "./pages/Login";
 
@@ -34,7 +35,9 @@ function initialCollapsed(): boolean {
 export default function App() {
   return (
     <AuthProvider>
-      <Shell />
+      <ToastProvider>
+        <Shell />
+      </ToastProvider>
     </AuthProvider>
   );
 }

@@ -67,10 +67,18 @@ slate), all legible as text on white.
 
 ## Components
 
+- `frontend/src/components/ui/` is the enforcement layer: `Button` /
+  `ButtonLink` / `buttonClass` (primary, secondary, ghost, danger,
+  dangerGhost; 32/28/36px sizes), `Input` + `inputClass` /
+  `textareaClass` / `selectClass`, and the `ToastProvider`. New controls
+  go through these — never restate the class strings inline.
 - Buttons: 32px (`h-8`) height, `rounded-md`, `text-sm font-medium`.
   Primary is solid accent with darker hover; secondary is white with a
   hairline border and `subtle` hover. Every control has hover, focus
   (accent outline), and disabled states.
+- Toasts: dark (`ink`) surface, bottom-left, one line, auto-dismiss.
+  Every destructive action shows one, with an Undo action whenever the
+  record can be recreated losslessly.
 - Lists are bordered tables: `rounded-lg border border-hairline` container,
   `subtle` header band, `divide-hairline` rows, row hover `bg-subtle`.
 - Status pills: tinted wash + hairline-tinted border + glyph mark

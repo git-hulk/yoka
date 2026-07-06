@@ -1,32 +1,69 @@
-import { useState } from "react";
+// Subscriptions list. All rows are fetched once (paging past the server
+// cap) and filtered/sorted/paginated client-side, so the filter chips and
+// sort menu respond instantly. Chips only render for statuses that exist;
+// sorting defaults to the app's core question: what expires soonest.
+
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 
 import { api } from "../lib/api";
+import { filledFraction, statusLabel } from "../lib/pace";
+import type { Status, Subscription } from "../lib/types";
 import { useFetch } from "../lib/useFetch";
 import Pagination from "../components/Pagination";
 import SubscriptionCard from "../components/SubscriptionCard";
+import { buttonClass } from "../components/ui";
 
 const PAGE_SIZE = 10;
 
+type Filter = "all" | Status;
+type Sort = "expires" | "name" | "price" | "usage";
+
+const SORT_LABELS: Record<Sort, string> = {
+  expires: "Expires soon",
+  name:    "Name",
+  price:   "Price",
+  usage:   "Most used",
+};
+
+const SORTERS: Record<Sort, (a: Subscription, b: Subscription) => number> = {
+  expires: (a, b) => a.expires_at.localeCompare(b.expires_at),
+  name:    (a, b) => a.name.localeCompare(b.name),
+  price:   (a, b) => (b.price_cents ?? -1) - (a.price_cents ?? -1),
+  usage:   (a, b) => filledFraction(b) - filledFraction(a),
+};
+
+// Chip order mirrors the lifecycle: live things first, history last.
+const FILTER_ORDER: Status[] = ["active", "not_start", "done", "expired"];
+
 export default function Home() {
-  const [page, setPage] = useState(1);
-  const state = useFetch(
-    () => api.listSubscriptions({ page, perPage: PAGE_SIZE }),
-    [page],
-  );
+  const [page, setPage]     = useState(1);
+  const [filter, setFilter] = useState<Filter>("all");
+  const [sort, setSort]     = useState<Sort>("expires");
+  const state = useFetch(() => api.listAllSubscriptions(), []);
 
-  const total = state.status === "ok" ? state.data.total : null;
-  const pageCount =
-    total === null ? 1 : Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const all = state.status === "ok" ? state.data : null;
 
-  // If a delete drops the row count past the current page, fall back one.
-  if (state.status === "ok" && page > pageCount) {
-    setPage(pageCount);
-  }
+  const visible = useMemo(() => {
+    if (!all) return null;
+    const filtered = filter === "all" ? all : all.filter((s) => s.status === filter);
+    return [...filtered].sort(SORTERS[sort]);
+  }, [all, filter, sort]);
+
+  const pageCount = visible ? Math.max(1, Math.ceil(visible.length / PAGE_SIZE)) : 1;
+  if (visible && page > pageCount) setPage(pageCount);
+  const pageItems = visible
+    ? visible.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
+    : null;
+
+  const pick = (f: Filter) => {
+    setFilter(f);
+    setPage(1);
+  };
 
   return (
     <div className="space-y-6">
-      <PageHeading count={total} />
+      <PageHeading count={all?.length ?? null} />
 
       {state.status === "loading" && <Skeleton />}
 
@@ -34,30 +71,49 @@ export default function Home() {
         <ErrorBox title="Couldn't load subscriptions" detail={state.error.message} />
       )}
 
-      {state.status === "ok" && (
-        state.data.total === 0 ? (
+      {state.status === "ok" && all && visible && pageItems && (
+        all.length === 0 ? (
           <Empty />
         ) : (
-          <div className="overflow-hidden rounded-lg border border-hairline">
-            <ColumnHeader />
-            <ul className="divide-y divide-hairline">
-              {state.data.items.map((s) => (
-                <li key={s.id}>
-                  <SubscriptionCard sub={s} />
-                </li>
-              ))}
-            </ul>
-            {pageCount > 1 && (
-              <div className="border-t border-hairline bg-subtle/60 px-4 py-2">
-                <Pagination
-                  page={page}
-                  pageCount={pageCount}
-                  total={state.data.total}
-                  pageStart={(page - 1) * PAGE_SIZE + 1}
-                  pageEnd={(page - 1) * PAGE_SIZE + state.data.items.length}
-                  onChange={setPage}
-                  ariaLabel="Subscription pagination"
-                />
+          <div className="space-y-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <FilterChips all={all} filter={filter} onPick={pick} />
+              <SortMenu
+                sort={sort}
+                onPick={(s) => {
+                  setSort(s);
+                  setPage(1);
+                }}
+              />
+            </div>
+
+            {visible.length === 0 ? (
+              <div className="rounded-lg border border-hairline bg-subtle/40 px-4 py-8 text-center text-sm text-ink-dim">
+                Nothing is {statusLabel(filter as Status)} right now.
+              </div>
+            ) : (
+              <div className="overflow-hidden rounded-lg border border-hairline">
+                <ColumnHeader />
+                <ul className="divide-y divide-hairline">
+                  {pageItems.map((s) => (
+                    <li key={s.id}>
+                      <SubscriptionCard sub={s} />
+                    </li>
+                  ))}
+                </ul>
+                {pageCount > 1 && (
+                  <div className="border-t border-hairline bg-subtle/60 px-4 py-2">
+                    <Pagination
+                      page={page}
+                      pageCount={pageCount}
+                      total={visible.length}
+                      pageStart={(page - 1) * PAGE_SIZE + 1}
+                      pageEnd={(page - 1) * PAGE_SIZE + pageItems.length}
+                      onChange={setPage}
+                      ariaLabel="Subscription pagination"
+                    />
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -80,13 +136,141 @@ function PageHeading({ count }: { count: number | null }) {
           </p>
         )}
       </div>
-      <Link
-        to="/subscriptions/new"
-        className="inline-flex h-8 items-center gap-1 rounded-md border border-accent bg-accent px-3 text-sm font-medium text-white transition hover:bg-accent-deep"
-      >
+      <Link to="/subscriptions/new" className={buttonClass("primary")}>
         <span aria-hidden="true" className="text-base leading-none">＋</span>
         New subscription
       </Link>
+    </div>
+  );
+}
+
+function FilterChips({
+  all, filter, onPick,
+}: {
+  all:    Subscription[];
+  filter: Filter;
+  onPick: (f: Filter) => void;
+}) {
+  const counts = new Map<Status, number>();
+  for (const s of all) counts.set(s.status, (counts.get(s.status) ?? 0) + 1);
+
+  const chip = (active: boolean) =>
+    "inline-flex h-7 items-center gap-1.5 rounded-md px-2.5 text-xs font-medium transition " +
+    (active ? "bg-subtle text-ink" : "text-ink-dim hover:bg-subtle/60 hover:text-ink");
+
+  return (
+    <div className="flex flex-wrap items-center gap-1" role="group" aria-label="Filter by status">
+      <button
+        type="button"
+        onClick={() => onPick("all")}
+        aria-pressed={filter === "all"}
+        className={chip(filter === "all")}
+      >
+        All
+        <span className="num text-2xs tabular-nums text-ink-faint">{all.length}</span>
+      </button>
+      {FILTER_ORDER.filter((st) => (counts.get(st) ?? 0) > 0).map((st) => (
+        <button
+          key={st}
+          type="button"
+          onClick={() => onPick(st)}
+          aria-pressed={filter === st}
+          className={chip(filter === st)}
+        >
+          {statusLabel(st)}
+          <span className="num text-2xs tabular-nums text-ink-faint">
+            {counts.get(st)}
+          </span>
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function SortMenu({ sort, onPick }: { sort: Sort; onPick: (s: Sort) => void }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function onDocClick(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") setOpen(false);
+    }
+    document.addEventListener("mousedown", onDocClick);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDocClick);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, []);
+
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        className="inline-flex h-7 items-center gap-1.5 rounded-md px-2 text-xs font-medium text-ink-dim transition hover:bg-subtle hover:text-ink"
+      >
+        <span className="text-ink-faint">Sort</span>
+        {SORT_LABELS[sort]}
+        <svg
+          viewBox="0 0 16 16"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          className="size-3 text-ink-faint"
+          aria-hidden="true"
+        >
+          <polyline points="4 6 8 10 12 6" />
+        </svg>
+      </button>
+      {open && (
+        <div
+          role="menu"
+          className="absolute right-0 top-full z-50 mt-1 w-44 rounded-lg border border-hairline bg-white py-1 shadow-pop"
+        >
+          {(Object.keys(SORT_LABELS) as Sort[]).map((s) => (
+            <button
+              key={s}
+              type="button"
+              role="menuitemradio"
+              aria-checked={s === sort}
+              onClick={() => {
+                onPick(s);
+                setOpen(false);
+              }}
+              className={
+                "mx-1 flex w-[calc(100%-0.5rem)] items-center justify-between gap-2 rounded-md px-2 py-1.5 text-left text-sm transition " +
+                (s === sort
+                  ? "font-medium text-ink"
+                  : "text-ink-dim hover:bg-subtle hover:text-ink")
+              }
+            >
+              {SORT_LABELS[s]}
+              {s === sort && (
+                <svg
+                  viewBox="0 0 16 16"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.75"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="size-3.5 shrink-0 text-accent"
+                  aria-hidden="true"
+                >
+                  <polyline points="3 8.5 6.5 12 13 4.5" />
+                </svg>
+              )}
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -138,7 +322,7 @@ function Empty() {
       </p>
       <Link
         to="/subscriptions/new"
-        className="mt-5 inline-flex h-8 items-center gap-1 rounded-md border border-accent bg-accent px-3 text-sm font-medium text-white transition hover:bg-accent-deep"
+        className={buttonClass("primary", "md", "mt-5")}
       >
         <span aria-hidden="true">＋</span>
         Add the first one

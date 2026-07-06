@@ -23,6 +23,7 @@ import type {
   YearlyLedger,
 } from "../../lib/types";
 import { useFetch } from "../../lib/useFetch";
+import { buttonClass } from "../../components/ui";
 
 type CurrencyFilter = "all" | Currency;
 
@@ -71,21 +72,21 @@ function Heading() {
   return (
     <div className="flex flex-wrap items-end justify-between gap-3 border-b border-hairline pb-4">
       <div>
-        <h1 className="text-xl font-medium tracking-tight text-ink">Finance</h1>
+        <h1 className="text-xl font-medium tracking-tight text-ink">Expense</h1>
         <p className="mt-1 text-xs text-ink-faint">
-          Spend, budgets, and the trail behind them.
+          Expenses, budgets, and the trail behind them.
         </p>
       </div>
       <div className="flex items-center gap-2">
         <Link
           to="/finance/recurring-expenses/new"
-          className="inline-flex h-8 items-center rounded-md border border-hairline bg-white px-3 text-sm font-medium text-ink transition hover:bg-subtle"
+          className={buttonClass("secondary")}
         >
           Recurring
         </Link>
         <Link
           to="/finance/expenses/new"
-          className="inline-flex h-8 items-center gap-1 rounded-md border border-accent bg-accent px-3 text-sm font-medium text-white transition hover:bg-accent-deep"
+          className={buttonClass("primary")}
         >
           <span aria-hidden="true" className="text-base leading-none">＋</span>
           New expense
@@ -211,14 +212,14 @@ function Empty() {
       <div className="mt-5 flex items-center justify-center gap-2">
         <Link
           to="/finance/expenses/new"
-          className="inline-flex h-8 items-center gap-1 rounded-md border border-accent bg-accent px-3 text-sm font-medium text-white transition hover:bg-accent-deep"
+          className={buttonClass("primary")}
         >
           <span aria-hidden="true">＋</span>
           Add an expense
         </Link>
         <Link
           to="/finance/recurring-expenses/new"
-          className="inline-flex h-8 items-center rounded-md border border-hairline bg-white px-3 text-sm font-medium text-ink transition hover:bg-subtle"
+          className={buttonClass("secondary")}
         >
           Add a recurring rule
         </Link>

@@ -23,6 +23,8 @@ import { subscriptionColor } from "../lib/colors";
 import { formatPrice } from "../lib/pace";
 import type { Subscription, TimelineEvent } from "../lib/types";
 import { useFetch } from "../lib/useFetch";
+import { buttonClass } from "../components/ui";
+import { useToast } from "../components/ui/Toast";
 
 type Entry =
   | { date: string; kind: "pay"; sub: Subscription }
@@ -40,7 +42,7 @@ export default function Timeline() {
   const [editingId, setEditingId] = useState<string | null>(null);
 
   const state = useFetch(
-    () => Promise.all([fetchAllSubscriptions(), api.listTimelineEvents(year)]),
+    () => Promise.all([api.listAllSubscriptions(), api.listTimelineEvents(year)]),
     [year, bump],
   );
 
@@ -68,7 +70,7 @@ export default function Timeline() {
             type="button"
             onClick={() => setComposing(true)}
             disabled={composing}
-            className="inline-flex h-8 items-center gap-1 rounded-md border border-accent bg-accent px-3 text-sm font-medium text-white transition hover:bg-accent-deep disabled:opacity-50"
+            className={buttonClass("primary")}
           >
             <span aria-hidden="true" className="text-base leading-none">＋</span>
             New event
@@ -109,19 +111,6 @@ export default function Timeline() {
       )}
     </div>
   );
-}
-
-async function fetchAllSubscriptions(): Promise<Subscription[]> {
-  const first = await api.listSubscriptions({ page: 1, perPage: 100 });
-  const items = [...first.items];
-  let page = 1;
-  while (items.length < first.total) {
-    page += 1;
-    const next = await api.listSubscriptions({ page, perPage: 100 });
-    if (next.items.length === 0) break;
-    items.push(...next.items);
-  }
-  return items;
 }
 
 function mergeEntries(
@@ -397,6 +386,7 @@ function EventComposer({
   const [date, setDate]     = useState(initial.occurred_on);
   const [notes, setNotes]   = useState(initial.notes ?? "");
   const [busy, setBusy]     = useState(false);
+  const toast = useToast();
   const [error, setError]   = useState<string | null>(null);
 
   const submit = async (e: React.FormEvent) => {
@@ -425,6 +415,16 @@ function EventComposer({
     setError(null);
     try {
       await api.deleteTimelineEvent(eventId);
+      // Recreate from the persisted values (`initial`), not the possibly
+      // half-edited form state.
+      toast({
+        message:     `Deleted "${initial.title}"`,
+        actionLabel: "Undo",
+        onAction:    async () => {
+          await api.createTimelineEvent(initial);
+          onSaved();
+        },
+      });
       onSaved();
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -474,7 +474,7 @@ function EventComposer({
               type="button"
               onClick={() => void remove()}
               disabled={busy}
-              className="inline-flex h-8 items-center rounded-md px-2.5 text-xs font-medium text-pace-red transition hover:bg-pace-red/10 disabled:opacity-50"
+              className={buttonClass("dangerGhost")}
             >
               Delete
             </button>
@@ -483,14 +483,14 @@ function EventComposer({
             type="button"
             onClick={onCancel}
             disabled={busy}
-            className="inline-flex h-8 items-center rounded-md border border-hairline bg-white px-3 text-sm font-medium text-ink transition hover:bg-subtle disabled:opacity-50"
+            className={buttonClass("secondary")}
           >
             Cancel
           </button>
           <button
             type="submit"
             disabled={busy || !title.trim() || !date}
-            className="inline-flex h-8 items-center rounded-md border border-accent bg-accent px-3 text-sm font-medium text-white transition hover:bg-accent-deep disabled:opacity-50"
+            className={buttonClass("primary")}
           >
             {eventId ? "Save" : "Add event"}
           </button>
@@ -525,7 +525,7 @@ function Empty({ year, onCompose }: { year: string; onCompose: () => void }) {
       <button
         type="button"
         onClick={onCompose}
-        className="mt-5 inline-flex h-8 items-center gap-1 rounded-md border border-accent bg-accent px-3 text-sm font-medium text-white transition hover:bg-accent-deep"
+        className={buttonClass("primary", "md", "mt-5")}
       >
         <span aria-hidden="true">＋</span>
         Add an event

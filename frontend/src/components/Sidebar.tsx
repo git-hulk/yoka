@@ -91,7 +91,7 @@ const NAV: NavEntry[] = [
   },
   {
     to:      "/finance",
-    label:   "Finance",
+    label:   "Expense",
     matches: (p) => p.startsWith("/finance"),
     icon:    FinanceIcon,
   },

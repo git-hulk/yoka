@@ -26,6 +26,8 @@ import { isNotFound, useFetch } from "../lib/useFetch";
 import Sparkline from "../components/Sparkline";
 import StatusPill from "../components/StatusPill";
 import TrackBand from "../components/TrackBand";
+import { buttonClass } from "../components/ui";
+import { useToast } from "../components/ui/Toast";
 
 const CADENCE_DAYS = 30;
 
@@ -167,7 +169,7 @@ function Hero({
       )}
 
       <HeroActions
-        id={sub.id}
+        sub={sub}
         usageCount={usages.length}
         usagesLoading={usagesLoading}
         onRemoved={onRemoved}
@@ -193,13 +195,14 @@ function buildSubtitle(sub: Subscription): string {
 type Pending = "archive" | "delete" | null;
 
 function HeroActions({
-  id, usageCount, usagesLoading, onRemoved,
+  sub, usageCount, usagesLoading, onRemoved,
 }: {
-  id:            string;
+  sub:           Subscription;
   usageCount:    number;
   usagesLoading: boolean;
   onRemoved:     () => void;
 }) {
+  const toast = useToast();
   const [pending,    setPending]    = useState<Pending>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error,      setError]      = useState<string | null>(null);
@@ -208,8 +211,35 @@ function HeroActions({
     setSubmitting(true);
     setError(null);
     try {
-      if (action === "archive") await api.archiveSubscription(id);
-      else                      await api.deleteSubscription(id);
+      if (action === "archive") {
+        await api.archiveSubscription(sub.id);
+      } else {
+        await api.deleteSubscription(sub.id);
+        if (usageCount === 0) {
+          // Lossless recreate — only offered when no usages were destroyed.
+          const input = {
+            name:          sub.name,
+            quantity:      sub.quantity,
+            tracking_mode: sub.tracking_mode,
+            start_date:    sub.start_date,
+            expires_at:    sub.expires_at,
+            notes:         sub.notes,
+            categories:    sub.categories,
+            price_cents:   sub.price_cents,
+            currency:      sub.currency,
+          };
+          toast({
+            message:     `Deleted "${sub.name}"`,
+            actionLabel: "Undo",
+            onAction:    async () => {
+              const created = await api.createSubscription(input);
+              window.location.href = `/subscriptions/${created.id}`;
+            },
+          });
+        } else {
+          toast({ message: `Deleted "${sub.name}"` });
+        }
+      }
       onRemoved();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Couldn't remove.");
@@ -249,7 +279,7 @@ function HeroActions({
             ? "Counting usages…"
             : usageCount > 0
               ? `Removes the subscription and its ${usageCount} ${usageNoun}. This can't be undone.`
-              : "This can't be undone."
+              : "You'll get a brief chance to undo."
         }
         confirmLabel="Delete forever"
         loadingLabel="Deleting…"
@@ -269,21 +299,21 @@ function HeroActions({
         <button
           type="button"
           onClick={() => setPending("archive")}
-          className="inline-flex h-8 items-center rounded-md border border-hairline bg-white px-3 text-sm font-medium text-ink transition hover:bg-subtle"
+          className={buttonClass("secondary")}
         >
           Archive
         </button>
         <button
           type="button"
           onClick={() => setPending("delete")}
-          className="inline-flex h-8 items-center rounded-md border border-pace-red/30 bg-white px-3 text-sm font-medium text-pace-red transition hover:bg-pace-red/5"
+          className={buttonClass("danger")}
         >
           Delete
         </button>
       </div>
       <Link
-        to={`/subscriptions/${id}/edit`}
-        className="inline-flex h-8 items-center rounded-md border border-accent bg-accent px-3 text-sm font-medium text-white transition hover:bg-accent-deep"
+        to={`/subscriptions/${sub.id}/edit`}
+        className={buttonClass("primary")}
       >
         Edit subscription
       </Link>
@@ -338,7 +368,7 @@ function ConfirmPanel({
           type="button"
           onClick={onCancel}
           disabled={submitting}
-          className="inline-flex h-8 items-center rounded-md border border-hairline bg-white px-3 text-sm font-medium text-ink transition hover:bg-subtle disabled:opacity-50"
+          className={buttonClass("secondary")}
         >
           Cancel
         </button>

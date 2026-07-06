@@ -4,10 +4,13 @@ import { api, ApiError } from "../../lib/api";
 import type { ExpenseInput } from "../../lib/api";
 import { useFetch } from "../../lib/useFetch";
 import ExpenseForm from "./ExpenseForm";
+import { buttonClass } from "../../components/ui";
+import { useToast } from "../../components/ui/Toast";
 
 export default function ExpenseEdit() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const toast = useToast();
 
   const state = useFetch(
     () => api.getExpense(id!),
@@ -44,8 +47,15 @@ export default function ExpenseEdit() {
   }
 
   async function handleDelete() {
-    if (!window.confirm("Delete this expense?")) return;
     await api.deleteExpense(id!);
+    toast({
+      message:     "Expense deleted",
+      actionLabel: "Undo",
+      onAction:    async () => {
+        await api.createExpense(initial);
+        window.location.reload();
+      },
+    });
     navigate("/finance");
   }
 
@@ -61,7 +71,7 @@ export default function ExpenseEdit() {
         <button
           type="button"
           onClick={handleDelete}
-          className="inline-flex h-8 items-center rounded-md border border-pace-red/30 bg-white px-3 text-sm font-medium text-pace-red transition hover:bg-pace-red/5"
+          className={buttonClass("danger")}
         >
           Delete
         </button>

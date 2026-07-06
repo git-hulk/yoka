@@ -13,6 +13,7 @@ import { Link } from "react-router-dom";
 import { api, ApiError } from "../lib/api";
 import { useAuth } from "../lib/auth";
 import { subscriptionColor } from "../lib/colors";
+import { buttonClass } from "./ui";
 
 interface Props {
   collapsed: boolean;
@@ -276,14 +277,14 @@ function GroupComposer({
           type="button"
           onClick={onCancel}
           disabled={busy}
-          className="inline-flex h-7 items-center rounded-md px-2 text-xs font-medium text-ink-dim transition hover:bg-subtle hover:text-ink disabled:opacity-50"
+          className={buttonClass("ghost", "sm")}
         >
           Cancel
         </button>
         <button
           type="submit"
           disabled={busy || !name.trim()}
-          className="inline-flex h-7 items-center rounded-md border border-accent bg-accent px-2.5 text-xs font-medium text-white transition hover:bg-accent-deep disabled:opacity-50"
+          className={buttonClass("primary", "sm")}
         >
           {busy ? "Creating…" : "Create"}
         </button>

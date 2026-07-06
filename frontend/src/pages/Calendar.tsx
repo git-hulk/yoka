@@ -30,6 +30,8 @@ import type {
   Weekday,
 } from "../lib/types";
 import { isRecurringInstance } from "../lib/types";
+import { buttonClass } from "../components/ui";
+import { useToast } from "../components/ui/Toast";
 
 type View = "month" | "week" | "day";
 
@@ -1287,14 +1289,14 @@ function NewEventModal({
             type="button"
             onClick={onClose}
             disabled={submitting}
-            className="inline-flex h-8 items-center rounded-md border border-hairline bg-white px-3 text-sm font-medium text-ink transition hover:bg-subtle disabled:opacity-50"
+            className={buttonClass("secondary")}
           >
             Cancel
           </button>
           <button
             type="submit"
             disabled={!canSubmit}
-            className="inline-flex h-8 items-center rounded-md border border-accent bg-accent px-3 text-sm font-medium text-white transition hover:bg-accent-deep disabled:cursor-not-allowed disabled:border-ink-faint disabled:bg-ink-faint"
+            className={buttonClass("primary")}
           >
             {submitting ? "Saving…" : "Save"}
           </button>
@@ -1317,6 +1319,7 @@ function EventDetailModal({
   onUpdated:     (e: EventInRange) => void;
   onDeleted:     (id: string) => void;
 }) {
+  const toast = useToast();
   const [event, setEvent] = useState<CalendarEvent | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -1376,16 +1379,40 @@ function EventDetailModal({
 
   async function handleDelete() {
     if (busy) return;
-    const prompt = recurrence
-      ? "Delete the entire series? All future occurrences will be removed."
-      : "Delete this event?";
-    if (!confirm(prompt)) return;
+    // A series delete removes every occurrence — that blast radius still
+    // deserves a confirm. Single events skip it: the toast offers Undo.
+    if (
+      recurrence &&
+      !confirm("Delete the entire series? All future occurrences will be removed.")
+    ) {
+      return;
+    }
     setBusy(true);
     setActionError(null);
     try {
       // Per-instance delete is intentionally unsupported by the backend; for
       // a recurring entry we always delete the parent series.
       await api.deleteEvent(parentId);
+      if (event) {
+        const snapshot = {
+          title:           event.title,
+          start_at:        event.start_at,
+          end_at:          event.end_at,
+          status:          event.status,
+          subscription_id: event.subscription_id,
+          amount:          event.amount,
+          notes:           event.notes,
+          recurrence_rule: event.recurrence_rule ?? null,
+        };
+        toast({
+          message:     recurrence ? "Series deleted" : "Event deleted",
+          actionLabel: "Undo",
+          onAction:    async () => {
+            await api.createEvent(snapshot);
+            window.location.reload();
+          },
+        });
+      }
       // Tell the parent to drop this id from its rendered list. For a series
       // root, dropping the root id is correct — virtual instances will stop
       // being generated on the next refetch.
@@ -1490,7 +1517,7 @@ function EventDetailModal({
                     type="button"
                     onClick={() => runAction(() => api.declineEvent(eventId))}
                     disabled={busy}
-                    className="inline-flex h-8 items-center rounded-md border border-hairline bg-white px-3 text-sm font-medium text-ink transition hover:bg-subtle disabled:opacity-50"
+                    className={buttonClass("secondary")}
                   >
                     Decline
                   </button>
@@ -1500,7 +1527,7 @@ function EventDetailModal({
                     type="button"
                     onClick={() => runAction(() => api.acceptEvent(eventId))}
                     disabled={busy}
-                    className="inline-flex h-8 items-center rounded-md border border-accent bg-accent px-3 text-sm font-medium text-white transition hover:bg-accent-deep disabled:cursor-not-allowed disabled:border-ink-faint disabled:bg-ink-faint"
+                    className={buttonClass("primary")}
                   >
                     Accept
                   </button>
@@ -1509,7 +1536,7 @@ function EventDetailModal({
                   <button
                     type="button"
                     onClick={onClose}
-                    className="inline-flex h-8 items-center rounded-md border border-hairline bg-white px-3 text-sm font-medium text-ink transition hover:bg-subtle"
+                    className={buttonClass("secondary")}
                   >
                     Done
                   </button>

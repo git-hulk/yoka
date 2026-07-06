@@ -222,6 +222,21 @@ export const api = {
   listSubscriptionEvents: (id: string) =>
     request<CalendarEvent[]>(`/subscriptions/${encodeURIComponent(id)}/events`),
 
+  /** Every subscription, paging past the server's per-page cap. Used by
+   *  views that filter/derive client-side (Home, Timeline). */
+  listAllSubscriptions: async (): Promise<Subscription[]> => {
+    const first = await api.listSubscriptions({ page: 1, perPage: 100 });
+    const items = [...first.items];
+    let page = 1;
+    while (items.length < first.total) {
+      page += 1;
+      const next = await api.listSubscriptions({ page, perPage: 100 });
+      if (next.items.length === 0) break;
+      items.push(...next.items);
+    }
+    return items;
+  },
+
   createSubscription: (input: SubscriptionInput) =>
     request<Subscription>("/subscriptions", { method: "POST", body: input }),
 

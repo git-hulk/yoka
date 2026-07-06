@@ -4,6 +4,9 @@ import { ApiError, api } from "../lib/api";
 import { formatUsageDay, formatUsageTime } from "../lib/pace";
 import type { CalendarEvent, Usage } from "../lib/types";
 import { eventToUsage } from "../lib/types";
+import { inputClass } from "./ui/Input";
+import { buttonClass } from "./ui";
+import { useToast } from "./ui/Toast";
 
 interface Props {
   subscriptionId: string;
@@ -18,6 +21,7 @@ interface Props {
  *  with `status === "accepted"` count as usages, and the editor surfaces
  *  exactly those. New entries are created as accepted events. */
 export default function UsageEditor({ subscriptionId, timeKnown, onChange }: Props) {
+  const toast = useToast();
   const [events, setEvents] = useState<CalendarEvent[] | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
 
@@ -60,9 +64,30 @@ export default function UsageEditor({ subscriptionId, timeKnown, onChange }: Pro
   }
 
   async function deleteUsage(usageId: string) {
+    const original = events?.find((e) => e.id === usageId) ?? null;
     await api.deleteEvent(usageId);
     setEvents((prev) => prev?.filter((e) => e.id !== usageId) ?? null);
     onChange?.();
+    if (original) {
+      toast({
+        message:     "Usage deleted",
+        actionLabel: "Undo",
+        onAction:    async () => {
+          const recreated = await api.createEvent({
+            title:           original.title,
+            start_at:        original.start_at,
+            end_at:          original.end_at,
+            status:          original.status,
+            subscription_id: original.subscription_id,
+            amount:          original.amount,
+            notes:           original.notes,
+            recurrence_rule: original.recurrence_rule ?? null,
+          });
+          setEvents((prev) => (prev ? [recreated, ...prev] : [recreated]));
+          onChange?.();
+        },
+      });
+    }
   }
 
   async function updateUsage(usageId: string, amount: number, notes: string | null) {
@@ -275,14 +300,14 @@ function EditRow({
         type="button"
         onClick={onCancel}
         disabled={saving}
-        className="inline-flex h-8 items-center rounded-md border border-hairline bg-white px-2.5 text-xs font-medium text-ink transition hover:bg-subtle disabled:opacity-50"
+        className={buttonClass("secondary")}
       >
         Cancel
       </button>
       <button
         type="submit"
         disabled={!canSave}
-        className="inline-flex h-8 items-center rounded-md border border-accent bg-accent px-2.5 text-xs font-medium text-white transition hover:bg-accent-deep disabled:cursor-not-allowed disabled:border-ink-faint disabled:bg-ink-faint"
+        className={buttonClass("primary")}
       >
         {saving ? "Saving…" : "Save"}
       </button>
@@ -357,7 +382,7 @@ function AddForm({
         <button
           type="submit"
           disabled={!canSubmit}
-          className="inline-flex h-8 items-center rounded-md border border-accent bg-accent px-3 text-sm font-medium text-white transition hover:bg-accent-deep disabled:cursor-not-allowed disabled:border-ink-faint disabled:bg-ink-faint"
+          className={buttonClass("primary")}
         >
           {submitting ? "Adding…" : "Add"}
         </button>
@@ -368,11 +393,6 @@ function AddForm({
 }
 
 // ---------------------------------------------------------------------------
-
-const inputClass =
-  "h-8 w-full rounded-md border border-hairline bg-white px-2.5 text-sm text-ink " +
-  "placeholder:text-ink-faint outline-none transition " +
-  "hover:border-ink-faint focus:border-accent focus:ring-2 focus:ring-accent-soft";
 
 function composeDetail(u: Usage): string {
   const time  = formatUsageTime(u.created_at);

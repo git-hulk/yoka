@@ -7,6 +7,8 @@ import { CURRENCIES } from "../lib/types";
 import type { Currency, TrackingMode } from "../lib/types";
 import { useFetch } from "../lib/useFetch";
 import CategoriesPicker from "./CategoriesPicker";
+import { inputClass, textareaClass } from "./ui/Input";
+import { buttonClass } from "./ui";
 
 interface Props {
   initial?:    SubscriptionInput;
@@ -237,14 +239,14 @@ export default function SubscriptionForm({
           type="button"
           onClick={onCancel}
           disabled={submitting}
-          className="inline-flex h-8 items-center rounded-md border border-hairline bg-white px-3 text-sm font-medium text-ink transition hover:bg-subtle disabled:opacity-50"
+          className={buttonClass("secondary")}
         >
           Cancel
         </button>
         <button
           type="submit"
           disabled={!canSubmit}
-          className="inline-flex h-8 items-center rounded-md border border-accent bg-accent px-3 text-sm font-medium text-white transition hover:bg-accent-deep disabled:cursor-not-allowed disabled:border-ink-faint disabled:bg-ink-faint"
+          className={buttonClass("primary")}
         >
           {submitting ? "Saving…" : submitLabel}
         </button>
@@ -257,15 +259,6 @@ export default function SubscriptionForm({
 
 // GH-style boxed inputs: hairline border, 6px radius, 32px height, 14px Inter,
 // accent focus ring (2px accent-soft for the GH glow effect).
-const inputClass =
-  "h-8 w-full rounded-md border border-hairline bg-white px-2.5 text-sm text-ink " +
-  "placeholder:text-ink-faint outline-none transition " +
-  "hover:border-ink-faint focus:border-accent focus:ring-2 focus:ring-accent-soft";
-
-const textareaClass =
-  "w-full rounded-md border border-hairline bg-white px-2.5 py-2 text-sm text-ink " +
-  "placeholder:text-ink-faint outline-none transition " +
-  "hover:border-ink-faint focus:border-accent focus:ring-2 focus:ring-accent-soft";
 
 function CurrencySelect({
   value, onChange,

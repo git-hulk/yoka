@@ -4,10 +4,13 @@ import { api, ApiError } from "../../lib/api";
 import type { RecurringExpenseInput } from "../../lib/api";
 import { useFetch } from "../../lib/useFetch";
 import RecurringExpenseForm from "./RecurringExpenseForm";
+import { buttonClass } from "../../components/ui";
+import { useToast } from "../../components/ui/Toast";
 
 export default function RecurringExpenseEdit() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const toast = useToast();
 
   const state = useFetch(
     () => api.getRecurringExpense(id!),
@@ -51,8 +54,24 @@ export default function RecurringExpenseEdit() {
   }
 
   async function handleDelete() {
-    if (!window.confirm("Delete this rule entirely?")) return;
     await api.deleteRecurringExpense(id!);
+    toast({
+      message:     `Deleted rule "${r.name}"`,
+      actionLabel: "Undo",
+      onAction:    async () => {
+        await api.createRecurringExpense({
+          name:         r.name,
+          amount_cents: r.amount_cents,
+          currency:     r.currency,
+          category:     r.category,
+          cadence:      r.cadence,
+          start_date:   r.start_date,
+          end_date:     r.end_date,
+          notes:        r.notes,
+        });
+        window.location.reload();
+      },
+    });
     navigate("/finance");
   }
 
@@ -70,7 +89,7 @@ export default function RecurringExpenseEdit() {
             <button
               type="button"
               onClick={handleArchive}
-              className="inline-flex h-8 items-center rounded-md border border-hairline bg-white px-3 text-sm font-medium text-ink transition hover:bg-subtle"
+              className={buttonClass("secondary")}
             >
               Archive
             </button>
@@ -78,7 +97,7 @@ export default function RecurringExpenseEdit() {
           <button
             type="button"
             onClick={handleDelete}
-            className="inline-flex h-8 items-center rounded-md border border-pace-red/30 bg-white px-3 text-sm font-medium text-pace-red transition hover:bg-pace-red/5"
+            className={buttonClass("danger")}
           >
             Delete
           </button>

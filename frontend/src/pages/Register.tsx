@@ -7,6 +7,7 @@ import { Link, useNavigate } from "react-router-dom";
 
 import { api, ApiError } from "../lib/api";
 import { useAuth } from "../lib/auth";
+import { buttonClass } from "../components/ui";
 
 const MIN_PASSWORD_LEN = 8;
 
@@ -86,7 +87,7 @@ export default function Register() {
         <button
           type="submit"
           disabled={submitting}
-          className="inline-flex h-9 w-full items-center justify-center rounded-md bg-accent px-4 text-sm font-medium text-white transition hover:bg-accent-deep disabled:opacity-60"
+          className={buttonClass("primary", "lg", "w-full")}
         >
           {submitting ? "Creating…" : "Create account"}
         </button>
